@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Loader2, Plus, Send, Trash2, Video, X } from "lucide-react";
+import { Loader2, Plus, Search, Send, Trash2, Video, X } from "lucide-react";
 import { EmailResult, SubjectPicker } from "@/components/email/email-result";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 import {
@@ -107,6 +107,34 @@ export function SellerUpdateTool({
   const [btContacts, setBtContacts] = useState<{ id: string; name: string; email: string }[]>([]);
   const [btEmail, setBtEmail] = useState("");
   const [btAdding, setBtAdding] = useState(false);
+  /**
+   * Find the seller by name as well as email (2026-10-26, the owner's ask).
+   * Each match shows its email, and picking one still adds by that exact
+   * email, so an update can't go to the wrong person.
+   */
+  const [btFound, setBtFound] = useState<{ id: string; name: string; email: string }[]>([]);
+  const [btSearching, setBtSearching] = useState(false);
+  const [btOpen, setBtOpen] = useState(false);
+  const btSeq = useRef(0);
+  useEffect(() => {
+    const term = btEmail.trim();
+    if (term.length < 2) { setBtFound([]); setBtSearching(false); return; }
+    const mine = ++btSeq.current;
+    setBtSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/boldtrail/search?q=${encodeURIComponent(term)}`);
+        const d = await res.json().catch(() => ({}));
+        if (mine !== btSeq.current) return;
+        setBtFound(res.ok ? ((d.contacts ?? []) as { id: string; name: string; email: string }[]) : []);
+      } catch {
+        if (mine === btSeq.current) setBtFound([]);
+      } finally {
+        if (mine === btSeq.current) setBtSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [btEmail]);
   const [sentDates, setSentDates] = useState<string[]>([]);
   const [sent, setSent] = useState<{ at: string; to: { name: string; email: boolean; text: boolean | null }[] } | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -290,14 +318,16 @@ export function SellerUpdateTool({
     }
   }
 
-  async function addBtContact() {
-    if (!selected || !btEmail.includes("@")) return;
+  async function addBtContact(pickedEmail?: string) {
+    const email = (pickedEmail ?? btEmail).trim();
+    if (!selected || !email.includes("@")) return;
     setBtAdding(true);
+    setBtOpen(false);
     try {
       const res = await fetch("/api/seller-listings/boldtrail-contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listingId: selected.id, email: btEmail.trim() }),
+        body: JSON.stringify({ listingId: selected.id, email }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d?.error || "Couldn't add that seller.");
@@ -495,22 +525,52 @@ export function SellerUpdateTool({
                         </span>
                       ))}
                       {btContacts.length < 4 && (
-                        <span className="flex min-w-[220px] flex-1 items-center gap-1.5">
+                        <span className="relative flex min-w-[220px] flex-1 items-center gap-1.5">
+                          <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-spark-ink-faint" />
                           <input
-                            type="email"
-                            name="seller-boldtrail-email"
+                            type="text"
+                            name="seller-boldtrail-search"
                             autoComplete="off"
                             data-1p-ignore
                             data-lpignore="true"
                             value={btEmail}
-                            onChange={(e) => setBtEmail(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void addBtContact(); } }}
-                            placeholder="Seller's email in BoldTrail"
-                            className={`${input} py-1.5`}
+                            onChange={(e) => { setBtEmail(e.target.value); setBtOpen(true); }}
+                            onFocus={() => setBtOpen(true)}
+                            onBlur={() => setTimeout(() => setBtOpen(false), 150)}
+                            onKeyDown={(e) => {
+                              if (e.key !== "Enter") return;
+                              e.preventDefault();
+                              if (btEmail.includes("@")) void addBtContact();
+                              else if (btFound[0]) void addBtContact(btFound[0].email);
+                            }}
+                            placeholder="Seller's name or email in BoldTrail"
+                            className={`${input} py-1.5 pl-7`}
                           />
-                          <button type="button" onClick={addBtContact} disabled={btAdding || !btEmail.includes("@")} className="flex shrink-0 items-center gap-1 rounded-[10px] border border-orange-300 bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-orange-800 disabled:opacity-50">
+                          <button type="button" onClick={() => void addBtContact()} disabled={btAdding || !btEmail.includes("@")} className="flex shrink-0 items-center gap-1 rounded-[10px] border border-orange-300 bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-orange-800 disabled:opacity-50">
                             {btAdding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Add
                           </button>
+                          {btOpen && btEmail.trim().length >= 2 && (
+                            <span className="absolute left-0 right-0 top-full z-30 mt-1 block max-h-64 overflow-y-auto rounded-xl border border-spark-rule bg-white shadow-lg">
+                              {btSearching && btFound.length === 0 && (
+                                <span className="flex items-center gap-1.5 px-3 py-2 text-[13px] text-spark-ink-muted"><Loader2 size={13} className="animate-spin" /> Searching BoldTrail…</span>
+                              )}
+                              {!btSearching && btFound.length === 0 && (
+                                <span className="block px-3 py-2 text-[13px] text-spark-ink-muted">No BoldTrail contact starts with &ldquo;{btEmail.trim()}&rdquo;.</span>
+                              )}
+                              {btFound.filter((c) => !btContacts.some((x) => x.id === c.id)).map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => void addBtContact(c.email)}
+                                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px] hover:bg-orange-50"
+                                >
+                                  <span className="font-semibold text-spark-ink">{c.name}</span>
+                                  <span className="truncate text-[12px] text-orange-800">{c.email}</span>
+                                </button>
+                              ))}
+                            </span>
+                          )}
                         </span>
                       )}
                     </div>

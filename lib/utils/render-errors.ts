@@ -42,7 +42,7 @@ const RULES: Rule[] = [
   {
     match: /avatar_not_found|avatar_group_not_found|no usable image/i,
     message:
-      "We couldn't find your avatar. Open Settings to check your photos, then try again.",
+      "Your on-screen look is missing at the video service. Nothing was charged. Open Settings, upload your headshot again (it rebuilds your looks in about a minute), then try again.",
   },
   {
     match: /resource_limit_(reached|exceeded)/i,

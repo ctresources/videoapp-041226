@@ -13,6 +13,7 @@ import { BrandProfile, VoiceCloneUploader, type BrandProfileInitial } from "@/co
 import { BrandKitPicker } from "@/components/settings/brand-kit-picker";
 import { SignOutGuard } from "@/components/recovery/sign-out-guard";
 import { SettingsSteps } from "@/components/settings/settings-steps";
+import { StudioChecklist } from "@/components/settings/studio-checklist";
 import { HomeScreenCard } from "@/components/settings/home-screen-card";
 import { AffiliateCard } from "@/components/settings/affiliate-card";
 import { HaloSettingsCard } from "@/components/halo/halo-settings-card";
@@ -41,6 +42,7 @@ export default function SettingsPage() {
   // What the step bar ticks (2026-10-17): saved, not merely typed.
   const [savedCity, setSavedCity] = useState(false);
   const [savedCta, setSavedCta] = useState(false);
+  const [youtubeOn, setYoutubeOn] = useState(false);
   const { standalone } = useHomeScreen();
 
   // Redirect to login if user signs out while on this page
@@ -56,7 +58,7 @@ export default function SettingsPage() {
     const supabase = createClient();
     supabase
       .from("profiles")
-      .select("full_name, company_name, phone, company_phone, mobile_phone, sms_consent_at, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id, default_cta, market_years, heygen_brand_kit_id, time_zone, brand_colors")
+      .select("full_name, company_name, phone, company_phone, mobile_phone, sms_consent_at, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id, default_cta, market_years, heygen_brand_kit_id, time_zone, brand_colors, youtube_channel_id")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
@@ -73,6 +75,7 @@ export default function SettingsPage() {
           default_cta: string | null; market_years: string | null;
           time_zone: string | null;
           brand_colors: string[] | null;
+          youtube_channel_id: string | null;
         } | null;
         if (row) {
           setPrefs({
@@ -85,6 +88,7 @@ export default function SettingsPage() {
           if (row.default_cta?.trim()) setCtaTemplate(row.default_cta);
           setSavedCity(!!row.location_city?.trim());
           setSavedCta(!!row.default_cta?.trim());
+          setYoutubeOn(!!row.youtube_channel_id);
           setMarketYears(row.market_years || "");
           // Fall back to auth metadata name (set during Google OAuth or email signup)
           const metaName = (user.user_metadata?.full_name as string | null) ?? null;
@@ -256,6 +260,19 @@ export default function SettingsPage() {
     <div className="max-w-2xl mx-auto space-y-6">
 
       {/* Social Accounts is a tab above now (settings/layout.tsx). */}
+
+      <StudioChecklist
+        items={[
+          { label: "Headshot", done: !!brandData?.avatar_url, target: "brand", action: "Add" },
+          { label: "Voice clone", done: !!(brandData?.heygen_voice_id || brandData?.voice_clone_id), target: "voice", action: "Record" },
+          { label: "Logo", done: !!brandData?.logo_url, target: "brand", action: "Add" },
+          { label: "Your market", done: savedCity, target: "preferences", action: "Add" },
+          { label: "Call to action", done: savedCta, target: "cta", action: "Write" },
+          { label: "YouTube connected", done: youtubeOn, target: "/settings/social", action: "Connect" },
+          { label: "Brand colours", done: (brandData?.brand_colors?.length ?? 0) > 0, target: "brand", action: "Add" },
+          { label: "Digital Twin", done: !!brandData?.heygen_digital_twin_look_id, target: "twin", action: "Set up", optional: true },
+        ]}
+      />
 
       <SettingsSteps
         steps={[

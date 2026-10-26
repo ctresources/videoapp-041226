@@ -48,6 +48,7 @@ import { ComposerCard } from "@/components/create/composer-card";
 import { BuyerQuestions } from "@/components/create/buyer-questions";
 import { FirstSparkBanner } from "@/components/create/first-spark-banner";
 import { PAGE_MIC_SLOT } from "@/components/ui/voice-pick-mic";
+import { SparkleeAgent } from "@/components/create/sparklee-agent";
 import { StepFooter } from "@/components/create/step-footer";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { toStateAbbr } from "@/lib/utils/us-states";
@@ -364,6 +365,19 @@ function CreatePageInner() {
   const [sparkSeed, setSparkSeed] = useState({ text: "", n: 0 });
   // The Agent Intro panel (2026-10-23).
   const [introOpen, setIntroOpen] = useState(false);
+  // The shorter Create page (2026-10-26, usability sweep #6): the ideas and
+  // the extra choices are folded away until wanted.
+  const [showIdeas, setShowIdeas] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  /** Settings' market has been read in, so a missing town is really missing. */
+  const [marketLoaded, setMarketLoaded] = useState(false);
+  /**
+   * Details stays on screen once it was needed for the town, so it doesn't
+   * fold away under the cursor the moment the city and state are typed.
+   */
+  const [townNeeded, setTownNeeded] = useState(false);
+  /** The topic box's words as they stand, for "Sparklee, make it". */
+  const [briefWords, setBriefWords] = useState("");
   /** A whole command from the home-screen mic (?say=…), handed to the voice panel to carry out. */
   const [voiceCommand, setVoiceCommand] = useState({ text: "", n: 0 });
   // Whether a sentence said on the home screen (?say=…) is still being worked
@@ -899,6 +913,7 @@ function CreatePageInner() {
           }
           setOnboardingDone(!!(data as { onboarding_done?: boolean } | null)?.onboarding_done);
           setHasVoiceClone(!!(data as { heygen_voice_id?: string | null } | null)?.heygen_voice_id);
+          setMarketLoaded(true);
         });
     });
   }, []); // eslint-disable-line
@@ -1946,6 +1961,7 @@ function CreatePageInner() {
   // Admins may leave the city and state empty (2026-10-21, the owner's ask):
   // their own videos are often not about a town. Everyone else still needs one.
   const locationOk = locationSet || !!allowance?.isAdmin;
+  useEffect(() => { if (marketLoaded && !locationOk) setTownNeeded(true); }, [marketLoaded, locationOk]);
   const isMarketSaved = savedMarkets.some(
     m => (m.city ?? "").toLowerCase() === locCity.trim().toLowerCase() && (m.state ?? "").toUpperCase() === locState.trim().toUpperCase()
   );
@@ -2327,10 +2343,27 @@ function CreatePageInner() {
     showSource ? "Script Source" : null,
     showDetails ? "Details" : null,
   ].filter((x): x is string => !!x);
-  const sectionNo = (name: string) => sectionList.indexOf(name) + 1;
+  /**
+   * The steps bar names only the sections on screen: More options folds the
+   * rest. Details stays on screen while the town is missing (Next needs it).
+   * The sections are numbered as the bar numbers them.
+   */
+  const stepsShown = twoCols && !moreOpen
+    ? sectionList.filter((n) => n === "Topic" || n === "Create" || (n === "Details" && townNeeded))
+    : sectionList;
+  const sectionNo = (name: string) => (stepsShown.includes(name) ? stepsShown : sectionList).indexOf(name) + 1;
+  /** Four ideas for the folded ideas row, with the town filled in. */
+  const ideaTown = locCity.trim() || ctaProfile?.location_city || "";
+  const ideaSeason = (() => { const m = new Date().getMonth(); return m < 2 || m === 11 ? "Winter" : m < 5 ? "Spring" : m < 8 ? "Summer" : "Fall"; })();
+  const quickIdeas = [
+    ideaTown ? `${ideaTown} market this month` : "My market this month",
+    `3 questions buyers ask AI${ideaTown ? ` in ${ideaTown}` : " in my town"}`,
+    "My open house this weekend",
+    `${ideaSeason} home tips`,
+  ];
   /** Each section's name, the same words on the steps and on the section. */
   const sectionLabel = (name: string) =>
-    name === "Topic" ? "Say or Pick a Topic" : name === "Script Source" && blogOnly ? "Source" : name;
+    name === "Topic" ? "Topic" : name === "Script Source" && blogOnly ? "Source" : name;
   const topicOffProps = topicApplies
     ? {}
     : ({ inert: "", "aria-hidden": true } as unknown as { inert: boolean; "aria-hidden": boolean });
@@ -2724,7 +2757,7 @@ function CreatePageInner() {
               last step sat far off at the right edge. */}
           <div className="mt-2 flex justify-center">
           <div className="inline-flex min-w-0 max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-[12px] border border-spark-rule bg-[#faf7f0] px-3 py-1 text-[15px]">
-            {sectionList.map((label, i) => (
+            {stepsShown.map((label, i) => (
               <span key={label} className="contents">
                 {i > 0 && <span className="hidden h-px w-8 bg-spark-rule sm:block" />}
                 <span className={`flex items-center gap-2 ${i === 0 ? "font-semibold text-spark-ink" : "text-spark-ink-muted"}`}>
@@ -2783,7 +2816,7 @@ function CreatePageInner() {
         <div className="mt-3 flex flex-col gap-3 lg:mt-3 lg:flex-1">
           <SectionHead
             // The owner's name for it, and no question under it any more.
-            eyebrow={`${sectionNo("Topic")} · Say or Pick a Topic`}
+            eyebrow={`${sectionNo("Topic")} · Topic`}
           />
           {!topicApplies && (
             <p className="text-[14px] leading-[1.4] text-spark-ink-muted">
@@ -2972,6 +3005,7 @@ function CreatePageInner() {
               // is understood from them (the town, the format, a tidier
               // topic) arrives after, through onSlots above.
               onText={(text) => {
+                setBriefWords(text);
                 setLocCustomTopic(text);
                 setCameraVoiceTopic(text);
                 setTopicTemplateRaw(null);
@@ -2982,6 +3016,12 @@ function CreatePageInner() {
               command={voiceCommand}
               onReply={() => setCommandPending(false)}
             />
+            {/* Sparklee makes it herself (2026-10-26, usability sweep #11). */}
+            {!blogOnly && inputMode === "script" && (
+              <div className="mt-3">
+                <SparkleeAgent words={briefWords || locCustomTopic} userId={userId} disabled={locGenerating} />
+              </div>
+            )}
           </ComposerCard>
 
           {/* The six quick chips used to sit here, above the panel — a second
@@ -3006,6 +3046,38 @@ function CreatePageInner() {
               cancels the column's gap, and a thin line divides the two. */}
           <div className={`-mt-3 flex flex-col gap-3 rounded-b-[22px] border-[1.5px] border-t-0 border-spark-rule bg-white px-4 pb-4 shadow-[0_2px_14px_rgba(44,44,42,0.05)] lg:flex-1 ${topicOffClass} ${tabPage ? "hidden" : ""}`} {...topicOffProps}>
           <div className="border-t border-spark-rule" />
+          {!showIdeas ? (
+            <div className="flex flex-col gap-2 lg:flex-1">
+              <p className="text-[14px] text-spark-ink-muted">Not sure what to make? Tap an idea:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {quickIdeas.map((idea) => (
+                  <button
+                    key={idea}
+                    type="button"
+                    onClick={() => {
+                      setLocCustomTopic(idea);
+                      setBriefWords(idea);
+                      setTopicTemplateRaw(null);
+                      setSparkSeed((x) => ({ text: idea, n: x.n + 1 }));
+                    }}
+                    className="rounded-full border border-spark-rule bg-white px-3 py-1.5 text-[13.5px] text-spark-ink hover:border-spark-amber"
+                  >
+                    {idea}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setShowIdeas(true)}
+                  className="rounded-full border border-spark-amber bg-spark-amber-tint px-3 py-1.5 text-[13.5px] font-semibold text-[#A3660F]"
+                >
+                  See all ideas →
+                </button>
+              </div>
+            </div>
+          ) : (<>
+          <button type="button" onClick={() => setShowIdeas(false)} className="self-end text-[13px] font-medium text-spark-ink-muted underline">
+            Fewer ideas
+          </button>
           <FirstSparkBanner
             city={locCity.trim() || ctaProfile?.location_city || ""}
             state={locCity.trim() ? locState : (ctaProfile?.location_state || "")}
@@ -3054,6 +3126,7 @@ function CreatePageInner() {
               />
             )}
           </BuyerQuestions>
+          </>)}
           </div>
 
           {/* Something they already have, on the video route.
@@ -3516,7 +3589,26 @@ function CreatePageInner() {
       {/* Not for a listing on the video route: that card above is the whole
           choice, and the panel it opens asks its own (listing video or photo
           reel). On the blog route a listing is still a source, so it stays. */}
-      {step === "input" && inputMode !== "camera" && (blogOnly || inputMode !== "listing") && (
+      {twoCols && (moreOpen || townNeeded) && (
+        <button
+          type="button"
+          onClick={() => setMoreOpen((o) => !o)}
+          aria-expanded={moreOpen}
+          className="mt-5 flex w-full items-center justify-between gap-3 rounded-[14px] border border-spark-rule bg-white px-4 py-3 text-left hover:border-spark-amber"
+        >
+          <span className="min-w-0">
+            <span className="block text-[15px] font-semibold text-spark-ink">More options</span>
+            <span className="block truncate text-[12.5px] text-spark-ink-muted">Topic ideas · script source · town · shape · length · audience · tone</span>
+          </span>
+          <span className="shrink-0 text-[13px] font-semibold text-[#A3660F]">{moreOpen ? "Hide ▴" : "Show ▾"}</span>
+        </button>
+      )}
+      {twoCols && moreOpen && !showIdeas && (
+        <button type="button" onClick={() => setShowIdeas(true)} className="mt-2 text-[13px] font-semibold text-[#A3660F] underline">
+          Show all topic ideas
+        </button>
+      )}
+      {step === "input" && inputMode !== "camera" && (blogOnly || inputMode !== "listing") && (!twoCols || moreOpen) && (
         <>
         <SectionHead
           className={besideCard ? "mt-6" : "mt-7 lg:mt-4"}
@@ -3737,8 +3829,37 @@ function CreatePageInner() {
       {/* ══════════════════════════════════════════
           AI SCRIPT TAB
       ══════════════════════════════════════════ */}
-      {twoCols && inputMode === "script" && step === "input" && <div aria-hidden className="hidden lg:block lg:flex-1" />}
-      {inputMode === "script" && step === "input" && (
+      {twoCols && inputMode === "script" && step === "input" && (moreOpen || townNeeded) && <div aria-hidden className="hidden lg:block lg:flex-1" />}
+      {/* Folded (2026-10-26, usability sweep #6): what's already chosen, in one
+          card that runs down to end level with the topic card beside it. */}
+      {twoCols && inputMode === "script" && step === "input" && !moreOpen && !townNeeded && (
+        <div className="mt-5 flex flex-col rounded-[22px] border-[1.5px] border-spark-rule bg-white px-5 py-4 shadow-[0_2px_14px_rgba(44,44,42,0.05)] lg:flex-1">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[15px] font-semibold text-spark-ink">More options</span>
+            <button type="button" onClick={() => setMoreOpen(true)} className="text-[13px] font-semibold text-[#A3660F]">
+              Show ▾
+            </button>
+          </div>
+          <p className="mt-0.5 text-[12.5px] text-spark-ink-muted">Already set. Change any of it under More options.</p>
+          <dl className="mt-2">
+            {([
+              ["Script", "AI writes it"],
+              ["Town", locCity.trim() ? `${locCity.trim()}${locState.trim() ? `, ${locState.trim().toUpperCase()}` : ""}` : "Not set"],
+              ["Shape", locLength === "long" ? "Longform 16:9" : locPlatform === "reel" ? "Vertical 9:16" : "Horizontal 16:9"],
+              ["Length", locLength === "long" ? "Up to 8 min" : locPlatform === "reel" ? "Up to 90 sec" : "Up to 2 min"],
+              ["Audience", locAudience || "Any"],
+              ["Tone", locTone || "Any"],
+              ["Call to action", locCta ? "Your choice" : "Your default"],
+            ] as const).map(([k, v]) => (
+              <div key={k} className="flex items-center justify-between gap-3 border-t border-spark-rule/60 py-1.5 text-[13.5px]">
+                <dt className="text-spark-ink-muted">{k}</dt>
+                <dd className="truncate font-medium text-spark-ink">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+      {inputMode === "script" && step === "input" && (!twoCols || moreOpen || townNeeded) && (
         <div className={`mt-7 flex flex-col gap-3 lg:mt-4 lg:gap-2 ${twoCols ? "lg:flex-1" : ""}`}>
 
           {/* What is left of the old third section now that its topic box is

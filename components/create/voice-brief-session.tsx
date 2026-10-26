@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { Mic, Loader2, Square } from "lucide-react";
 import { saidGoAhead } from "@/lib/utils/wake-word";
 import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
@@ -389,11 +390,13 @@ export function VoiceBriefSession({
             the mic, then what tapping it does. The mock's line pointed at
             questions "on the left"; here the ideas are below. */}
         <div className="flex flex-col items-center gap-1">
-          <h2 className="text-[17px] font-semibold leading-snug text-spark-ink sm:text-[19px]">
-            Say it in your own words
+          {/* Sparklee's box (2026-10-26, usability sweep #11). */}
+          <h2 className="flex items-center gap-2 text-[17px] font-semibold leading-snug text-spark-ink sm:text-[19px]">
+            <Image src="/sparklee.webp" alt="" width={26} height={26} className="h-[26px] w-[26px] rounded-full" unoptimized />
+            Tell Sparklee what to make
           </h2>
           <p className="text-[13.5px] leading-snug text-spark-ink-muted">
-            Speak, type, or tap an idea below
+            Just a topic, or the whole request
           </p>
         </div>
         <button

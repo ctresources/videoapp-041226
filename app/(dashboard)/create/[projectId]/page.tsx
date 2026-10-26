@@ -28,6 +28,7 @@ import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT, UPLOAD_PHOTO_LIMIT } from "@/lib
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
 import { StepFooter } from "@/components/create/step-footer";
+import { ReadyCheck, type ReadyItem } from "@/components/create/ready-check";
 import { RenderPipeline } from "@/components/create/render-pipeline";
 import { WaitingInLine } from "@/components/create/waiting-in-line";
 import {
@@ -230,15 +231,16 @@ function renderEta(opts: { pastedScript: boolean; longForm: boolean; photoCount?
     // they uploaded does not appear.
     const photos = opts.photoCount ?? 0;
     return {
-      range: "15-20 minutes",
+      // The owner's timing from her own videos (2026-10-26).
+      range: "10–12 minutes",
       why: photos > 0
         ? `The AI builds the scenes around your ${photos} photo${photos === 1 ? "" : "s"}, which takes longer than a straight read.`
         : "The AI plans the scenes and chooses the visuals, which takes longer than a straight read.",
     };
   }
   return opts.longForm
-    ? { range: "10-20 minutes", why: "Long videos read your full script start to finish." }
-    : { range: "5-10 minutes", why: "" };
+    ? { range: "10–20 minutes", why: "Long videos read your full script start to finish." }
+    : { range: "5–10 minutes", why: "" };
 }
 
 /**
@@ -465,6 +467,9 @@ export default function ProjectEditorPage() {
   const [avatarStyle, setAvatarStyle] = useState<"full" | "circle">("full");
   /** Both halves of the avatar setup are done, so the Settings nudge is noise. */
   const [avatarVoiceReady, setAvatarVoiceReady] = useState(false);
+  /** For the ready check above Spark Video (2026-10-26). */
+  const [hasVoice, setHasVoice] = useState(true);
+  const [twinConsentNeeded, setTwinConsentNeeded] = useState(false);
   /**
    * The video's market, editable in place.
    *
@@ -484,6 +489,13 @@ export default function ProjectEditorPage() {
   const [twinFullOk, setTwinFullOk] = useState(true);
   const [looksLoading, setLooksLoading] = useState(false);
   const [selectedLookId, setSelectedLookId] = useState<string>("");
+  /**
+   * The headshot's wide and tall looks, so the right one is picked for the
+   * video's shape (2026-10-26, the owner's ask: #3). The full grid shows only
+   * after Change look.
+   */
+  const [formatLooks, setFormatLooks] = useState<{ wide?: string | null; tall?: string | null }>({});
+  const [showAllLooks, setShowAllLooks] = useState(false);
   // The background behind a Digital Twin in a horizontal video (2026-10-24).
   const [twinBg, setTwinBg] = useState<TwinBgChoice | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -857,6 +869,7 @@ export default function ProjectEditorPage() {
         if (!silent) {
           const ready = all.filter((l) => !l.status || l.status === "completed" || l.status === "active");
           const fl = (data.formatLooks ?? {}) as { wide?: string | null; tall?: string | null };
+          setFormatLooks(fl);
           const shaped = ready.find((l) => l.id === fl.wide) ?? ready.find((l) => l.id === fl.tall);
           if (shaped) setSelectedLookId(shaped.id);
           else if (ready.length > 0) setSelectedLookId(ready[0].id);
@@ -877,6 +890,16 @@ export default function ProjectEditorPage() {
       if (!silent) setLooksLoading(false);
     }
   }
+
+  // The headshot look that fits the video's shape, swapped in when the shape
+  // changes. A deliberate pick (a Digital Twin, another outfit) is left alone.
+  const verticalVideo = selectedVideoType === "reel_9x16";
+  const shapeLookId = (verticalVideo ? formatLooks.tall : formatLooks.wide) ?? null;
+  useEffect(() => {
+    if (!shapeLookId) return;
+    const isFormatLook = selectedLookId === formatLooks.wide || selectedLookId === formatLooks.tall;
+    if ((!selectedLookId || isFormatLook) && selectedLookId !== shapeLookId) setSelectedLookId(shapeLookId);
+  }, [shapeLookId, selectedLookId, formatLooks.wide, formatLooks.tall]);
 
   async function generateNewLook() {
     if (!selectedLookId) {
@@ -945,7 +968,7 @@ export default function ProjectEditorPage() {
       // never needed them because its recorder composited nothing.
       // The last four decide whether the "add your photos and voice" nudge is
       // still worth showing — an agent who did both was being told to do them.
-      .select("full_name, company_name, phone, company_phone, company_address, website, subscription_tier, role, license_number, logo_url, avatar_url, location_city, location_state, heygen_photo_id, heygen_digital_twin_group_id, voice_clone_id, heygen_voice_id")
+      .select("full_name, company_name, phone, company_phone, company_address, website, subscription_tier, role, license_number, logo_url, avatar_url, location_city, location_state, heygen_photo_id, heygen_digital_twin_group_id, voice_clone_id, heygen_voice_id, twin_consent_needed")
       .eq("id", user.id)
       .single();
     if (data) {
@@ -957,7 +980,10 @@ export default function ProjectEditorPage() {
         location_city?: string | null; location_state?: string | null;
         heygen_photo_id?: string | null; heygen_digital_twin_group_id?: string | null;
         voice_clone_id?: string | null; heygen_voice_id?: string | null;
+        twin_consent_needed?: boolean | null;
       };
+      setHasVoice(!!(p.voice_clone_id || p.heygen_voice_id));
+      setTwinConsentNeeded(!!p.twin_consent_needed);
       // Either route to an avatar counts, and either route to a voice — a
       // digital twin is as done as a photo avatar, a HeyGen voice as done as
       // an ElevenLabs clone.
@@ -1698,7 +1724,80 @@ export default function ProjectEditorPage() {
     setEditorStep(3);
   }, []);
 
+  // ── Ready check (2026-10-26) ────────────────────────────────────────────
+  const readyItems: ReadyItem[] = (() => {
+    const items: ReadyItem[] = [];
+    items.push({
+      label: "Your voice",
+      ok: hasVoice, okText: "Ready", badText: "Stock voice for now", blocks: false,
+      fix: { label: "Add my voice", href: "/settings" },
+    });
+    if (renderMode === "avatar_voice") {
+      const look = looks.find((l) => l.id === selectedLookId);
+      const lookReady = !!look && (!look.status || look.status === "completed" || look.status === "active");
+      const isTwin = !!look && look.id === twinLookId;
+      const otherShape = verticalVideo ? formatLooks.wide : formatLooks.tall;
+      const wrongShape = !!look && !!otherShape && look.id === otherShape && !!shapeLookId;
+      if (looks.length === 0 && !looksLoading) {
+        items.push({ label: "Your on-screen look", ok: false, okText: "", badText: "No headshot yet", blocks: true, fix: { label: "Add my headshot", href: "/settings" } });
+      } else {
+        items.push({
+          label: "Your look fits the shape",
+          ok: lookReady && !wrongShape,
+          okText: "Ready",
+          badText: !look ? "Pick a look" : !lookReady ? "Still being made" : "Made for the other shape",
+          blocks: !lookReady,
+          fix: wrongShape && shapeLookId
+            ? { label: verticalVideo ? "Use the tall one" : "Use the wide one", onClick: () => setSelectedLookId(shapeLookId) }
+            : !look ? { label: "Pick a look", onClick: () => setShowAllLooks(true) } : undefined,
+        });
+      }
+      if (isTwin && twinConsentNeeded) {
+        items.push({
+          label: "Digital Twin approval", ok: false, okText: "", badText: "Needs your OK", blocks: true,
+          fix: { label: "Approve now", onClick: () => { void openTwinApproval(); } },
+        });
+      }
+    }
+    if (allowance) {
+      const left = videosLeft ?? 0;
+      items.push({
+        label: `${selectedKind === "long" ? "Long" : "Short"} videos left`,
+        ok: allowance.isAdmin || left > 0,
+        okText: allowance.isAdmin ? "No limit" : `${left} left`,
+        badText: "None left",
+        blocks: !allowance.isAdmin && left <= 0,
+        fix: { label: allowance.tier === "free" || allowance.tier === "beta" ? "Choose a plan" : "Get more", href: "/billing" },
+      });
+    }
+    return items;
+  })();
+  const readyBlockers = readyItems.filter((i) => !i.ok && i.blocks).length;
+
+  /** Opens the Digital Twin's one-time approval page; back here marked approved. */
+  async function openTwinApproval() {
+    // Opened first, filled after: a window opened after an await is blocked as a pop-up.
+    const win = window.open("", "_blank");
+    try {
+      const r = await fetch("/api/avatar/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ twin: true, reroute_url: withTwinConsentDone(window.location.href) }),
+      });
+      const d = await r.json();
+      if (!r.ok || !d.url) throw new Error(d.error || "No approval link");
+      if (win) win.location.href = d.url; else window.location.href = d.url;
+    } catch {
+      win?.close();
+      toast.error("Couldn't open the approval page. Try again from Settings.");
+    }
+  }
+
   async function handleGenerateVideo() {
+    if (readyBlockers > 0) {
+      toast.error("One thing above still needs you before this video can be made.");
+      return;
+    }
     if (!project) return;
     setVideoGenerating(true);
     setScenesBuild(voiceOnlyAsScenes);
@@ -1874,25 +1973,7 @@ export default function ProjectEditorPage() {
               <button
                 type="button"
                 className="self-start rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white"
-                onClick={async () => {
-                  toast.dismiss(t.id);
-                  // Opened first, filled after: a window opened after an await is blocked as a pop-up.
-                  const win = window.open("", "_blank");
-                  try {
-                    const r = await fetch("/api/avatar/consent", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      // Back here marked approved (2026-10-24).
-                      body: JSON.stringify({ twin: true, reroute_url: withTwinConsentDone(window.location.href) }),
-                    });
-                    const d = await r.json();
-                    if (!r.ok || !d.url) throw new Error(d.error || "No approval link");
-                    if (win) win.location.href = d.url; else window.location.href = d.url;
-                  } catch {
-                    win?.close();
-                    toast.error("Couldn't open the approval page. Try again from Settings.");
-                  }
-                }}
+                onClick={() => { toast.dismiss(t.id); void openTwinApproval(); }}
               >
                 Approve now
               </button>
@@ -3162,7 +3243,7 @@ export default function ProjectEditorPage() {
    * same rule create-blog applies (`&& !voiceOnly`).
    */
   const eta = voiceOnlyAsScenes
-    ? { range: "2-10 minutes", why: "" }
+    ? { range: "2–10 minutes", why: "" }
     : renderEta({
         pastedScript: circleStyle && renderMode !== "voice_only",
         longForm: selectedVideoType === "youtube_long",
@@ -3653,6 +3734,37 @@ export default function ProjectEditorPage() {
             {(looksLoading || looks.length > 0) && renderMode !== "voice_only" && (
               <>
                 <p className="text-xs font-medium text-slate-500 mb-1">Avatar Look</p>
+                {/* The look that fits, picked for you; the grid after Change look
+                    (2026-10-26, the owner's ask: #3). */}
+                {!looksLoading && !showAllLooks && (() => {
+                  const sel = looks.find((l) => l.id === selectedLookId);
+                  if (!sel) return null;
+                  const fits = sel.id === shapeLookId;
+                  return (
+                    <div className="mb-5 flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-2.5">
+                      {sel.preview_image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={sel.preview_image_url} alt={sel.name} className="h-14 w-14 rounded-full object-cover" />
+                      ) : (
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100"><User size={20} className="text-slate-300" /></div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-800">
+                          {sel.avatar_type === "digital_twin" ? "Your Digital Twin" : fits ? `Your headshot, ${verticalVideo ? "tall" : "wide"}` : sel.name}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {fits
+                            ? <><span className="font-semibold text-green-700">✓ Fits {verticalVideo ? "Vertical 9:16" : "Horizontal 16:9"}</span> · picked for you</>
+                            : "Your pick"}
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => setShowAllLooks(true)} className="shrink-0 rounded-lg border border-spark-amber px-3 py-1.5 text-xs font-semibold text-[#a3660f] hover:bg-amber-50">
+                        Change look
+                      </button>
+                    </div>
+                  );
+                })()}
+                {(showAllLooks || looksLoading || !looks.some((l) => l.id === selectedLookId)) && (<>
                 <p className="text-xs text-slate-400 mb-1">
                   <span className="font-medium">Photo Avatar</span>: from your headshot &nbsp;·&nbsp;
                   <span className="font-medium">Digital Twin</span>: from your video
@@ -3726,6 +3838,10 @@ export default function ProjectEditorPage() {
                   </div>
                 )}
                 {!looksLoading && looks.length > 0 && renderGenerateLookPanel()}
+                {showAllLooks && (
+                  <button type="button" onClick={() => setShowAllLooks(false)} className="mb-5 text-xs font-semibold text-spark-blue">Done</button>
+                )}
+                </>)}
               </>
             )}
 
@@ -4027,25 +4143,10 @@ export default function ProjectEditorPage() {
               </label>
             )}
 
-            {/* Say it up front when the render can't succeed, rather than
-                letting someone finish the whole flow and hit a 402. */}
-            {allowance && !allowance.isAdmin && (() => {
-              const needsLong = selectedVideoType === "youtube_long";
-              const left = needsLong ? allowance.long : allowance.short;
-              if (left > 0) return null;
-              return (
-                <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-3">
-                  <Sparkles size={15} className="text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-sm text-amber-900">
-                    You have no {needsLong ? "long" : "short"} videos left.{" "}
-                    <Link href="/billing" className="font-semibold underline">
-                      {allowance.tier === "free" || allowance.tier === "beta" ? "Choose a plan" : "Get more"}
-                    </Link>{" "}
-                    to generate this. Or record it yourself on camera below, which is always free.
-                  </p>
-                </div>
-              );
-            })()}
+            {/* The ready check (2026-10-26): every reason this render would be
+                refused, each with the button that fixes it, before anything is
+                charged. Spark Video stays off until all are green. */}
+            {!selfRecord && <ReadyCheck items={readyItems} />}
 
             {/* Said once, right above the choices it's about — this is the
                 last thing read before the button, so it's where "are you
@@ -4186,9 +4287,8 @@ export default function ProjectEditorPage() {
                   // enough that nobody is watching the screen when it lands.
                   if (s === "completed") toast.success("Your video is ready.");
                 }}
-                note={scenesBuild
-                  ? "Takes 2 to 10 minutes, by length. It keeps building if you close this page. You'll find it in My Sparks."
-                  : `Takes ${eta.range}.${eta.why ? ` ${eta.why}` : ""} It keeps rendering if you close this page. You'll find it in My Sparks.`}
+                // Usability sweep #9 (2026-10-26): how long, and that an email follows.
+                note={`About ${eta.range}. We'll email you when it's ready. You can close this page.`}
               />
             );
           })()}
@@ -5265,7 +5365,7 @@ export default function ProjectEditorPage() {
               </Button>
             )}
             {editorStep === 3 && !selfRecord && (
-              <Button onClick={handleGenerateVideo} loading={videoGenerating} size="lg" className="gap-2">
+              <Button onClick={handleGenerateVideo} loading={videoGenerating} disabled={readyBlockers > 0} size="lg" className="gap-2">
                 {/* Deliberately not naming the platform — the same render will
                     publish to other channels, so "Generate YouTube" would age
                     badly and read as generating the platform itself. */}

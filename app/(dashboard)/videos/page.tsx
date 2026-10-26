@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { SparkleeNotes } from "@/components/videos/sparklee-notes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -786,6 +787,9 @@ function VideosContent() {
       {/* Videos waiting in line to start, and any that could not. */}
       <RenderQueueNotice />
 
+      {/* Sparklee's Fixed for you / Needs you notes (2026-10-26). */}
+      <SparkleeNotes />
+
       {/* A post that did not go out. A platform can refuse one minutes after
           it was sent, when the Publish window is long closed, and until this
           nothing said so: the agent could reasonably believe it had posted. */}
@@ -808,6 +812,14 @@ function VideosContent() {
                     {p.reason && <p className="text-[13px] text-red-700">{p.reason}</p>}
                   </div>
                   <div className="flex flex-none items-center gap-3">
+                    {/reconnect|expired|connection|log ?in again|permission/i.test(p.reason ?? "") && (
+                      <Link
+                        href="/settings/social"
+                        className="rounded-lg bg-spark-amber px-2.5 py-1 text-[13px] font-semibold text-white"
+                      >
+                        Reconnect {p.platform}
+                      </Link>
+                    )}
                     {video && (
                       <button
                         type="button"

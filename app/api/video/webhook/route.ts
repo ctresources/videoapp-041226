@@ -1,3 +1,4 @@
+import { announceVideoReady } from "@/lib/video/ready-notice";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
@@ -555,6 +556,8 @@ export async function POST(req: NextRequest) {
   if (success && video.project_id && video.user_id) {
     await ensureProjectThumbnail(video.project_id, video.user_id);
   }
+  // Sparklee's pop-up, or the email if they've left (2026-10-26).
+  if (success) await announceVideoReady(admin, video.id);
 
   // ── Fire CRM webhooks on video completion ─────────────────────────────────
   // After the thumbnail (2026-10-24), so the message can carry it.

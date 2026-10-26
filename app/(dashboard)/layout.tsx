@@ -5,6 +5,7 @@ import { ScheduleMeetDialog } from "@/components/meetings/meetings";
 import { Topbar } from "@/components/layout/topbar";
 import { GlobalVoiceShortcut } from "@/components/layout/global-voice-shortcut";
 import { CreateProgressProvider } from "@/components/layout/create-progress";
+import { VideoReadyPopup } from "@/components/layout/video-ready-popup";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
@@ -58,6 +59,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <GlobalVoiceShortcut disabled={onCreateRoute || !voiceShortcutRoute} />
       {/* Schedule a Google Meet, opened from either Meet menu (2026-10-20). */}
       <ScheduleMeetDialog />
+      {/* "Your video is ready!" from Sparklee, on any page (2026-10-26). */}
+      <VideoReadyPopup />
       {/* Mobile overlay */}
       {mobileOpen && (
         <div

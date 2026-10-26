@@ -19,7 +19,7 @@ export interface HaloDraft {
   id: string;
   slot_at: string;
   status: "writing" | "draft" | "approved" | "scheduled" | "posted" | "skipped" | "failed";
-  source: "halo" | "halo_promo" | "email";
+  source: "halo" | "halo_promo" | "email" | "sparklee";
   source_url: string | null;
   source_kind: string | null;
   topic: string;
@@ -74,7 +74,7 @@ export function useHalo(userId: string | undefined) {
     const { data } = await sb
       .from("autopilot_drafts")
       .select("id, slot_at, status, source, source_url, source_kind, topic, setup, project_id, halo_page_id, video_id, post_error, projects(title, thumbnail_url, location_city, location_state, ai_script, seo_data)")
-      .in("source", ["halo", "halo_promo", "email"])
+      .in("source", ["halo", "halo_promo", "email", "sparklee"])
       .neq("status", "skipped")
       .gte("slot_at", since)
       .order("slot_at");

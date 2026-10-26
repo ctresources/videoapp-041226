@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/supabase-provider";
 import { PAID_TIERS } from "@/lib/utils/plan-features";
 import { useHalo } from "@/components/halo/use-halo";
-import { HaloDrafts } from "@/components/halo/halo-drafts";
+import { HaloDrafts, SparkleeDrafts } from "@/components/halo/halo-drafts";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
 
 /**
@@ -381,6 +381,7 @@ export default function AutopilotPage() {
         <p className="mt-1.5 text-[11px] text-spark-ink-faint">Up to 3 drafts each time, written in about a minute.</p>
       </div>
 
+      <SparkleeDrafts halo={halo} needsVideo={needsVideo} onOutOfVideos={() => setOutOfVideos(true)} />
       <HaloDrafts halo={halo} needsVideo={needsVideo} onOutOfVideos={() => setOutOfVideos(true)} />
       {halo.drafts.length > 0 && (
         <p className="mt-1 text-xs font-bold uppercase tracking-[.12em] text-spark-ink-faint">AutoSparks</p>

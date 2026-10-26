@@ -384,7 +384,7 @@ function baseUrl(): string {
 }
 
 /** Calls the Create page's own writer as the agent. Returns the new project's id. */
-async function callWriter(userId: string, body: Record<string, unknown>): Promise<string> {
+export async function callWriter(userId: string, body: Record<string, unknown>): Promise<string> {
   const res = await fetch(`${baseUrl()}/api/ai/generate-location-script`, {
     method: "POST",
     headers: {

@@ -84,7 +84,9 @@ export default function HelpPage() {
               <strong>Settings has three tabs.</strong> <strong>Profile</strong> holds your brand, market,
               voice, closing call to action, import address and password. <strong>Social Accounts</strong>{" "}
               is where YouTube and your other platforms are connected. <strong>Billing</strong> is your
-              plan and buying more videos.
+              plan and buying more videos. At the top of Profile, <strong>Your studio: 6 of 8 ready</strong>{" "}
+              lists the eight things that make your videos look and sound like you; each one still to do
+              has a button that takes you to it.
             </li>
             <li>
               <strong>Your initial</strong>, at the top right, opens your email, your plan and{" "}
@@ -422,19 +424,23 @@ export default function HelpPage() {
                 they are not mistaken for the numbered steps of this guide. */}
             <Step n={12} title="Start With The Topic, Then Choose What To Make" icon={Sparkles}>
               <Link href="/create" className="text-primary-600 font-medium hover:underline">Spark Studio</Link>{" "}
-              has four sections, top to bottom. <strong>1 · Say or Pick a Topic</strong> — one card with
-              the mic and a box, where you say or type what it&apos;s about (step 13).{" "}
+              has two sections, then <strong>More options</strong>. <strong>1 · Topic</strong> — one card with
+              the mic and a box, <strong>Tell Sparklee what to make</strong>, where you say or type what
+              it&apos;s about (step 13). Under it, <strong>Not sure what to make? Tap an idea</strong> shows
+              four ideas with your town filled in; <strong>See all ideas</strong> opens the full list.{" "}
               <strong>2 · Create</strong> — four
               cards: <strong>Video / Reel</strong>, <strong>Camera/Teleprompter</strong>,{" "}
               <strong>Blog</strong> or <strong>Listings &amp; photos</strong>. Video / Reel stays on
               this page; the other three each open a page of their own, with{" "}
               <strong>Back</strong> on the bar at the bottom to return here. A topic you
               already said or typed comes with you.{" "}
+              <strong>More options</strong> folds the rest away until you want it:{" "}
               <strong>3 · Script Source</strong> — <strong>AI writes it</strong> from
               a topic, or <strong>My Content/Forwarded in</strong>, which is also where anything
               you forwarded in turns up (step 6). A listing or a photos only reel skips this
               one (step 19). <strong>4 · Details</strong> — the city and state, who
-              it&apos;s for, and a video&apos;s format.
+              it&apos;s for, and a video&apos;s format. Details opens by itself when your city and
+              state are missing, since Next needs them.
               <span className="block mt-1.5">
                 You don&apos;t have to work down all four. Give it a topic at the top, check the
                 city and state, and press <strong>Next</strong> at the bottom. The sections
@@ -516,7 +522,7 @@ export default function HelpPage() {
               {/* One card now: the mic and the box together, at the top, where
                   signing in lands. Example towns are generic on purpose. */}
               The Topic card at the top of Spark Studio reads{" "}
-              <strong>Say it in your own words</strong>. It has one mic and one box, and
+              <strong>Tell Sparklee what to make</strong>. It has one mic and one box, and
               they are the same thing: what you say shows up in the box, and what you type goes in the
               same place. Tap
               the mic and say the whole thing in one sentence —{" "}
@@ -533,6 +539,20 @@ export default function HelpPage() {
                 them. Look down the page to check it, change anything by hand, and press{" "}
                 <strong>Next</strong> at the bottom. Say more and it is added to the box and read
                 again. Say <em>&ldquo;Spark it&rdquo;</em> and it presses Next for you.
+              </span>
+              {/* Tell Sparklee, she does it (2026-10-26). */}
+              <span className="block mt-1.5">
+                <strong>Sparklee, make it</strong> (paid plans), the button under the box, has Sparklee
+                do the whole video herself. Say it all at once, for example{" "}
+                <em>&ldquo;Make a market update for Springfield this week, horizontal, my twin, post it
+                Friday&rdquo;</em>. She asks only for what&apos;s missing (the topic, or the town). Then
+                she writes the script, blog, title and thumbnail and makes the video, which takes about
+                10 to 12 minutes. It comes back as a card under the box, and on AutoSparks under{" "}
+                <strong>From Sparklee</strong>: <strong>Watch</strong>, <strong>Edit thumbnail</strong>,{" "}
+                <strong>Edit title and caption</strong>, then <strong>Approve to post</strong>. Nothing
+                posts until you approve it. It posts to the accounts you used last time, on the day you
+                said (or the next day), at your Halo time. Don&apos;t post it yourself as well. On the free
+                plan, or for a blog or a camera take, she fills the page in instead and you press Next.
               </span>
               <span className="block mt-1.5">
                 A blog is written straight away. A video stops at its script, so nothing comes out
@@ -647,9 +667,19 @@ export default function HelpPage() {
                 The first three use one video from your plan. Attach photos or documents as b-roll,
                 and hit <strong>Spark Video</strong>. How long it takes follows the length of the{" "}
                 <em>script</em>, not the format: Voice over only is usually ready in{" "}
-                <strong>2 to 10 minutes</strong>, an avatar video in <strong>5 to 20</strong>, and a
-                long one can take up to an hour. You can close the page and watch for it in My
-                Sparks. If a video fails, your allowance is refunded automatically. When lots of
+                <strong>2 to 10 minutes</strong>, an avatar video in about <strong>10 to 12</strong>, and a
+                long one can take up to an hour. You can close the page: when it&apos;s done, Sparklee pops
+                up on whatever page you&apos;re on with <strong>Watch</strong> and{" "}
+                <strong>Edit thumbnail</strong>, and if you&apos;ve left the app you get a{" "}
+                <strong>Your video is ready</strong> email instead.
+              </span>
+              <span className="block mt-1.5">
+                Above the button, <strong>Ready to make</strong> checks your voice, that your look fits the
+                video&apos;s shape, your Digital Twin approval and your videos left. Anything not ready has a
+                button that fixes it (<strong>Approve now</strong>, <strong>Use the wide one</strong>,{" "}
+                <strong>Get more</strong>), and Spark Video stays off until it&apos;s all green, so nothing is
+                charged for a video that can&apos;t be made. The look that fits the shape is picked for you;{" "}
+                <strong>Change look</strong> shows them all. If a video fails, your allowance is refunded automatically. When lots of
                 videos are being made at once, yours waits <strong>in line</strong> and starts on its
                 own a few minutes later; nothing is charged until it starts.
               </span>
@@ -1152,7 +1182,14 @@ export default function HelpPage() {
                 naming the platform, the video and the reason, with <strong>Open Publish</strong> to
                 go straight to Retry and <strong>Dismiss</strong> to clear it. And an email goes to
                 the address you sign in with. The usual reason is a connection that has expired and
-                needs connecting again in Settings.
+                needs connecting again in Settings; the note then has a <strong>Reconnect</strong> button.
+              </span>
+              {/* Sparklee's notes (2026-10-26). */}
+              <span className="block mt-1.5">
+                Sparklee leaves short notes at the top of My Sparks too. <strong>Fixed for you</strong> says
+                what went wrong and that she already fixed it, for example a missing avatar look swapped for
+                another of yours, with nothing extra charged. <strong>Needs you</strong> is something only you
+                can do, with the button for it. Dismiss either one with the ✕.
               </span>
               <span className="block mt-1.5">
                 The <strong>thumbnail</strong> you set in the window is sent with the video as its
@@ -1202,7 +1239,12 @@ export default function HelpPage() {
           <h2 className="text-base font-bold text-brand-text mb-3">Iterate &amp; Improve</h2>
           <div className="flex flex-col gap-4">
             <Step n={23} title="The Everyday Tools" icon={Wand2}>
-              You don&apos;t need <Link href="/tools" className="text-primary-600 font-medium hover:underline">Spark Tools</Link> to
+              <Link href="/tools" className="text-primary-600 font-medium hover:underline">Spark Tools</Link> is in four
+              groups: <strong>For a video</strong> (Thumbnail, Title, Description, Tags, Script),{" "}
+              <strong>Images &amp; banners</strong>, <strong>Profile &amp; reviews</strong> (Channel Name,
+              LinkedIn Profile, Google Reviews) and <strong>Sellers &amp; AI search</strong> (Seller Update,
+              AI Answer Blocks). Pick a group, then a tool.{" "}
+              You don&apos;t need Spark Tools to
               make a video — Spark Studio generates everything automatically. Use these to iterate: brainstorm
               8 title angles before committing, draft and compare scripts without creating projects, regenerate a
               description or 20 fresh tags for any video (including older ones), and name your channel (one-time).
@@ -1249,7 +1291,8 @@ export default function HelpPage() {
               <ul className="list-disc pl-5 mt-1 space-y-1">
                 <li>
                   <strong>Through BoldTrail:</strong> in the orange <strong>Sellers in BoldTrail</strong> box,
-                  type each seller&apos;s email exactly as it is in BoldTrail and press <strong>Add</strong>.
+                  start typing the seller&apos;s name or email and pick them from the list that drops down
+                  (or type the email exactly as it is in BoldTrail and press <strong>Add</strong>).
                   Their name shows as a chip (up to 4, once per listing). Only then does the orange{" "}
                   <strong>Send to sellers through BoldTrail</strong> button appear, next to{" "}
                   <strong>Copy as HTML</strong>. Press it and confirm; it emails each seller the update,
@@ -1341,7 +1384,7 @@ export default function HelpPage() {
                 that article&apos;s topic, so there is nothing extra to make.
               </span>
               <span className="block mt-1.5">
-                The full tool is the first tab in <strong>Spark Tools</strong>. For each question it also
+                The full tool is in <strong>Spark Tools</strong>, under <strong>Sellers &amp; AI search</strong>. For each question it also
                 gives a ready-to-paste block for your website and a <strong>Record on Camera</strong>{" "}
                 shortcut straight to the teleprompter.
               </span>

@@ -34,6 +34,7 @@ import { NextResponse } from "next/server";
 import { joinLineIfBusy, joinLine } from "@/lib/video/render-queue";
 import { parseChoice, resolveTwinBackdrop } from "@/lib/twin-backgrounds";
 import { friendlyRenderError } from "@/lib/utils/render-errors";
+import { addSparkleeNote } from "@/lib/sparklee-notes";
 import { parseOpenerStyle } from "@/lib/api/agent-opener";
 import { standardMaxWords, standardMaxMinutes, clampScript, WPM } from "@/lib/utils/video-length";
 
@@ -1826,6 +1827,13 @@ export async function startRender(
             .is("render_job_id", null)
             .gte("created_at", attemptStartedAt);
           console.warn(`[create-blog] look ${missing} is gone at HeyGen — trying again with ${replacement}`);
+          // Said in one line at the top of My Sparks (2026-10-26, sweep #12).
+          await addSparkleeNote(admin, {
+            userId: user.id, kind: "fixed",
+            title: "One of your avatar looks was missing, so I made your video with another of yours.",
+            body: "Nothing extra was charged. The missing one is rebuilt from your headshot on your next video.",
+            projectId, dedupeKey: `look-gone-${missing}`,
+          });
           return startRender(user, { ...body, lookId: replacement }, { ...opts, lookRetried: true });
         }
       }

@@ -1,3 +1,4 @@
+import { announceVideoReady } from "@/lib/video/ready-notice";
 /**
  * POST /api/video/photo-reel
  *
@@ -694,6 +695,7 @@ export async function POST(req: NextRequest) {
       vidErr = made.error;
     }
     if (vidErr || !videoRow) throw new Error(vidErr?.message || "Could not save the video");
+    await announceVideoReady(admin, videoRow.id);
 
     if (cinematic || scenes) {
       await admin.from("api_usage_log").insert({

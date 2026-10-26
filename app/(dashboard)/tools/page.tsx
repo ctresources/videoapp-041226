@@ -148,6 +148,15 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
   { id: "seller",      label: "Seller Update",        icon: Home },
 ];
 
+// The tabs in four groups (2026-10-26, usability sweep #8): twelve tabs in a
+// row were too many to scan. Each group's chips are the tools inside it.
+const TOOL_GROUPS: { label: string; tabs: Tab[] }[] = [
+  { label: "For a video",        tabs: ["thumbnail", "title", "description", "tags", "script"] },
+  { label: "Images & banners",   tabs: ["image", "banner"] },
+  { label: "Profile & reviews",  tabs: ["channel", "linkedin", "reviews"] },
+  { label: "Sellers & AI search", tabs: ["seller", "answers"] },
+];
+
 function CopyButton({ text, small }: { text: string; small?: boolean }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
@@ -3331,31 +3340,53 @@ export default function ToolsPage() {
       {/* How-to-use workflow panel */}
       {showHelp && <HowToUsePanel onClose={() => setShowHelp(false)} />}
 
-      {/* Tab bar — wraps so every tool is visible without horizontal scrolling */}
-      <div className="flex flex-wrap gap-1 pb-1 mb-6 border-b border-slate-200">
-        {TABS.map(({ id, label, icon: Icon, soon }) => (
-          <button
-            key={id}
-            onClick={() => { if (soon) return; setActiveTab(id); setBannerPlatform("youtube"); setBannerPrefill(undefined); }}
-            disabled={soon}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors -mb-px ${
-              activeTab === id
-                ? "border-primary-500 text-primary-600"
-                : soon
-                ? "border-transparent text-slate-300 cursor-not-allowed"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-            }`}
-          >
-            <Icon size={15} />
-            {label}
-            {soon && (
-              <span className="text-[10px] font-bold bg-spark-blue/15 text-spark-blue px-1.5 py-0.5 rounded-full leading-none">
-                Soon
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      {/* Four groups, then the tools in the open group as chips. */}
+      {(() => {
+        const pick = (id: Tab) => { setActiveTab(id); setBannerPlatform("youtube"); setBannerPrefill(undefined); };
+        const group = TOOL_GROUPS.find((g) => g.tabs.includes(activeTab)) ?? TOOL_GROUPS[0];
+        return (
+          <div className="mb-6">
+            <div className="flex flex-wrap gap-1 border-b border-slate-200">
+              {TOOL_GROUPS.map((g) => (
+                <button
+                  key={g.label}
+                  type="button"
+                  onClick={() => { if (g !== group) pick(g.tabs[0]); }}
+                  className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors -mb-px ${
+                    g === group
+                      ? "border-primary-500 text-primary-600"
+                      : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                  }`}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {group.tabs.map((id) => {
+                const t = TABS.find((x) => x.id === id);
+                if (!t) return null;
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => pick(id)}
+                    className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                      activeTab === id
+                        ? "border-spark-amber bg-spark-amber-tint text-spark-ink"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                    }`}
+                  >
+                    <Icon size={14} />
+                    {t.label.replace(/ Generator$/, "")}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Tool panel */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6">

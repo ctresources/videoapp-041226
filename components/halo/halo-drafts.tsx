@@ -371,7 +371,7 @@ function ApprovedActions({ d, halo }: { d: HaloDraft; halo: Halo }) {
   );
 }
 
-function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo; needsVideo: boolean; onOutOfVideos: () => void }) {
+export function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo; needsVideo: boolean; onOutOfVideos: () => void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [sheet, setSheet] = useState(false);
@@ -380,7 +380,7 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
   const [viewThumb, setViewThumb] = useState(false);
   const title = d.projects?.ai_script?.title || d.topic;
   const hook = d.projects?.ai_script?.hook;
-  const tag = d.source === "halo_promo" ? "Halo · Promo" : d.source === "email" ? "Email" : `Halo · ${kindLabel(d.source_kind ?? "")}`;
+  const tag = d.source === "halo_promo" ? "Halo · Promo" : d.source === "email" ? "Email" : d.source === "sparklee" ? "Sparklee" : `Halo · ${kindLabel(d.source_kind ?? "")}`;
   const done = d.status === "scheduled" || d.status === "posted";
 
   /**
@@ -584,7 +584,9 @@ export function HaloDrafts({ halo, needsVideo, onOutOfVideos }: {
   needsVideo: Set<string>;
   onOutOfVideos: () => void;
 }) {
-  const { drafts, settings } = halo;
+  const { settings } = halo;
+  // Sparklee's own requests have their own section (SparkleeDrafts).
+  const drafts = halo.drafts.filter((d) => d.source !== "sparklee");
   if (!settings || (!drafts.length && !halo.pages.length)) return null;
 
   // "November · 3 of 4 planned": the month of the next Halo day.
@@ -610,6 +612,33 @@ export function HaloDrafts({ halo, needsVideo, onOutOfVideos }: {
       </div>
       {drafts.map((d) => <Card key={d.id} d={d} halo={halo} needsVideo={needsVideo.has(d.id)} onOutOfVideos={onOutOfVideos} />)}
       <AlsoNew halo={halo} />
+    </div>
+  );
+}
+
+/**
+ * "From Sparklee" (2026-10-26, usability sweep #11): what was asked for with
+ * Tell Sparklee, on AutoSparks and at the top of Create. The same cards as
+ * Halo's: Watch, Edit thumbnail, Edit title and caption, Approve to post.
+ */
+export function SparkleeDrafts({ halo, needsVideo, onOutOfVideos, heading = true, onlyOpen = false, limit }: {
+  halo: Halo;
+  needsVideo: Set<string>;
+  onOutOfVideos: () => void;
+  heading?: boolean;
+  /** Only the ones still to watch or approve (Create). */
+  onlyOpen?: boolean;
+  limit?: number;
+}) {
+  let list = halo.drafts.filter((d) => d.source === "sparklee");
+  if (onlyOpen) list = list.filter((d) => d.status === "writing" || d.status === "draft" || d.status === "approved");
+  list = [...list].sort((a, b) => Date.parse(b.slot_at) - Date.parse(a.slot_at));
+  if (limit) list = list.slice(0, limit);
+  if (!list.length) return null;
+  return (
+    <div className="flex flex-col gap-3">
+      {heading && <p className="text-xs font-bold uppercase tracking-[.12em] text-spark-ink-faint">From Sparklee</p>}
+      {list.map((d) => <Card key={d.id} d={d} halo={halo} needsVideo={needsVideo.has(d.id)} onOutOfVideos={onOutOfVideos} />)}
     </div>
   );
 }

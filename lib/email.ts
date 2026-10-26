@@ -890,6 +890,41 @@ export async function sendAutopilotWeek({
   return !!res?.ok;
 }
 
+/**
+ * "Your video is ready" (2026-10-26, usability sweep #9). Sent only when
+ * Sparklee's in-app pop-up didn't show it first.
+ */
+export async function sendVideoReadyEmail({ email, name, title, url }: {
+  email: string;
+  name: string | null;
+  title: string;
+  /** Where Watch my video goes. */
+  url: string;
+}): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+  const first = name?.trim().split(/\s+/)[0];
+  const t = title.trim() || "Your video";
+  const res = await resendPost({
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: email,
+      reply_to: NOTIFY_EMAIL,
+      subject: `Your video is ready: ${t}`,
+      html: `
+        <p>Hi${first ? ` ${escHtml(first)}` : ""}, your video is done.</p>
+        <p><strong>${escHtml(t)}</strong></p>
+        <p>Watch it, change the thumbnail if you like, then publish or approve it.</p>
+        <p><a href="${url}" style="display:inline-block;background:#BA7517;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:600">Watch my video</a></p>
+        ${SIGNOFF_HTML}
+      `,
+      text: `Hi${first ? ` ${first}` : ""}, your video is done.\n\n${t}\n\nWatch it, change the thumbnail if you like, then publish or approve it.\n\nWatch my video: ${url}\n\n${SIGNOFF_TEXT}`,
+    }),
+  }).catch(() => null);
+  return !!res?.ok;
+}
+
 /** A lead from the home page's "What buyers in your area ask AI" box (2026-10-23). */
 export async function notifySiteLead({ name, email, city, questions, when }: {
   name: string;

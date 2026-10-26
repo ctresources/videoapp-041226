@@ -1,3 +1,4 @@
+import { announceVideoReady } from "@/lib/video/ready-notice";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getVideoStatus, getVideoAgentSession, getVideoV3Status, getVideoScenes } from "@/lib/api/heygen";
@@ -53,6 +54,7 @@ async function finalizeDirectVideo(
     .from("generated_videos")
     .update({ render_status: "completed", video_url: finalUrl })
     .eq("id", video.id);
+  await announceVideoReady(admin, video.id);
   if (video.project_id) {
     await admin.from("projects").update({ status: "ready" }).eq("id", video.project_id);
   }
@@ -304,6 +306,7 @@ export async function GET(req: NextRequest) {
                   render_job_id: session.videoId,
                 })
                 .eq("id", video.id);
+              await announceVideoReady(admin, video.id);
 
               if (video.project_id) {
                 await admin
@@ -399,6 +402,7 @@ export async function GET(req: NextRequest) {
                   .from("generated_videos")
                   .update({ render_status: "completed", video_url: videoStatus.videoUrl })
                   .eq("id", video.id);
+                await announceVideoReady(admin, video.id);
                 if (video.project_id) {
                   await admin.from("projects").update({ status: "ready" }).eq("id", video.project_id);
                 }
@@ -443,6 +447,7 @@ export async function GET(req: NextRequest) {
               .from("generated_videos")
               .update({ render_status: "completed", video_url: videoUrl })
               .eq("id", video.id);
+            await announceVideoReady(admin, video.id);
 
             if (video.project_id) {
               await admin

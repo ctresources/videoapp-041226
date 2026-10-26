@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     .eq("user_id", s.user.id)
     .single();
   const d = data as { id: string; status: string; source: string; setup: HaloSetup; project_id: string | null; halo_page_id: string | null; slot_at: string; source_url: string | null; posted_at: string | null } | null;
-  if (!d || !["halo", "halo_promo", "email"].includes(d.source)) return NextResponse.json({ error: "Draft not found." }, { status: 404 });
+  if (!d || !["halo", "halo_promo", "email", "sparklee"].includes(d.source)) return NextResponse.json({ error: "Draft not found." }, { status: 404 });
   const editable = d.status === "draft" || d.status === "failed";
 
   if (action === "setup") {
