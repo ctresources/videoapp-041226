@@ -1241,13 +1241,36 @@ export default function HelpPage() {
                 <strong>Add to the seller update</strong> puts the video at the top of the email,
                 where sellers tap it to watch. Your listings also sit under{" "}
                 <strong>Seller updates</strong> in My Sparks, each with a <strong>New update</strong>{" "}
-                button. With BoldTrail connected, add the sellers by their email under{" "}
-                <strong>Sellers in BoldTrail</strong>, once per listing, and{" "}
-                <strong>Send to sellers through BoldTrail</strong> emails each of them the update,
-                video included, after you confirm, with an optional short text to say it&apos;s on its
-                way. The update then shows when it was sent and to whom. Copy it or send yourself a
-                test, the same as the newsletter.
+                button.
               </span>
+              {/* How to send it, said plainly (2026-10-26, the owner's ask: she
+                  couldn't find the send button). */}
+              <span className="block mt-1.5 font-semibold text-brand-text">How to send a Seller Update</span>
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                <li>
+                  <strong>Through BoldTrail:</strong> in the orange <strong>Sellers in BoldTrail</strong> box,
+                  type each seller&apos;s email exactly as it is in BoldTrail and press <strong>Add</strong>.
+                  Their name shows as a chip (up to 4, once per listing). Only then does the orange{" "}
+                  <strong>Send to sellers through BoldTrail</strong> button appear, next to{" "}
+                  <strong>Copy as HTML</strong>. Press it and confirm; it emails each seller the update,
+                  video included, with an optional short text to say it&apos;s on its way. The update
+                  then shows when it was sent and to whom. The seller has to be a contact in BoldTrail
+                  already, and BoldTrail has to be connected in Settings.
+                </li>
+                <li>
+                  <strong>From your own email:</strong> press <strong>Copy as HTML</strong>, paste it into
+                  a new email and send it. <strong>Copy as text</strong> is for a plain email or a text
+                  message.
+                </li>
+                <li>
+                  <strong>Send me a test</strong> sends it to you first, so you see what your sellers will
+                  see.
+                </li>
+                <li>
+                  The video in the preview on the right shows in a tall black box. That is only this
+                  screen&apos;s preview: in the email it is a small picture your sellers tap to watch.
+                </li>
+              </ul>
               {/* The menu's Meet button, 2026-10-20; the owner's wording. */}
               <span className="block mt-1.5">
                 <strong>Google Meet</strong> — <strong>Meet</strong> in the top bar on a computer, or in
