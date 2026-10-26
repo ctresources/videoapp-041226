@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
+import { ShinyLogo } from "@/components/marketing/shiny-logo";
 import { ChevronDown } from "lucide-react";
 import { FEATURE_PAGES } from "@/lib/marketing/content";
 
@@ -32,7 +32,8 @@ export function SiteNav({ active }: { active?: "features" | "pricing" | "blog" |
         {/* A little smaller on phones, so Log In and Start Free fit on one
             line each (2026-10-22). */}
         <Link href="/" className="flex min-w-0 shrink flex-col leading-none">
-          <Image src="/sparkreels-logo-light.png" alt="SparkReels.ai — Speak. Spark. Share." width={200} height={40} className="h-auto w-[150px] sm:w-[200px]" unoptimized priority />
+          {/* Shines, twinkles, sparks on click (2026-10-26). */}
+          <ShinyLogo className="w-[150px] sm:w-[200px]" />
         </Link>
         <div className="hidden md:flex items-center gap-7 text-base font-medium text-slate-600">
           <div ref={ref} className="relative">

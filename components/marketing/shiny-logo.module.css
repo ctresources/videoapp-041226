@@ -1,0 +1,53 @@
+/* The website logo's motion (2026-10-26, the owner's approved mockup). */
+
+.logo { position: relative; display: inline-block; cursor: pointer; }
+.logo img { display: block; transition: transform .25s ease; }
+.logo:hover img { transform: translateY(-1px) scale(1.03); }
+
+/* A light band that sweeps across the letters only, every few seconds. */
+.shine {
+  position: absolute; inset: 0; pointer-events: none;
+  -webkit-mask: url("/sparkreels-logo-light.png") center / 100% 100% no-repeat;
+  mask: url("/sparkreels-logo-light.png") center / 100% 100% no-repeat;
+  background: linear-gradient(110deg, transparent 40%, rgba(255, 255, 255, .85) 50%, transparent 60%);
+  background-size: 300% 100%;
+  background-position: 150% 0;
+  animation: sweep 5s ease-in-out infinite;
+  transition: transform .25s ease;
+}
+.logo:hover .shine { transform: translateY(-1px) scale(1.03); animation-duration: 1.3s; }
+@keyframes sweep { 0%, 62% { background-position: 150% 0; } 100% { background-position: -50% 0; } }
+
+/* The star twinkles on its own. */
+.star { position: absolute; left: 0; top: 4%; width: 12.5%; height: 68%; pointer-events: none; }
+.star::before {
+  content: ""; position: absolute; inset: -20%; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 214, 120, .85) 0%, rgba(255, 214, 120, 0) 60%);
+  animation: twinkle 2.6s ease-in-out infinite;
+}
+.star::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 70%; height: 70%;
+  background:
+    linear-gradient(90deg, transparent 47%, #fff 50%, transparent 53%),
+    linear-gradient(0deg, transparent 47%, #fff 50%, transparent 53%);
+  opacity: 0; animation: glint 2.6s ease-in-out infinite;
+}
+.logo:hover .star::after { animation-duration: 1s; }
+@keyframes twinkle { 0%, 100% { transform: scale(.6); opacity: .15; } 50% { transform: scale(1.15); opacity: .9; } }
+@keyframes glint {
+  0%, 35%, 100% { opacity: 0; transform: translate(-50%, -50%) rotate(0deg) scale(.4); }
+  50% { opacity: .95; transform: translate(-50%, -50%) rotate(45deg) scale(1); }
+}
+
+/* Click: a little burst of sparks from the star. */
+.spark {
+  position: absolute; width: 6px; height: 6px; border-radius: 50%;
+  background: #f5c35a; box-shadow: 0 0 6px #ffd98a; pointer-events: none;
+  animation: burst .8s ease-out forwards;
+}
+@keyframes burst { to { transform: translate(var(--dx), var(--dy)) scale(.2); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .shine, .star::before, .star::after, .spark { animation: none; }
+  .spark { display: none; }
+}
