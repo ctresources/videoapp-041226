@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { uploadImage, UPLOAD_TARGET } from "@/lib/utils/upload-image";
 import { PhotoPostDialog } from "@/components/social/PhotoPostDialog";
-import { ThumbnailEditor } from "@/components/social/thumbnail-editor";
+import { ThumbnailEditor, type ThumbApply } from "@/components/social/thumbnail-editor";
 import { DEFAULT_THUMB_STYLE, type ThumbStyle } from "@/lib/utils/thumbnail-style";
 import { GoogleReviewsTool } from "@/components/tools/google-reviews";
 import { SellerUpdateTool } from "@/components/tools/seller-update";
@@ -1618,7 +1618,8 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
   // A custom uploaded photo always wins over both.
   const generate = async (
     reuseBackground = false,
-    over?: { backgroundUrl?: string; headline?: string; style?: ThumbStyle },
+    /** Everything the one thumbnail editor hands back (2026-10-26). */
+    over?: Partial<ThumbApply>,
   ) => {
     const words = (over?.headline ?? headline).trim();
     if (!words && !projectId) {
@@ -1633,18 +1634,23 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
         body: JSON.stringify({
           headline: words || undefined,
           projectId: projectId || undefined,
-          photoUrl: photoUrl || undefined,
-          photoSide,
-          backgroundUrl: over?.backgroundUrl || customBg || (reuseBackground && bgUrl ? bgUrl : undefined),
+          photoUrl: over?.photoUrl || photoUrl || undefined,
+          photoSide: over?.photoSide ?? photoSide,
+          // From the editor, its choice ("" = a new AI picture); else as before.
+          backgroundUrl: over
+            ? (over.backgroundUrl || undefined)
+            : customBg || (reuseBackground && bgUrl ? bgUrl : undefined),
           style: over?.style ?? thumbStyle,
-          // The boxes mean what they show. Changed and emptied is "no badge";
-          // changed and filled is that market; untouched says nothing, and the
-          // thumbnail keeps the market it had.
-          ...(badgeDirty
-            ? (!badgeCity.trim() && !badgeState.trim()
-              ? { noMarket: true }
-              : { city: badgeCity.trim() || undefined, state: badgeState.trim() || undefined })
-            : {}),
+          ...(over?.scene ? { scene: over.scene } : {}),
+          // The badge: the editor's, else the boxes as before. Changed and
+          // emptied is "no badge"; untouched keeps the market it had.
+          ...(over
+            ? (over.noMarket ? { noMarket: true } : { city: over.city || undefined, state: over.state || undefined })
+            : badgeDirty
+              ? (!badgeCity.trim() && !badgeState.trim()
+                ? { noMarket: true }
+                : { city: badgeCity.trim() || undefined, state: badgeState.trim() || undefined })
+              : {}),
         }),
       });
       const data = await res.json();
@@ -1654,6 +1660,9 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
       }
       setThumbUrl(data.url);
       if (over?.style) setThumbStyle(over.style);
+      if (over?.photoUrl) setPhotoUrl(over.photoUrl);
+      if (over?.photoSide) setPhotoSide(over.photoSide);
+      if (over) setCustomBg(over.backgroundUrl ?? "");
       if (data.headline) setHeadline(data.headline);
       if (data.backgroundUrl) setBgUrl(data.backgroundUrl);
       // What was printed, into the boxes that edit it. They used to sit empty
@@ -1669,158 +1678,27 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
     }
   };
 
+  // Pick a project and Generate; everything else is in the one thumbnail
+  // editor (2026-10-26, the owner's approved mockup). The page's own text,
+  // photo, side, background and badge boxes are gone.
   return (
     <div>
       <ProjectSelector projects={projects} selectedId={projectId} onSelect={handleProjectSelect} />
 
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">
-          Thumbnail Text <span className="font-normal text-slate-400">(optional — leave blank and AI writes it)</span>
-        </label>
-        <input
-          type="text"
-          value={headline}
-          onChange={(e) => setHeadline(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !loading && generate()}
-          placeholder="Leave blank — AI writes a 3–4 word curiosity hook"
-          className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 placeholder-slate-400"
-        />
-        <p className="text-xs text-slate-400 mt-1">
-          3–4 words max, ALL CAPS, curiosity-driven — AI avoids repeating words from your title.
-          A bright AI scene with a vivid blue sky is generated behind it, and your photo and market badge are added automatically.
-        </p>
-      </div>
-
-      {/* Photo position — text takes the opposite side */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Photo Position</label>
-        <div className="inline-flex rounded-xl border border-slate-200 overflow-hidden text-sm font-semibold">
-          {(["left", "right"] as const).map((side) => (
-            <button
-              key={side}
-              onClick={() => setPhotoSide(side)}
-              className={`px-4 py-2 transition-colors ${
-                photoSide === side ? "bg-primary-500 text-white" : "bg-white text-slate-500 hover:bg-slate-50"
-              }`}
-            >
-              {side === "left" ? "◀ Photo Left" : "Photo Right ▶"}
-            </button>
-          ))}
+      {/* Without a project there is nothing for AI to write from. */}
+      {!projectId && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">Thumbnail Text</label>
+          <input
+            type="text"
+            value={headline}
+            onChange={(e) => setHeadline(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !loading && generate()}
+            placeholder="3–4 words, or pick a project and AI writes them"
+            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 placeholder-slate-400"
+          />
         </div>
-        <p className="text-xs text-slate-400 mt-1">Your text and market badge move to the opposite side automatically.</p>
-      </div>
-
-      {/* Photo picker — headshot, any avatar look, or an uploaded photo.
-          Also editable after generating: change it, then hit Update Thumbnail. */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Photo On Thumbnail</label>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setPhotoUrl("")}
-            className={`flex flex-col items-center gap-1 p-1.5 rounded-xl border-2 transition-colors ${
-              photoUrl === "" ? "border-primary-500 bg-primary-50" : "border-slate-200 hover:border-slate-300"
-            }`}
-          >
-            <span className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
-              <User size={20} className="text-slate-400" />
-            </span>
-            <span className="text-[10px] text-slate-500">Headshot</span>
-          </button>
-          {looks.map((l) => (
-            <button
-              key={l.id}
-              onClick={() => setPhotoUrl(l.preview_image_url)}
-              className={`flex flex-col items-center gap-1 p-1.5 rounded-xl border-2 transition-colors ${
-                photoUrl === l.preview_image_url ? "border-primary-500 bg-primary-50" : "border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={l.preview_image_url} alt={l.name} className="w-14 h-14 rounded-full object-cover" />
-              <span className="text-[10px] text-slate-500 max-w-[64px] truncate">{l.name}</span>
-            </button>
-          ))}
-          {/* Uploaded custom photo tile */}
-          {customPhoto && (
-            <button
-              onClick={() => setPhotoUrl(customPhoto)}
-              className={`flex flex-col items-center gap-1 p-1.5 rounded-xl border-2 transition-colors ${
-                photoUrl === customPhoto ? "border-primary-500 bg-primary-50" : "border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={customPhoto} alt="Uploaded photo" className="w-14 h-14 rounded-full object-cover" />
-              <span className="text-[10px] text-slate-500">Uploaded</span>
-            </button>
-          )}
-          {/* Upload a custom photo */}
-          <button
-            onClick={() => photoFileRef.current?.click()}
-            disabled={photoUploading}
-            className="flex flex-col items-center gap-1 p-1.5 rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-300 hover:bg-primary-50/30 transition-all disabled:opacity-50"
-          >
-            <span className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center">
-              {photoUploading ? <Loader2 size={18} className="text-primary-500 animate-spin" /> : <Upload size={18} className="text-slate-400" />}
-            </span>
-            <span className="text-[10px] text-slate-500">{photoUploading ? "Uploading…" : "Upload"}</span>
-          </button>
-        </div>
-        {/* The size it is cropped to. A photo below this is upscaled and goes
-            soft, which is only ever discovered after the image is made. */}
-        <p className="mt-1 text-[10.5px] text-slate-400">{UPLOAD_TARGET.thumb}</p>
-        <input ref={photoFileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoFile} />
-      </div>
-
-      {/* Background — AI scene by default, or the user's own photo (e.g. listing exterior) */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">Background</label>
-        <div className="flex flex-wrap items-start gap-2">
-          <button
-            onClick={() => setCustomBg("")}
-            className={`flex flex-col items-center justify-center gap-1 w-28 h-[4.5rem] rounded-xl border-2 transition-colors ${
-              customBg === "" ? "border-primary-500 bg-primary-50" : "border-slate-200 hover:border-slate-300"
-            }`}
-          >
-            <Sparkles size={16} className="text-slate-500" />
-            <span className="text-[10px] text-slate-500 font-medium">AI Scene</span>
-          </button>
-
-          {customBg ? (
-            <div className={`relative rounded-xl border-2 overflow-hidden ${customBg ? "border-primary-500" : "border-slate-200"}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={customBg} alt="Custom background" className="w-32 h-[4.5rem] object-cover" />
-              <button
-                onClick={() => setCustomBg("")}
-                className="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center"
-                title="Remove custom background"
-              >
-                <X size={11} className="text-white" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => bgFileRef.current?.click()}
-              disabled={bgUploading}
-              className="flex flex-col items-center justify-center gap-1 w-28 h-[4.5rem] rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-300 hover:bg-primary-50/30 transition-all disabled:opacity-50"
-            >
-              {bgUploading ? (
-                <Loader2 size={16} className="text-primary-500 animate-spin" />
-              ) : (
-                <Upload size={16} className="text-slate-400" />
-              )}
-              <span className="text-[10px] text-slate-500 font-medium">
-                {bgUploading ? "Uploading…" : "Upload Photo"}
-              </span>
-              <span className="text-[9.5px] leading-tight text-slate-400">{UPLOAD_TARGET.thumbBg}</span>
-            </button>
-          )}
-        </div>
-        <p className="text-xs text-slate-400 mt-1">
-          {customBg
-            ? "Your photo is the backdrop — headline, cutout, and market badge are layered on top."
-            : "Upload a listing photo to use as the backdrop instead of the AI-generated scene."}
-        </p>
-        <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={handleBgFile} />
-      </div>
+      )}
 
       <button
         onClick={() => generate(false)}
@@ -1828,7 +1706,7 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
         className="flex items-center gap-2 px-5 py-2.5 spark-cta-gradient text-white rounded-xl text-sm font-semibold disabled:opacity-50"
       >
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-        {loading ? "Creating your thumbnail…" : "Generate Thumbnail"}
+        {loading ? "Creating your thumbnail…" : thumbUrl ? "Start over" : "Generate Thumbnail"}
       </button>
 
       {thumbUrl && (
@@ -1837,14 +1715,27 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={thumbUrl} alt="Generated thumbnail" className="w-full h-auto" />
           </div>
-          <button
-            type="button"
-            onClick={() => setEditorOpen(true)}
-            disabled={loading}
-            className="mt-3 w-full max-w-2xl rounded-xl border border-primary-200 bg-primary-50 px-4 py-2.5 text-sm font-semibold text-primary-700 hover:bg-primary-100 disabled:opacity-50"
-          >
-            Edit thumbnail
-          </button>
+          <div className="mt-3 flex max-w-2xl flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setEditorOpen(true)}
+              disabled={loading}
+              className="flex-1 rounded-xl border border-primary-200 bg-primary-50 px-4 py-2.5 text-sm font-semibold text-primary-700 hover:bg-primary-100 disabled:opacity-50"
+            >
+              Edit thumbnail
+            </button>
+            <button
+              onClick={downloadThumbnail}
+              disabled={downloading}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {downloading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              {downloading ? "Downloading…" : "Download PNG"}
+            </button>
+          </div>
+          <p className="mt-2 max-w-2xl text-xs text-slate-400">
+            {projectId ? "Saved to this project. It appears in the Publish window when your video is ready." : "Download it, then upload it in YouTube Studio when you publish."}
+          </p>
           {editorOpen && (
             <ThumbnailEditor
               projectId={projectId || undefined}
@@ -1852,86 +1743,17 @@ function ThumbnailGenerator({ projects }: { projects: Project[] }) {
               headline={headline}
               style={thumbStyle}
               currentBg={customBg || bgUrl || null}
+              badgeCity={badgeCity}
+              badgeState={badgeState}
+              photoSide={photoSide}
               busy={loading}
               onClose={() => setEditorOpen(false)}
-              onApply={({ backgroundUrl, headline: words, style }) => {
+              onApply={(next) => {
                 setEditorOpen(false);
-                void generate(true, { backgroundUrl: backgroundUrl || undefined, headline: words, style });
+                void generate(true, next);
               }}
             />
           )}
-          {/* Inline text editor — edit text/photo above, then Update Thumbnail */}
-          <div className="mt-3">
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Edit Thumbnail Text</label>
-            <input
-              type="text"
-              value={headline}
-              onChange={(e) => setHeadline(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !loading && generate(true)}
-              placeholder="Type new text (3–4 words), then Update"
-              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary-300"
-            />
-            <p className="text-[11px] text-slate-400 mt-1">To change the photo, pick or upload a different one under &ldquo;Photo On Thumbnail&rdquo; above, then Update Thumbnail.</p>
-
-            {/* The badge was derived and had no way to be corrected: the
-                project's market, else a place found in the title, else the
-                profile's home market. Typing here outranks all three and
-                fixes the project's market at the same time. */}
-            <label className="block text-xs font-semibold text-slate-600 mt-4 mb-1">Market Badge</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={badgeCity}
-                onChange={(e) => { setBadgeCity(e.target.value); setBadgeDirty(true); }}
-                onKeyDown={(e) => e.key === "Enter" && !loading && generate(true)}
-                placeholder="City or area"
-                className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
-              />
-              <input
-                type="text"
-                value={badgeState}
-                onChange={(e) => { setBadgeState(e.target.value.toUpperCase().slice(0, 2)); setBadgeDirty(true); }}
-                onKeyDown={(e) => e.key === "Enter" && !loading && generate(true)}
-                placeholder="ST"
-                className="w-20 border border-slate-200 rounded-xl px-3 py-2.5 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-primary-300"
-              />
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              This is what the badge says. Clear both boxes and press Update to leave the badge off. Changing the market here also updates the video&rsquo;s market, so titles and descriptions match.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 mt-3">
-            <button
-              onClick={() => generate(true)}
-              disabled={loading}
-              className="flex items-center gap-1.5 text-xs font-semibold text-white spark-cta-gradient rounded-lg px-3 py-1.5 disabled:opacity-50"
-              title="Redraws the current text and photo on this same background"
-            >
-              {loading ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-              {loading ? "Updating…" : "Update Thumbnail"}
-            </button>
-            {!customBg && (
-              <button
-                onClick={() => generate(false)}
-                disabled={loading}
-                className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 disabled:opacity-50 transition-colors"
-              >
-                {loading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                New Background
-              </button>
-            )}
-            <button
-              onClick={downloadThumbnail}
-              disabled={downloading}
-              className="flex items-center gap-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-              {downloading ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-              {downloading ? "Downloading…" : "Download PNG (1280×720)"}
-            </button>
-            <p className="text-xs text-slate-400 w-full">
-              Change the text or photo above, then hit &ldquo;Update Thumbnail&rdquo; — it redraws in seconds on the same background.{" "}
-              {projectId ? "Saved to this project — it appears in the Publish window when your video is ready." : "Download it, then upload in YouTube Studio when you publish."}
-            </p>
-          </div>
         </div>
       )}
     </div>

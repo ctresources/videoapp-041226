@@ -10,8 +10,10 @@ import { ListenButton } from "@/components/ui/listen-button";
 import { kindLabel } from "@/lib/halo/kinds";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 import type { Halo, HaloDraft } from "@/components/halo/use-halo";
-import { ThumbnailEditor } from "@/components/social/thumbnail-editor";
+import { ThumbnailEditButton } from "@/components/social/thumbnail-edit-button";
 import { cleanThumbStyle, type ThumbStyle } from "@/lib/utils/thumbnail-style";
+import { videoStatus } from "@/lib/utils/video-status";
+import { VideoStatusLine } from "@/components/ui/video-status-line";
 import {
   LookPicker, PLATFORM_LABELS, PLATFORM_ORDER, PlatformPicker, Row, Switch, tile,
 } from "@/components/halo/halo-sites-card";
@@ -223,6 +225,18 @@ function PutOnHalo({ d }: { d: HaloDraft }) {
   );
 }
 
+/** The card's place in Draft → Made → Approved → Posted (2026-10-26). */
+function cardStatus(d: HaloDraft) {
+  const draftReady = !!d.madeVideo?.ready;
+  return videoStatus({
+    hasVideo: !!(d.madeVideo || d.video_id),
+    ready: d.status === "draft" ? draftReady : !!d.videoReady,
+    failed: !!d.videoFailed,
+    autoPost: d.status === "approved" ? { slotAt: d.slot_at, platforms: d.setup.platforms ?? [] } : null,
+    posts: d.posts ?? [],
+  });
+}
+
 /** When to text Halo: once the video is public on the channel (2026-10-26). */
 function haloTextNote(d: HaloDraft) {
   return `After it's published on your channel on ${when(d.slot_at)}, come back here and press Put on my Halo post to text Halo the link.`;
@@ -307,55 +321,16 @@ function WordsEditor({ d, halo }: { d: HaloDraft; halo: Halo }) {
 
 /** The thumbnail editor from Publish, on the card (2026-10-26). */
 function ThumbEdit({ d, halo }: { d: HaloDraft; halo: Halo }) {
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
   if (!d.project_id) return null;
-  const seo = d.projects?.seo_data ?? {};
-
-  async function apply(next: { backgroundUrl: string; headline: string; style: ThumbStyle; photoUrl?: string }) {
-    setBusy(true);
-    try {
-      const res = await fetch("/api/tools/thumbnail", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId: d.project_id,
-          headline: next.headline,
-          style: next.style,
-          ...(next.backgroundUrl ? { backgroundUrl: next.backgroundUrl } : {}),
-          // The person picked in the editor; left out, it keeps the one it has.
-          ...(next.photoUrl ? { photoUrl: next.photoUrl } : {}),
-        }),
-      });
-      const out = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(out?.error || "Couldn't update the thumbnail.");
-      toast.success("Thumbnail updated.");
-      setOpen(false);
-      await halo.reloadDrafts();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't update the thumbnail.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
-    <>
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)} loading={busy}>Edit thumbnail</Button>
-      {open && (
-        <ThumbnailEditor
-          projectId={d.project_id}
-          photos={d.setup.photos ?? []}
-          headline={seo.thumbnail_headline ?? ""}
-          style={cleanThumbStyle(seo.thumbnail_style)}
-          currentBg={null}
-          showPerson
-          busy={busy}
-          onClose={() => setOpen(false)}
-          onApply={(next) => void apply(next)}
-        />
-      )}
-    </>
+    <ThumbnailEditButton
+      projectId={d.project_id}
+      photos={d.setup.photos ?? []}
+      seo={d.projects?.seo_data ?? null}
+      city={d.projects?.location_city}
+      state={d.projects?.location_state}
+      onDone={() => void halo.reloadDrafts()}
+    />
   );
 }
 
@@ -451,19 +426,15 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-spark-ink-muted">
             <span className="font-bold text-spark-ink">{when(d.slot_at)}</span>
-            {d.madeVideo && d.status === "draft" && <span className="rounded-full bg-green-50 px-2 py-0.5 font-semibold text-green-700">{d.madeVideo.ready ? "Video made" : "Video being made"}</span>}
             {needsVideo && !d.madeVideo && d.status === "draft" && <span className="rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-700">Needs 1 more video</span>}
             <span className={`rounded-full border px-2 py-0.5 font-semibold ${d.source === "halo_promo" ? "border-[#f1d9b0] bg-spark-amber-tint text-[#A3660F]" : d.source === "email" ? "border-spark-rule bg-[#faf9f5] text-spark-ink-soft" : "border-[#cfe2ec] bg-[#eef5f9] text-spark-blue"}`}>{tag}</span>
           </div>
           <p className="mt-1.5 text-base font-semibold leading-snug text-spark-ink">{title}</p>
           {hook && d.status !== "writing" && !done && <p className="mt-0.5 line-clamp-2 text-sm text-spark-ink-muted">&ldquo;{hook}&rdquo;</p>}
           {d.status !== "writing" && d.status !== "failed" && !done && <Chips d={d} />}
-          {done && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {PLATFORM_ORDER.filter((p) => d.setup.platforms?.includes(p)).map((p) => (
-                <span key={p} className="rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700">✓ {PLATFORM_LABELS[p]}</span>
-              ))}
-            </div>
+          {/* Draft → Made → Approved → Posted, with real account ticks (2026-10-26). */}
+          {d.status !== "writing" && d.status !== "failed" && (
+            <div className="mt-2.5"><VideoStatusLine status={cardStatus(d)} compact /></div>
           )}
           {d.source_url && (
             <a href={d.source_url} target="_blank" rel="noreferrer" className="mt-1.5 flex items-center gap-1 truncate text-[13px] text-spark-blue">
@@ -541,15 +512,10 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
         {d.status === "approved" && (
           // What happens next, so nobody waits on this page (2026-10-24, the
           // owner's ask): it lands in My Sparks and posts on its day by itself.
-          <div className="w-full rounded-xl border border-green-200 bg-green-50 px-3.5 py-3">
-            <p className="flex items-center gap-1.5 text-sm font-semibold text-green-800">
-              <Check size={15} /> {d.video_id && d.videoUrl ? "Approved. Your video is ready." : "Approved. Your video is being made."}
-            </p>
-            <p className="mt-1 text-[13px] leading-relaxed text-green-900">
-              {d.video_id && d.videoUrl ? "It's in My Sparks" : "It'll be in My Sparks when it's done"}, and it posts by itself on{" "}
-              {when(d.slot_at)}. <strong>Don&apos;t post it yourself</strong>, or it will go up twice.{d.source === "halo" && <> {haloTextNote(d)}</>}
-            </p>
-            <div className="mt-2.5"><WhenInput d={d} halo={halo} /></div>
+          <div className="w-full rounded-xl border border-spark-rule bg-[#faf9f5] px-3.5 py-3">
+            {/* The status line above says it's approved and when it posts. */}
+            {d.source === "halo" && <p className="mb-2.5 text-[13px] leading-relaxed text-spark-ink-soft">{haloTextNote(d)}</p>}
+            <WhenInput d={d} halo={halo} />
             {/* Watch, thumbnail and words stay changeable here until it posts
                 (2026-10-26, the owner's ask). Open My Sparks and Make another
                 are gone: My Sparks led to posting it by hand. */}
@@ -558,7 +524,6 @@ function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; halo: Halo
         )}
         {done && (
           <>
-            <span className="text-xs font-medium text-spark-ink-muted">{d.status === "posted" ? "Posted" : `Posts ${when(d.slot_at)}`}</span>
             {d.videoUrl && (
               <a href={d.videoUrl} target="_blank" rel="noreferrer"><Button size="sm" variant="outline" className="gap-1.5"><Play size={13} /> Watch</Button></a>
             )}

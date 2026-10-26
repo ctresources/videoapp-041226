@@ -42,6 +42,11 @@ export interface HaloDraft {
   videoUrl?: string | null;
   /** A video already made (or being made) from this draft, with its file to watch. */
   madeVideo?: { id: string; ready: boolean; url: string | null } | null;
+  /** Where the video has really gone, for the status line (2026-10-26). */
+  posts?: { platform: string; post_status: string; scheduled_at: string | null }[];
+  /** The card's video: finished and failed, for the status line. */
+  videoReady?: boolean;
+  videoFailed?: boolean;
 }
 export interface HaloPageItem { id: string; url: string; kind: string; title: string | null; image_url: string | null }
 export interface Look { id: string; name: string; preview_image_url: string | null; status: string | null }
@@ -94,14 +99,22 @@ export function useHalo(userId: string | undefined) {
     const vids = list.map(vidOf).filter((v): v is string => !!v);
     if (vids.length) {
       const [{ data: posts }, { data: files }] = await Promise.all([
-        sb.from("social_posts").select("video_id, platform_post_id").in("video_id", vids).eq("platform", "youtube").not("platform_post_id", "is", null),
-        sb.from("generated_videos").select("id, video_url").in("id", vids),
+        sb.from("social_posts").select("video_id, platform, post_status, scheduled_at, platform_post_id").in("video_id", vids),
+        sb.from("generated_videos").select("id, video_url, render_status").in("id", vids),
       ]);
-      const yt = new Map(((posts ?? []) as { video_id: string; platform_post_id: string }[]).map((p) => [p.video_id, `https://youtu.be/${p.platform_post_id}`]));
-      const file = new Map(((files ?? []) as { id: string; video_url: string | null }[]).map((f) => [f.id, f.video_url]));
+      type P = { video_id: string; platform: string; post_status: string; scheduled_at: string | null; platform_post_id: string | null };
+      const rows = (posts ?? []) as P[];
+      const yt = new Map(rows.filter((p) => p.platform === "youtube" && p.platform_post_id).map((p) => [p.video_id, `https://youtu.be/${p.platform_post_id}`]));
+      const file = new Map(((files ?? []) as { id: string; video_url: string | null; render_status: string | null }[]).map((f) => [f.id, f]));
       for (const d of list) {
         const v = vidOf(d);
-        if (v) { d.youtubeUrl = yt.get(v) ?? null; d.videoUrl = file.get(v) ?? null; }
+        if (!v) continue;
+        const f = file.get(v);
+        d.youtubeUrl = yt.get(v) ?? null;
+        d.videoUrl = f?.video_url ?? null;
+        d.videoReady = f?.render_status === "completed" && !!f.video_url;
+        d.videoFailed = f?.render_status === "failed";
+        d.posts = rows.filter((p) => p.video_id === v).map(({ platform, post_status, scheduled_at }) => ({ platform, post_status, scheduled_at }));
       }
     }
     setDrafts(list);

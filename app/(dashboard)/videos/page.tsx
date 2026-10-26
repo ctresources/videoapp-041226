@@ -22,6 +22,9 @@ import toast from "react-hot-toast";
 import { projectThumbnailUrl } from "@/lib/utils/thumbnail-url";
 import { RenderQueueNotice } from "@/components/videos/render-queue-notice";
 import { AutopilotBanner } from "@/components/autopilot/autopilot-banner";
+import { videoStatus, type PostRow } from "@/lib/utils/video-status";
+import { VideoStatusLine } from "@/components/ui/video-status-line";
+import { ThumbnailEditButton } from "@/components/social/thumbnail-edit-button";
 
 interface DraftProject {
   id: string;
@@ -65,6 +68,8 @@ interface GeneratedVideo {
     /** A real saved PNG, when one has been made. Cheaper than a frame of video
      *  by orders of magnitude — see CardPoster. */
     thumbnail_url?: string | null;
+    /** For the thumbnail editor: the words and style it was last built with. */
+    seo_data?: Record<string, unknown> | null;
   } | null;
   source_video_id?: string | null;
   translation_language?: string | null;
@@ -480,6 +485,9 @@ function VideosContent() {
   const router = useRouter();
   const highlightId = searchParams.get("highlight");
   const [videos, setVideos] = useState<GeneratedVideo[]>([]);
+  /** Where each video has gone, and the AutoSparks cards that will post them (2026-10-26). */
+  const [postsByVideo, setPostsByVideo] = useState<Record<string, PostRow[]>>({});
+  const [autoByProject, setAutoByProject] = useState<Record<string, { slotAt: string; platforms: string[] }>>({});
   const [drafts, setDrafts] = useState<DraftProject[]>([]);
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -665,6 +673,24 @@ function VideosContent() {
       .limit(24);
     const videoProjectIds = new Set(videos.map((v) => v.project_id));
     setDrafts(((draftData as DraftProject[]) || []).filter((d) => !videoProjectIds.has(d.id)));
+
+    // The status line on each card: real posts, and approved cards still to post.
+    const ids = videos.map((v) => v.id);
+    const projectIds = Array.from(videoProjectIds).filter(Boolean);
+    if (ids.length) {
+      const [{ data: postRows }, { data: autoRows }] = await Promise.all([
+        supabase.from("social_posts").select("video_id, platform, post_status, scheduled_at").in("video_id", ids),
+        supabase.from("autopilot_drafts").select("project_id, slot_at, setup").in("project_id", projectIds).eq("status", "approved").is("posted_at", null),
+      ]);
+      const byVideo: Record<string, PostRow[]> = {};
+      for (const p of (postRows ?? []) as (PostRow & { video_id: string })[]) (byVideo[p.video_id] ??= []).push(p);
+      setPostsByVideo(byVideo);
+      const byProject: Record<string, { slotAt: string; platforms: string[] }> = {};
+      for (const a of (autoRows ?? []) as { project_id: string; slot_at: string; setup: { platforms?: string[] } | null }[]) {
+        byProject[a.project_id] = { slotAt: a.slot_at, platforms: a.setup?.platforms ?? [] };
+      }
+      setAutoByProject(byProject);
+    }
 
     setLoading(false);
 
@@ -1227,6 +1253,21 @@ function VideosContent() {
                     </span>
                   </div>
 
+                  {/* Draft → Made → Approved/Scheduled → Posted, the same as on
+                      AutoSparks and in Publish (2026-10-26). */}
+                  <div className="mt-2">
+                    <VideoStatusLine
+                      compact
+                      status={videoStatus({
+                        hasVideo: true,
+                        ready: video.render_status === "completed" && !!video.video_url,
+                        failed: video.render_status === "failed",
+                        autoPost: (video.project_id && autoByProject[video.project_id]) || null,
+                        posts: postsByVideo[video.id] ?? [],
+                      })}
+                    />
+                  </div>
+
                   {/* Render progress bar */}
                   {isRendering && <RenderProgressBar video={video} />}
 
@@ -1258,15 +1299,33 @@ function VideosContent() {
                       >
                         <Play size={13} fill="currentColor" /> Preview Video
                       </Button>
+                      {/* The one thumbnail editor (2026-10-26). */}
+                      {video.project_id && (
+                        <ThumbnailEditButton
+                          projectId={video.project_id}
+                          seo={video.projects?.seo_data ?? null}
+                          photos={video.metadata?.photo_urls ?? []}
+                          onDone={() => void loadVideos()}
+                          className="w-full"
+                        />
+                      )}
                       <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 gap-1.5"
-                          onClick={() => setPublishingVideo(video)}
-                        >
-                          <Send size={13} /> Publish
-                        </Button>
+                        {/* A video an approved AutoSparks card will post is changed
+                            there, not published here (2026-10-26). */}
+                        {video.project_id && autoByProject[video.project_id] ? (
+                          <Link href="/autosparks" className="flex-1">
+                            <Button variant="outline" size="sm" className="w-full gap-1.5">Open on AutoSparks</Button>
+                          </Link>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 gap-1.5"
+                            onClick={() => setPublishingVideo(video)}
+                          >
+                            <Send size={13} /> Publish
+                          </Button>
+                        )}
                         {/* Email it: to up to ten BoldTrail contacts, or copy
                             and paste (2026-10-15, the owner's mock). */}
                         <Button

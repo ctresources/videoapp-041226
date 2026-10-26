@@ -3,6 +3,7 @@
 import { hasAdminPerks } from "@/lib/utils/roles";
 import { ListenButton } from "@/components/ui/listen-button";
 import { Button } from "@/components/ui/button";
+import { ThumbnailEditButton } from "@/components/social/thumbnail-edit-button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -4220,6 +4221,28 @@ export default function ProjectEditorPage() {
                 two more buttons further down: five mentions of a video on the
                 one route where nobody asked for one. */}
           </div>
+          {/* The thumbnail, and the one editor for it (2026-10-26). */}
+          {(renderedVideoId || renderComplete) && project && (
+            <div className="flex items-center gap-3 rounded-xl border border-spark-rule bg-white p-3">
+              {project.thumbnail_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={project.thumbnail_url} alt="Thumbnail" className="h-[63px] w-[112px] shrink-0 rounded-lg object-cover" />
+              ) : (
+                <div className="h-[63px] w-[112px] shrink-0 rounded-lg bg-slate-100" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-[13.5px] font-bold text-spark-ink">Thumbnail</p>
+                <p className="text-[11.5px] text-spark-ink-muted">Goes up with the video when you publish.</p>
+              </div>
+              <ThumbnailEditButton
+                projectId={project.id}
+                seo={(project.seo_data as unknown as Record<string, unknown> | null) ?? null}
+                city={project.location_city}
+                state={project.location_state}
+                onDone={(url) => setProject((p) => (p ? { ...p, thumbnail_url: url } : p))}
+              />
+            </div>
+          )}
           {/* The Agent Intro's bios (2026-10-23, the owner's approved mockup). */}
           {(() => {
             const bios = script as unknown as { agent_bio_short?: string; agent_bio_long?: string };

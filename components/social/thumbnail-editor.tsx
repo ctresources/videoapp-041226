@@ -24,6 +24,21 @@ import {
  */
 
 type Frame = { url: string; seconds: number };
+type BgKind = "still" | "listing" | "mine" | "ai";
+
+/** Everything Apply hands back. backgroundUrl "" means "make an AI picture". */
+export interface ThumbApply {
+  backgroundUrl: string;
+  headline: string;
+  style: ThumbStyle;
+  /** Set only when the person was changed here. */
+  photoUrl?: string;
+  photoSide: "left" | "right";
+  city: string;
+  state: string;
+  noMarket: boolean;
+  scene?: string;
+}
 
 const PREVIEW_FONT: Record<ThumbFont, string> = {
   anton: "Impact, 'Arial Narrow', sans-serif",
@@ -43,18 +58,31 @@ export function ThumbnailEditor(props: {
   /** The backdrop the thumbnail on screen was built with, if any. */
   currentBg: string | null;
   busy: boolean;
-  /**
-   * Offer "Photo on it": the headshot, the avatar looks, or an upload
-   * (2026-10-26, the owner's ask). Off where the caller has its own picker.
-   */
+  /** "Photo on it": the headshot, the avatar looks, or an upload. On unless turned off. */
   showPerson?: boolean;
-  /** photoUrl is set only when the person was changed here. */
-  onApply: (next: { backgroundUrl: string; headline: string; style: ThumbStyle; photoUrl?: string }) => void;
+  /** The market badge as it is now, and the side the person stands on. */
+  badgeCity?: string;
+  badgeState?: string;
+  photoSide?: "left" | "right";
+  /** What an AI picture was last asked to show. */
+  scene?: string;
+  onApply: (next: ThumbApply) => void;
   onClose: () => void;
 }) {
+  const showPerson = props.showPerson !== false;
   const [frames, setFrames] = useState<Frame[] | null>(null);
   const [framesError, setFramesError] = useState<string | null>(null);
   const [bg, setBg] = useState<string | null>(props.currentBg);
+  /** Which kind of background is being picked (2026-10-26, one editor everywhere). */
+  const [bgKind, setBgKind] = useState<BgKind>(props.projectId ? "still" : props.photos.length ? "listing" : "ai");
+  const [myPhotos, setMyPhotos] = useState<string[]>([]);
+  const [uploadingBg, setUploadingBg] = useState(false);
+  const bgFileRef = useRef<HTMLInputElement>(null);
+  const [scene, setScene] = useState(props.scene ?? "");
+  const [side, setSide] = useState<"left" | "right">(props.photoSide ?? "right");
+  const [city, setCity] = useState(props.badgeCity ?? "");
+  const [usState, setUsState] = useState(props.badgeState ?? "");
+  const [noBadge, setNoBadge] = useState(false);
   const [words, setWords] = useState(props.headline);
   const [style, setStyle] = useState<ThumbStyle>(props.style);
   /** The agent's brand colours from Settings, offered first. */
@@ -72,16 +100,16 @@ export function ThumbnailEditor(props: {
       const { data } = await supabase.from("profiles").select("brand_colors, avatar_url").eq("id", user.id).maybeSingle();
       const row = data as { brand_colors: string[] | null; avatar_url: string | null } | null;
       setBrandColors((row?.brand_colors ?? []).filter((c) => /^#[0-9a-fA-F]{6}$/.test(c)));
-      if (props.showPerson && row?.avatar_url) {
+      if (showPerson && row?.avatar_url) {
         const headshot = row.avatar_url;
         setPeople((p) => (p.some((x) => x.url === headshot) ? p : [{ url: headshot, name: "Your headshot" }, ...p]));
       }
     });
-  }, [props.showPerson]);
+  }, [showPerson]);
 
   // The avatar looks, as more choices of who is on it.
   useEffect(() => {
-    if (!props.showPerson) return;
+    if (!showPerson) return;
     fetch("/api/avatar/looks")
       .then((r) => (r.ok ? r.json() : { looks: [] }))
       .then((d) => {
@@ -91,7 +119,7 @@ export function ThumbnailEditor(props: {
         setPeople((p) => [...p, ...looks.filter((l) => !p.some((x) => x.url === l.url))]);
       })
       .catch(() => {});
-  }, [props.showPerson]);
+  }, [showPerson]);
 
   async function uploadPerson(file: File) {
     setUploading(true);
@@ -126,9 +154,45 @@ export function ThumbnailEditor(props: {
     return () => { cancelled = true; };
   }, [props.projectId]);
 
-  const options = [...(frames ?? []).map((f) => f.url), ...props.photos];
-  const shown = bg ?? options[0] ?? null;
+  async function uploadBackground(file: File) {
+    setUploadingBg(true);
+    try {
+      const url = await uploadImage(file, "thumbBg");
+      setMyPhotos((p) => [url, ...p]);
+      setBg(url);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "That photo could not be uploaded");
+    } finally {
+      setUploadingBg(false);
+    }
+  }
+
+  const stills = (frames ?? []).map((f) => f.url);
+  const options = bgKind === "still" ? stills : bgKind === "listing" ? props.photos : bgKind === "mine" ? myPhotos : [];
+  const ai = bgKind === "ai";
+  // The picture in the preview: the one picked if it is in this kind, else its first.
+  const shown = ai ? null : (bg && options.includes(bg) ? bg : options[0] ?? (bgKind === "still" ? null : bg));
   const colour = style.color ?? "#ffffff";
+  const kinds: { id: BgKind; label: string; show: boolean }[] = [
+    { id: "still", label: "Still from video", show: !!props.projectId },
+    { id: "listing", label: "Listing photo", show: props.photos.length > 0 },
+    { id: "mine", label: "My photo", show: true },
+    { id: "ai", label: "AI picture", show: true },
+  ];
+
+  function apply() {
+    props.onApply({
+      backgroundUrl: ai ? "" : shown ?? "",
+      headline: words.trim(),
+      style,
+      ...(person ? { photoUrl: person } : {}),
+      photoSide: side,
+      city: noBadge ? "" : city.trim(),
+      state: noBadge ? "" : usState.trim().toUpperCase().slice(0, 2),
+      noMarket: noBadge,
+      ...(ai && scene.trim() ? { scene: scene.trim() } : {}),
+    });
+  }
 
   function set<K extends keyof ThumbStyle>(key: K, value: ThumbStyle[K]) {
     setStyle((s) => ({ ...s, [key]: value }));
@@ -172,26 +236,72 @@ export function ThumbnailEditor(props: {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={shown} alt="" className="absolute inset-0 h-full w-full object-cover" />
               )}
+              {ai && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#36506e] to-[#1b2b3f] text-sm font-semibold text-white/80">
+                  A new AI picture is made when you press Apply
+                </div>
+              )}
               {person && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={person} alt="" className="absolute bottom-0 right-[4%] h-[88%] w-auto rounded-t-xl object-cover" />
+                <img src={person} alt="" className={`absolute bottom-0 ${side === "left" ? "left-[4%]" : "right-[4%]"} h-[88%] w-auto rounded-t-xl object-cover`} />
               )}
-              <div className="absolute bottom-[12%] left-[6%] right-[38%] text-left">
+              <div className={`absolute bottom-[12%] ${side === "left" ? "left-[38%] right-[6%] text-right" : "left-[6%] right-[38%] text-left"}`}>
                 <span style={previewWords}>{words.trim() || "Your words"}</span>
               </div>
+              {!noBadge && (city.trim() || usState.trim()) && (
+                <span className={`absolute bottom-2 ${side === "left" ? "right-3" : "left-3"} rounded bg-[#ffe600] px-1.5 py-0.5 text-[10px] font-bold uppercase text-[#10132b]`}>
+                  {[city.trim(), usState.trim()].filter(Boolean).join(", ")}
+                </span>
+              )}
             </div>
             <p className="mt-1.5 text-[11px] text-slate-400">The preview is approximate. Apply draws the exact thumbnail.</p>
           </div>
 
-          {/* Background */}
+          {/* Background: every kind in one place (2026-10-26, one editor everywhere). */}
           <div>
             <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Background</p>
-            {!frames && !framesError && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {kinds.filter((k) => k.show).map((k) => (
+                <Chip key={k.id} on={bgKind === k.id} onClick={() => setBgKind(k.id)}>{k.label}</Chip>
+              ))}
+            </div>
+            {bgKind === "still" && !frames && !framesError && (
               <p className="flex items-center gap-2 text-xs text-slate-500">
                 <Loader2 size={12} className="animate-spin" /> Taking stills from your video…
               </p>
             )}
-            {framesError && <p className="text-xs text-amber-700">{framesError}</p>}
+            {bgKind === "still" && framesError && <p className="text-xs text-amber-700">{framesError}</p>}
+            {bgKind === "mine" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => bgFileRef.current?.click()}
+                  disabled={uploadingBg}
+                  className="mb-2 flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-slate-400 disabled:opacity-50"
+                >
+                  <Upload size={14} /> {uploadingBg ? "Uploading…" : "Upload a photo"}
+                </button>
+                <input
+                  ref={bgFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void uploadBackground(f); }}
+                />
+              </>
+            )}
+            {ai && (
+              <>
+                <input
+                  value={scene}
+                  onChange={(e) => setScene(e.target.value)}
+                  maxLength={300}
+                  placeholder="What the picture shows. Left empty, we read your script."
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
+                />
+                <p className="mt-1.5 text-[11px] text-slate-400">A scene, never people or words. It uses one of your AI images.</p>
+              </>
+            )}
             {options.length > 0 && (
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                 {options.map((url) => (
@@ -208,13 +318,35 @@ export function ThumbnailEditor(props: {
                 ))}
               </div>
             )}
-            {props.projectId && (
-              <p className="mt-1.5 text-[11px] text-slate-400">The first pictures are stills from your video. Pick a moment you like.</p>
+            {bgKind === "still" && stills.length > 0 && (
+              <p className="mt-1.5 text-[11px] text-slate-400">Stills from your video. Pick a moment you like.</p>
             )}
           </div>
 
+          {/* The market badge (2026-10-26, moved here from the Publish window). */}
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Market badge</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={city}
+                onChange={(e) => { setCity(e.target.value); setNoBadge(false); }}
+                placeholder="City or area"
+                disabled={noBadge}
+                className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 disabled:opacity-50"
+              />
+              <input
+                value={usState}
+                onChange={(e) => { setUsState(e.target.value.toUpperCase().slice(0, 2)); setNoBadge(false); }}
+                placeholder="ST"
+                disabled={noBadge}
+                className="w-14 rounded-lg border border-slate-200 px-2 py-2 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-primary-300 disabled:opacity-50"
+              />
+              <Chip on={noBadge} onClick={() => setNoBadge((n) => !n)}>No badge</Chip>
+            </div>
+          </div>
+
           {/* Who is on it (2026-10-26, the owner's ask). */}
-          {props.showPerson && (
+          {showPerson && (
             <div>
               <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Photo on it</p>
               <div className="flex flex-wrap items-center gap-2">
@@ -250,6 +382,11 @@ export function ThumbnailEditor(props: {
               <p className="mt-1.5 text-[11px] text-slate-400">
                 {person ? "This photo goes on the thumbnail when you press Apply." : "Leave it and the thumbnail keeps the photo it has."}
               </p>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-xs text-slate-500">Stands on the</span>
+                <Chip on={side === "left"} onClick={() => setSide("left")}>Left</Chip>
+                <Chip on={side === "right"} onClick={() => setSide("right")}>Right</Chip>
+              </div>
             </div>
           )}
 
@@ -351,7 +488,7 @@ export function ThumbnailEditor(props: {
           <button
             type="button"
             disabled={props.busy || !words.trim()}
-            onClick={() => props.onApply({ backgroundUrl: shown ?? "", headline: words.trim(), style, ...(person ? { photoUrl: person } : {}) })}
+            onClick={apply}
             className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
           >
             {props.busy ? "Drawing…" : "Apply"}

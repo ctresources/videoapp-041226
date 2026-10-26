@@ -11,8 +11,10 @@ import toast from "react-hot-toast";
 import { FIRST_COMMENT_PLATFORMS } from "@/lib/utils/social-platforms";
 import { uploadImage } from "@/lib/utils/upload-image";
 import { DEFAULT_THUMB_STYLE, type ThumbStyle } from "@/lib/utils/thumbnail-style";
-import { ThumbnailEditor } from "@/components/social/thumbnail-editor";
+import { ThumbnailEditor, type ThumbApply } from "@/components/social/thumbnail-editor";
 import { createClient } from "@/lib/supabase/client";
+import { videoStatus } from "@/lib/utils/video-status";
+import { VideoStatusLine } from "@/components/ui/video-status-line";
 
 interface SocialAccount {
   id: string;
@@ -191,18 +193,30 @@ export function PublishModal({
    * approved Halo or email card (2026-10-26, the owner posted one by hand too).
    */
   const [autoPostAt, setAutoPostAt] = useState<string | null>(null);
+  const [autoPlatforms, setAutoPlatforms] = useState<string[]>([]);
   useEffect(() => {
     if (!projectId) return;
     createClient()
       .from("autopilot_drafts")
-      .select("slot_at")
+      .select("slot_at, setup")
       .eq("project_id", projectId)
       .eq("status", "approved")
       .is("posted_at", null)
       .limit(1)
       .maybeSingle()
-      .then(({ data }) => setAutoPostAt((data as { slot_at: string } | null)?.slot_at ?? null));
+      .then(({ data }) => {
+        const row = data as { slot_at: string; setup: { platforms?: string[] } | null } | null;
+        setAutoPostAt(row?.slot_at ?? null);
+        setAutoPlatforms(row?.setup?.platforms ?? []);
+      });
   }, [projectId]);
+  /** The video's place in Draft → Made → Approved/Scheduled → Posted (2026-10-26). */
+  const statusNow = videoStatus({
+    hasVideo: true,
+    ready: true,
+    autoPost: autoPostAt ? { slotAt: autoPostAt, platforms: autoPlatforms } : null,
+    posts: history.map((h) => ({ platform: h.platform, post_status: h.status, scheduled_at: h.status === "scheduled" ? h.at : null })),
+  });
   /** The thumbnail editor (2026-10-25): its words, font, size, colour and style. */
   const [editorOpen, setEditorOpen] = useState(false);
   const [thumbStyle, setThumbStyle] = useState<ThumbStyle>(DEFAULT_THUMB_STYLE);
@@ -454,6 +468,46 @@ ${hashes.join(" ")}` : hashes.join(" ");
       // an error message.
       if (!quiet) toast.error(err instanceof Error ? err.message : "Couldn't build the thumbnail");
       setActivePhoto(null);
+    } finally {
+      setThumbBusy(false);
+    }
+  }
+
+  /** Apply from the one thumbnail editor: every choice in one build (2026-10-26). */
+  async function applyFromEditor(next: ThumbApply) {
+    if (!projectId || thumbBusy) return;
+    setEditorOpen(false);
+    setThumbBusy(true);
+    try {
+      const res = await fetch("/api/tools/thumbnail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId,
+          headline: next.headline,
+          style: next.style,
+          photoSide: next.photoSide,
+          ...(next.backgroundUrl ? { backgroundUrl: next.backgroundUrl } : {}),
+          // The person picked, else whoever it was built with.
+          ...((next.photoUrl ?? cutout) ? { photoUrl: next.photoUrl ?? cutout } : {}),
+          ...(next.noMarket ? { noMarket: true } : { city: next.city || undefined, state: next.state || undefined }),
+          ...(next.scene ? { scene: next.scene } : {}),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Couldn't build the thumbnail");
+      setPhotoThumb(data.url);
+      setThumbStyle(next.style);
+      if (next.photoUrl) setCutout(next.photoUrl);
+      setActivePhoto(next.backgroundUrl || null);
+      if (data.headline) setHeadline(data.headline);
+      setBadgeCity(typeof data.city === "string" ? data.city : "");
+      setBadgeState(typeof data.state === "string" ? data.state : "");
+      setBadgeDirty(false);
+      if (data.scene) setScene(data.scene);
+      toast.success("Thumbnail updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't build the thumbnail");
     } finally {
       setThumbBusy(false);
     }
@@ -788,8 +842,13 @@ ${hashes.join(" ")}` : hashes.join(" ");
           </button>
         </div>
 
+        {!posted && (
+          <div className="mx-5 mt-4">
+            <VideoStatusLine status={statusNow} compact />
+          </div>
+        )}
         {autoPostAt && !posted && (
-          <div className="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[13px] leading-relaxed text-amber-900">
+          <div className="mx-5 mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[13px] leading-relaxed text-amber-900">
             <strong>This video posts by itself</strong> on{" "}
             {new Date(autoPostAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric" })}{" "}
             from its card on AutoSparks, so publishing here is off. Change its thumbnail, words or time on the card:{" "}
@@ -1081,6 +1140,8 @@ ${hashes.join(" ")}` : hashes.join(" ");
                       Edit thumbnail
                     </button>
                   )}
+                  {/* The one thumbnail editor, with every control in it: the
+                      backdrop, photo, words, badge and style (2026-10-26). */}
                   {editorOpen && projectId && (
                     <ThumbnailEditor
                       projectId={projectId}
@@ -1088,162 +1149,13 @@ ${hashes.join(" ")}` : hashes.join(" ");
                       headline={headline}
                       style={thumbStyle}
                       currentBg={activePhoto}
+                      badgeCity={badgeCity}
+                      badgeState={badgeState}
+                      scene={scene}
                       busy={thumbBusy}
                       onClose={() => setEditorOpen(false)}
-                      onApply={({ backgroundUrl, headline: words, style }) => {
-                        setEditorOpen(false);
-                        void buildPhotoThumb(backgroundUrl, false, undefined, words, style);
-                      }}
-                    >
-                      {/* The dialog's other thumbnail controls, moved here so the
-                          Publish dialog stays short (2026-10-25). */}
-                  {/* What the picture shows — only where one is being drawn.
-                      With listing photos on the project the backdrop strip
-                      below already answers this, and a box that changed
-                      nothing would be worse than no box. */}
-                  {projectId && photos.length === 0 && (
-                    <div className="mt-2">
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          value={scene}
-                          onChange={(e) => setScene(e.target.value)}
-                          placeholder="What the picture shows — left empty, we read your script"
-                          className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-300"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => buildPhotoThumb("")}
-                          disabled={thumbBusy}
-                          className="flex-none rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-primary-400 hover:text-primary-700 disabled:opacity-50"
-                        >
-                          {thumbBusy ? "…" : photoThumb ? "New picture" : "Design it"}
-                        </button>
-                      </div>
-                      {/* Why the button is a button. Generating costs real
-                          money and one of the monthly images, so it never
-                          happens just because this window opened — which is
-                          what the standalone "Design a bolder thumbnail" link
-                          that used to sit below was saying, less clearly. */}
-                      <p className="mt-1 text-[11px] text-slate-400">
-                        A scene, not a slogan — &ldquo;a desk of paperwork and house keys in
-                        morning light&rdquo;. Never any people or words: your face and your
-                        headline go on top.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Your own photograph, alongside the two backdrops this
-                      panel already offered. Always available, unlike the
-                      backdrop strip below, which only exists when the project
-                      came with listing photos. */}
-                  {projectId && (
-                    <div className="mt-2">
-                      <button
-                        type="button"
-                        onClick={() => bgFileRef.current?.click()}
-                        disabled={uploadingBg || thumbBusy}
-                        className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-primary-400 hover:text-primary-700 disabled:opacity-50"
-                      >
-                        <Upload size={12} />
-                        {uploadingBg ? "Uploading…" : "Upload a photo"}
-                      </button>
-                      <p className="mt-1 text-[11px] text-slate-400">
-                        Your own picture as the backdrop · 1280 × 720 or larger, cropped from the
-                        centre · free, and it doesn&apos;t use an AI image.
-                      </p>
-                      <input
-                        ref={bgFileRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleBgFile}
-                      />
-                    </div>
-                  )}
-
-                  {/* The market printed on the badge, fixed where it is read.
-                      Saving rebuilds the thumbnail AND corrects the project, so
-                      titles and descriptions stop disagreeing with it. */}
-                  {projectId && (
-                    <div className="mt-2 flex items-center gap-1.5">
-                      <input
-                        value={badgeCity}
-                        onChange={(e) => { setBadgeCity(e.target.value); setBadgeDirty(true); }}
-                        placeholder="City or area on the badge"
-                        className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-300"
-                      />
-                      <input
-                        value={badgeState}
-                        onChange={(e) => { setBadgeState(e.target.value.toUpperCase().slice(0, 2)); setBadgeDirty(true); }}
-                        placeholder="ST"
-                        className="w-12 rounded-lg border border-slate-200 px-2 py-1.5 text-xs uppercase focus:outline-none focus:ring-2 focus:ring-primary-300"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => buildPhotoThumb(activePhoto || photos[0] || "")}
-                        // Empty is allowed once the boxes have been changed:
-                        // that is how the badge is taken off.
-                        disabled={thumbBusy || (!badgeCity.trim() && !badgeDirty)}
-                        title={!badgeCity.trim() && !badgeState.trim() && badgeDirty ? "Update with no market badge" : undefined}
-                        className="flex-none rounded-lg bg-primary-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-                      >
-                        {thumbBusy ? "…" : "Update"}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Who is on it. Separate from the backdrop strip below,
-                      because they are two different questions and answering
-                      one used to silently answer the other. */}
-                  {projectId && (looks.length > 0 || headshotUrl) && (
-                    <div className="mt-2">
-                      <p className="text-[11px] text-slate-400 mb-1.5">Who appears on it</p>
-                      <div className="flex gap-1.5 overflow-x-auto pb-1">
-                        {/* The profile headshot, shown as itself. It was a
-                            generic tile meaning "the default", which after the
-                            project started remembering its cutout no longer
-                            led anywhere — there was no way back to the plain
-                            headshot once a look had been picked. Sending the
-                            URL outright is that way back. */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = headshotUrl || "";
-                            setCutout(next);
-                            buildPhotoThumb(activePhoto || photos[0] || "", false, next);
-                          }}
-                          disabled={thumbBusy || !headshotUrl}
-                          title={headshotUrl ? "Use your profile headshot" : "Add a headshot in Settings to use it here"}
-                          className={`h-12 w-12 flex-none overflow-hidden rounded-full border-2 flex items-center justify-center bg-slate-50 transition-colors disabled:opacity-40 ${
-                            headshotUrl && cutout === headshotUrl ? "border-primary-500" : "border-transparent hover:border-slate-300"
-                          }`}
-                        >
-                          {headshotUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={headshotUrl} alt="Your headshot" className="h-full w-full object-cover" />
-                          ) : (
-                            <User size={16} className="text-slate-400" />
-                          )}
-                        </button>
-                        {looks.map((l) => (
-                          <button
-                            key={l.id}
-                            type="button"
-                            onClick={() => { setCutout(l.preview_image_url); buildPhotoThumb(activePhoto || photos[0] || "", false, l.preview_image_url); }}
-                            disabled={thumbBusy}
-                            title={l.name}
-                            className={`h-12 w-12 flex-none overflow-hidden rounded-full border-2 transition-colors disabled:opacity-50 ${
-                              cutout === l.preview_image_url ? "border-primary-500" : "border-transparent hover:border-slate-300"
-                            }`}
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={l.preview_image_url} alt={l.name} className="h-full w-full object-cover" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                    </ThumbnailEditor>
+                      onApply={(next) => void applyFromEditor(next)}
+                    />
                   )}
 
                   {/* Only once it is live. Before that the thumbnail goes up
