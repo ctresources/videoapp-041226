@@ -10,6 +10,8 @@ import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { FIRST_COMMENT_PLATFORMS } from "@/lib/utils/social-platforms";
 import { uploadImage } from "@/lib/utils/upload-image";
+import { DEFAULT_THUMB_STYLE, type ThumbStyle } from "@/lib/utils/thumbnail-style";
+import { ThumbnailEditor } from "@/components/social/thumbnail-editor";
 
 interface SocialAccount {
   id: string;
@@ -183,6 +185,9 @@ export function PublishModal({
   const [photoThumb, setPhotoThumb] = useState<string | null>(null);
   const [thumbBusy, setThumbBusy] = useState(false);
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
+  /** The thumbnail editor (2026-10-25): its words, font, size, colour and style. */
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [thumbStyle, setThumbStyle] = useState<ThumbStyle>(DEFAULT_THUMB_STYLE);
   // The market printed on the badge. Editable here because here is where it is
   // read — sending someone to another screen to fix a word they are looking at
   // is how it went unfixed.
@@ -365,7 +370,13 @@ ${hashes.join(" ")}` : hashes.join(" ");
    *   state here would send the previous pick — the tile would highlight and
    *   the image would not change.
    */
-  async function buildPhotoThumb(photo: string, quiet = false, nextCutout?: string, nextHeadline?: string) {
+  async function buildPhotoThumb(
+    photo: string,
+    quiet = false,
+    nextCutout?: string,
+    nextHeadline?: string,
+    nextStyle?: ThumbStyle,
+  ) {
     if (!projectId || thumbBusy) return;
     setThumbBusy(true);
     setActivePhoto(photo || null);
@@ -399,10 +410,14 @@ ${hashes.join(" ")}` : hashes.join(" ");
           // Omitted when empty on purpose: the render then keeps whoever this
           // project last used rather than resetting to the headshot.
           ...((nextCutout ?? cutout) ? { photoUrl: nextCutout ?? cutout } : {}),
+          // The words' font, size, colour and style, on every build, so a new
+          // backdrop keeps the look the editor chose (2026-10-25).
+          style: nextStyle ?? thumbStyle,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Couldn't build the thumbnail");
+      if (nextStyle) setThumbStyle(nextStyle);
       setPhotoThumb(data.url);
       // What the badge says now, which is blank when it was left off.
       if (typeof data.city === "string") setBadgeCity(data.city);
@@ -1027,6 +1042,33 @@ ${hashes.join(" ")}` : hashes.join(" ");
                       className="w-full h-full object-cover"
                     />
                   </div>
+                  {/* The editor for the words, font, size, colour and style, and
+                      the backdrop (2026-10-25). Opens as a panel, not inline. */}
+                  {projectId && (
+                    <button
+                      type="button"
+                      onClick={() => setEditorOpen(true)}
+                      disabled={thumbBusy}
+                      className="mt-2 w-full rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-semibold text-primary-700 hover:bg-primary-100 disabled:opacity-50"
+                    >
+                      Edit thumbnail
+                    </button>
+                  )}
+                  {editorOpen && projectId && (
+                    <ThumbnailEditor
+                      projectId={projectId}
+                      photos={photos}
+                      headline={headline}
+                      style={thumbStyle}
+                      currentBg={activePhoto}
+                      busy={thumbBusy}
+                      onClose={() => setEditorOpen(false)}
+                      onApply={({ backgroundUrl, headline: words, style }) => {
+                        setEditorOpen(false);
+                        void buildPhotoThumb(backgroundUrl, false, undefined, words, style);
+                      }}
+                    />
+                  )}
                   {/* The words on the image, edited where they are read.
                       This panel could change the market, the backdrop and the
                       person on it, but not the largest thing on the picture —

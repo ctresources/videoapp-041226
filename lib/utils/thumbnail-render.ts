@@ -9,6 +9,7 @@ import { createHash } from "crypto";
 import path from "path";
 import * as opentypeNs from "opentype.js";
 import { glyphPathData } from "@/lib/utils/glyph-path-data";
+import { cleanThumbStyle, DEFAULT_THUMB_STYLE, type ThumbFont, type ThumbStyle } from "@/lib/utils/thumbnail-style";
 
 // opentype.js is an old UMD package — depending on how the server bundle
 // resolves it, its functions land on the namespace itself or on .default.
@@ -27,21 +28,75 @@ const TH = 1920;
 // boxes. Instead we bundle Anton (OFL license — the classic tall condensed
 // YouTube-thumbnail font) and convert every string to vector <path> outlines
 // with opentype.js — renders identically on any server, no fontconfig needed.
-let _font: opentypeNs.Font | null = null;
-function getFont(): opentypeNs.Font {
-  if (!_font) {
-    const buf = readFileSync(path.join(process.cwd(), "fonts", "Anton-Regular.ttf"));
-    _font = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+/** The bundled fonts the thumbnail words can be set in (2026-10-25). */
+const FONT_FILES: Record<ThumbFont, string[]> = {
+  anton: ["fonts", "Anton-Regular.ttf"],
+  archivo: ["fonts", "ArchivoBlack-Regular.ttf"],
+  montserrat: ["public", "fonts", "Montserrat-ExtraBold.ttf"],
+};
+const _fonts = new Map<ThumbFont, opentypeNs.Font>();
+function getFont(font: ThumbFont = "anton"): opentypeNs.Font {
+  let f = _fonts.get(font);
+  if (!f) {
+    const buf = readFileSync(path.join(process.cwd(), ...FONT_FILES[font]));
+    f = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+    _fonts.set(font, f);
   }
-  return _font;
+  return f;
 }
 
-function textPathData(text: string, x: number, y: number, fontSize: number): string {
-  return glyphPathData(getFont().getPath(text, x, y, fontSize));
+function textPathData(text: string, x: number, y: number, fontSize: number, font: ThumbFont = "anton"): string {
+  return glyphPathData(getFont(font).getPath(text, x, y, fontSize));
 }
 
-function textWidth(text: string, fontSize: number): number {
-  return getFont().getAdvanceWidth(text, fontSize);
+function textWidth(text: string, fontSize: number, font: ThumbFont = "anton"): number {
+  return getFont(font).getAdvanceWidth(text, fontSize);
+}
+
+/** Black or white, whichever reads better on this colour. */
+function readableOn(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? "#10132b" : "#ffffff";
+}
+
+/**
+ * The words as vector paths, in the chosen style (2026-10-25).
+ *
+ * outline is the house look: white and yellow, with a heavy dark edge. plain
+ * drops the edge and uses one colour. box sets each line on a block in the
+ * chosen colour, with the words in whichever of black or white reads on it.
+ */
+function headlineSvg(
+  lines: string[],
+  fontSize: number,
+  lineHeight: number,
+  placeAt: (upper: string, i: number) => { x: number; y: number },
+  style: ThumbStyle,
+): string {
+  const strokeW = Math.max(12, Math.round(fontSize * 0.11));
+  return lines
+    .map((l, i) => {
+      const upper = l.toUpperCase();
+      const { x, y } = placeAt(upper, i);
+      const d = textPathData(upper, x, y, fontSize, style.font);
+      if (style.textStyle === "box") {
+        const boxFill = style.color ?? "#ffe600";
+        const padX = Math.round(fontSize * 0.2);
+        const w = textWidth(upper, fontSize, style.font);
+        const top = y - Math.round(fontSize * 0.82);
+        const h = Math.round(fontSize * 1.0);
+        return `<rect x="${x - padX}" y="${top}" width="${w + padX * 2}" height="${h}" rx="${Math.round(fontSize * 0.08)}" fill="${boxFill}"/>
+<path d="${d}" fill="${readableOn(boxFill)}"/>`;
+      }
+      const fill = style.color ?? (i % 2 === 0 ? "#ffffff" : "#ffe600");
+      if (style.textStyle === "plain") return `<path d="${d}" fill="${fill}"/>`;
+      // Two passes: heavy dark outline underneath, colored fill on top. This
+      // renders in librsvg without relying on paint-order support.
+      return `<path d="${d}" fill="none" stroke="#10132b" stroke-width="${strokeW}" stroke-linejoin="round"/>
+<path d="${d}" fill="${fill}"/>`;
+    })
+    .join("\n");
 }
 
 const STATE_NAMES: Record<string, string> = {
@@ -106,9 +161,9 @@ function extractMarketFromText(text: string): { city: string; state: string } | 
 }
 
 /** Largest font size at which the lines fit the width and height budget. */
-function fitFontSize(lines: string[], maxWidth: number, maxBlockH: number, startSize: number): number {
+function fitFontSize(lines: string[], maxWidth: number, maxBlockH: number, startSize: number, font: ThumbFont): number {
   let f = startSize;
-  const widest = () => Math.max(...lines.map((l) => textWidth(l, f)));
+  const widest = () => Math.max(...lines.map((l) => textWidth(l, f, font)));
   while (f > 60 && (widest() > maxWidth || lines.length * f * 1.05 > maxBlockH)) f -= 6;
   return f;
 }
@@ -116,8 +171,15 @@ function fitFontSize(lines: string[], maxWidth: number, maxBlockH: number, start
 /**
  * Try every contiguous 1–3 line wrap of the (max 4 word) headline and keep
  * whichever renders at the biggest font — short words stack for huge type.
+ * startSize is the largest size tried; the editor's size setting moves it.
  */
-function bestHeadlineLayout(text: string, maxWidth: number, maxBlockH: number): { lines: string[]; fontSize: number } {
+function bestHeadlineLayout(
+  text: string,
+  maxWidth: number,
+  maxBlockH: number,
+  font: ThumbFont,
+  startSize = 300,
+): { lines: string[]; fontSize: number } {
   const words = text.trim().split(/\s+/).slice(0, 4);
   const n = words.length;
   const candidates: string[][] = [[words.join(" ")]];
@@ -129,7 +191,7 @@ function bestHeadlineLayout(text: string, maxWidth: number, maxBlockH: number): 
   }
   let best: { lines: string[]; fontSize: number } = { lines: candidates[0], fontSize: 0 };
   for (const cand of candidates) {
-    const size = fitFontSize(cand.map((l) => l.toUpperCase()), maxWidth, maxBlockH, 300);
+    const size = fitFontSize(cand.map((l) => l.toUpperCase()), maxWidth, maxBlockH, startSize, font);
     if (size > best.fontSize) best = { lines: cand, fontSize: size };
   }
   return best;
@@ -147,36 +209,41 @@ function bestHeadlineLayout(text: string, maxWidth: number, maxBlockH: number): 
  * The background is the wide one's, enlarged to cover; it is soft at this
  * size, which matters little behind type this heavy.
  */
-export async function composeTall(base: Buffer, headlineText: string, market: string, cutout: Buffer | null): Promise<Buffer> {
+export async function composeTall(
+  base: Buffer,
+  headlineText: string,
+  market: string,
+  cutout: Buffer | null,
+  style: ThumbStyle = DEFAULT_THUMB_STYLE,
+): Promise<Buffer> {
   // @ts-ignore -- types unresolvable in some tsconfig setups, runtime import is fine
   const sharp = (await import("sharp")).default;
   const background = await sharp(base).resize(TW, TH, { fit: "cover" }).png().toBuffer();
 
-  const { lines, fontSize } = bestHeadlineLayout(headlineText, TW - 140, 600);
-  const strokeW = Math.max(12, Math.round(fontSize * 0.11));
+  const { lines, fontSize } = bestHeadlineLayout(headlineText, TW - 140, 600, style.font, Math.round(300 * style.size));
   const lineHeight = Math.round(fontSize * 1.05);
   const top = 300;
-  const headlinePaths = lines
-    .map((l, i) => {
-      const upper = l.toUpperCase();
-      const x = Math.round((TW - textWidth(upper, fontSize)) / 2);
-      const d = textPathData(upper, x, top + Math.round(fontSize * 0.8) + i * lineHeight, fontSize);
-      const fill = i % 2 === 0 ? "#ffffff" : "#ffe600";
-      return `<path d="${d}" fill="none" stroke="#10132b" stroke-width="${strokeW}" stroke-linejoin="round"/>
-<path d="${d}" fill="${fill}"/>`;
-    })
-    .join("\n");
+  const headlinePaths = headlineSvg(
+    lines,
+    fontSize,
+    lineHeight,
+    (upper, i) => ({
+      x: Math.round((TW - textWidth(upper, fontSize, style.font)) / 2),
+      y: top + Math.round(fontSize * 0.8) + i * lineHeight,
+    }),
+    style,
+  );
 
   let badgeSvg = "";
   if (market) {
     let size = 56;
-    while (size > 28 && textWidth(market, size) > TW - 220) size -= 4;
-    const textW = textWidth(market, size);
+    while (size > 28 && textWidth(market, size, style.font) > TW - 220) size -= 4;
+    const textW = textWidth(market, size, style.font);
     const badgeH = Math.round(size * 1.7);
     const badgeW = textW + 58;
     const badgeX = Math.round((TW - badgeW) / 2);
     const badgeY = top + lines.length * lineHeight + 44;
-    const d = textPathData(market, badgeX + 28, badgeY + Math.round(badgeH * 0.72), size);
+    const d = textPathData(market, badgeX + 28, badgeY + Math.round(badgeH * 0.72), size, style.font);
     badgeSvg = `
   <rect x="${badgeX}" y="${badgeY}" rx="14" width="${badgeW}" height="${badgeH}" fill="#ffe600"/>
   <path d="${d}" fill="#10132b"/>`;
@@ -353,6 +420,12 @@ export interface RenderThumbnailOptions {
    * does not bring the badge back. Typing a market turns it off again.
    */
   noMarket?: boolean;
+  /**
+   * How the words are set: font, size, colour and style (2026-10-25). Any
+   * value left out keeps the one the project was last built with, else the
+   * house look. Remembered on the project.
+   */
+  style?: Partial<ThumbStyle>;
 }
 
 /**
@@ -548,30 +621,29 @@ export async function renderAndSaveThumbnail(
     }
   }
 
-  // ── Headline: vector outlines — thick, bold, ALL CAPS, white + vivid yellow ──
+  // ── Headline: vector outlines, ALL CAPS, set in the chosen font and style ──
   // 2x type: up to 3 stacked lines, sized as large as the space allows while
   // leaving room for the market badge at the bottom. Text always takes the
   // side opposite the photo.
   const photoSide = opts.photoSide === "left" ? "left" : "right";
-  const { lines, fontSize } = bestHeadlineLayout(headlineText, 700, 460);
+  const savedStyle = (projectSeoData as { thumbnail_style?: unknown } | null)?.thumbnail_style;
+  const style: ThumbStyle = cleanThumbStyle({ ...(savedStyle as object | undefined), ...opts.style });
+  const { lines, fontSize } = bestHeadlineLayout(headlineText, 700, 460, style.font, Math.round(300 * style.size));
 
-  const strokeW = Math.max(12, Math.round(fontSize * 0.11));
   const lineHeight = Math.round(fontSize * 1.05);
   const textBlockH = lines.length * lineHeight;
   const textStartY = Math.round(H / 2 - textBlockH / 2 + fontSize * 0.8);
 
-  // Two passes per line: heavy dark outline underneath, colored fill on top —
-  // guaranteed to render in librsvg without relying on paint-order support.
-  const headlinePaths = lines
-    .map((l, i) => {
-      const upper = l.toUpperCase();
-      const x = photoSide === "left" ? W - 60 - textWidth(upper, fontSize) : 60;
-      const d = textPathData(upper, x, textStartY + i * lineHeight, fontSize);
-      const fill = i % 2 === 0 ? "#ffffff" : "#ffe600";
-      return `<path d="${d}" fill="none" stroke="#10132b" stroke-width="${strokeW}" stroke-linejoin="round"/>
-<path d="${d}" fill="${fill}"/>`;
-    })
-    .join("\n");
+  const headlinePaths = headlineSvg(
+    lines,
+    fontSize,
+    lineHeight,
+    (upper, i) => ({
+      x: photoSide === "left" ? W - 60 - textWidth(upper, fontSize, style.font) : 60,
+      y: textStartY + i * lineHeight,
+    }),
+    style,
+  );
 
   // ── Market badge — bottom-left corner (no logo on thumbnails) ──
   const market = [city, state].filter(Boolean).join(", ").toUpperCase();
@@ -581,12 +653,12 @@ export async function renderAndSaveThumbnail(
     // 2x badge: shrink only if an unusually long market name would collide
     // with the photo. Sits under the headline, opposite the photo.
     let badgeFontSize = 52;
-    while (badgeFontSize > 26 && textWidth(market, badgeFontSize) > 620) badgeFontSize -= 4;
-    const badgeTextW = textWidth(market, badgeFontSize);
+    while (badgeFontSize > 26 && textWidth(market, badgeFontSize, style.font) > 620) badgeFontSize -= 4;
+    const badgeTextW = textWidth(market, badgeFontSize, style.font);
     const badgeH = Math.round(badgeFontSize * 1.7);
     const badgeY = H - badgeH - bottomMargin;
     const badgeX = photoSide === "left" ? W - 60 - (badgeTextW + 58) : 60;
-    const badgeTextD = textPathData(market, badgeX + 28, badgeY + Math.round(badgeH * 0.72), badgeFontSize);
+    const badgeTextD = textPathData(market, badgeX + 28, badgeY + Math.round(badgeH * 0.72), badgeFontSize, style.font);
     badgeSvg = `
   <rect x="${badgeX}" y="${badgeY}" rx="14" width="${badgeTextW + 58}" height="${badgeH}" fill="#ffe600"/>
   <path d="${badgeTextD}" fill="#10132b"/>`;
@@ -684,7 +756,7 @@ export async function renderAndSaveThumbnail(
   // thumbnail asked for is the wide one, and it is already saved.
   let tallUrl = "";
   try {
-    const tall = await composeTall(baseBuffer, headlineText, market, cutoutForTall);
+    const tall = await composeTall(baseBuffer, headlineText, market, cutoutForTall, style);
     const tallPath = `thumbnails/${opts.userId}/thumb_tall_${Date.now()}.jpg`;
     const { error: tallErr } = await admin.storage
       .from("assets")
@@ -713,6 +785,9 @@ export async function renderAndSaveThumbnail(
           // the field that edits them can only open empty, and every rebuild
           // has to let the AI write new ones over a headline someone chose.
           thumbnail_headline: headlineText,
+          // The font, size, colour and style the words were set in, so a
+          // rebuild over a new backdrop keeps them (2026-10-25).
+          thumbnail_style: style,
           // And what the picture shows. Only written when one was generated —
           // a rebuild over a chosen photo has no scene and must not erase the
           // last one, which is still what the box should offer.

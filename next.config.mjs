@@ -61,6 +61,8 @@ const nextConfig = {
       "/api/avatar/digital-twin": ["./node_modules/@ffmpeg-installer/**"],
       // Joins the spoken pieces of a script or article read aloud (2026-10-21).
       "/api/ai/listen": ["./node_modules/@ffmpeg-installer/**"],
+      // Stills from a finished video, for a thumbnail's background (2026-10-25).
+      "/api/tools/thumbnail/frames": ["./node_modules/@ffmpeg-installer/**"],
     },
   },
   images: {

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { renderAndSaveThumbnail } from "@/lib/utils/thumbnail-render";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
+import type { ThumbStyle } from "@/lib/utils/thumbnail-style";
 import { NextRequest, NextResponse } from "next/server";
 
 // AI background generation can take up to a minute on its own.
@@ -20,9 +21,9 @@ export async function POST(req: NextRequest) {
   const gate = await freeTrialGateResponse(user.id);
   if (gate) return gate;
 
-  const { headline, topic, projectId, photoUrl, backgroundUrl, photoSide, city, state, scene, noMarket } = (await req.json()) as {
+  const { headline, topic, projectId, photoUrl, backgroundUrl, photoSide, city, state, scene, noMarket, style } = (await req.json()) as {
     headline?: string; topic?: string; projectId?: string; photoUrl?: string; backgroundUrl?: string; photoSide?: string;
-    city?: string; state?: string; scene?: string; noMarket?: boolean;
+    city?: string; state?: string; scene?: string; noMarket?: boolean; style?: Partial<ThumbStyle>;
   };
 
   try {
@@ -39,6 +40,8 @@ export async function POST(req: NextRequest) {
       // Only ever true or absent: absent leaves the project's own choice alone.
       noMarket: noMarket === true ? true : undefined,
       scene: scene || undefined,
+      // The editor's font, size, colour and style (2026-10-25). Cleaned in the renderer.
+      style: style && typeof style === "object" ? style : undefined,
     });
     return NextResponse.json(result);
   } catch (err) {

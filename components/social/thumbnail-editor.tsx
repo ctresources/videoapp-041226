@@ -1,0 +1,262 @@
+"use client";
+
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { Loader2, X } from "lucide-react";
+import {
+  THUMB_COLOURS,
+  THUMB_FONTS,
+  THUMB_TEXT_STYLES,
+  type ThumbFont,
+  type ThumbStyle,
+  type ThumbTextStyle,
+} from "@/lib/utils/thumbnail-style";
+
+/**
+ * The thumbnail editor, opened from Edit thumbnail in the Publish dialog
+ * (2026-10-25). Background, words, font, size, colour and style in one place,
+ * so the Publish dialog keeps only the preview and the channels.
+ *
+ * The preview here is an approximation in the browser's own fonts. Apply
+ * draws the exact thumbnail on the server.
+ */
+
+type Frame = { url: string; seconds: number };
+
+const PREVIEW_FONT: Record<ThumbFont, string> = {
+  anton: "Impact, 'Arial Narrow', sans-serif",
+  archivo: "'Arial Black', Impact, sans-serif",
+  montserrat: "system-ui, 'Segoe UI', Arial, sans-serif",
+};
+
+export function ThumbnailEditor(props: {
+  projectId: string;
+  /** Listing photos on the project, offered as backgrounds after the stills. */
+  photos: string[];
+  headline: string;
+  style: ThumbStyle;
+  /** The backdrop the thumbnail on screen was built with, if any. */
+  currentBg: string | null;
+  busy: boolean;
+  onApply: (next: { backgroundUrl: string; headline: string; style: ThumbStyle }) => void;
+  onClose: () => void;
+}) {
+  const [frames, setFrames] = useState<Frame[] | null>(null);
+  const [framesError, setFramesError] = useState<string | null>(null);
+  const [bg, setBg] = useState<string | null>(props.currentBg);
+  const [words, setWords] = useState(props.headline);
+  const [style, setStyle] = useState<ThumbStyle>(props.style);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/tools/thumbnail/frames", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: props.projectId }),
+    })
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d?.error || "Couldn't take stills from the video.");
+        return d as { frames: Frame[] };
+      })
+      .then((d) => { if (!cancelled) setFrames(d.frames); })
+      .catch((e) => {
+        if (!cancelled) setFramesError(e instanceof Error ? e.message : "Couldn't take stills from the video.");
+      });
+    return () => { cancelled = true; };
+  }, [props.projectId]);
+
+  const options = [...(frames ?? []).map((f) => f.url), ...props.photos];
+  const shown = bg ?? options[0] ?? null;
+  const colour = style.color ?? "#ffffff";
+
+  function set<K extends keyof ThumbStyle>(key: K, value: ThumbStyle[K]) {
+    setStyle((s) => ({ ...s, [key]: value }));
+  }
+
+  // Approximate look of the words, in the browser's own fonts.
+  const previewWords: CSSProperties = {
+    fontFamily: PREVIEW_FONT[style.font],
+    fontWeight: 800,
+    fontSize: `${Math.round(34 * style.size)}px`,
+    textTransform: "uppercase",
+    lineHeight: 1.05,
+    color: style.textStyle === "box" ? "#10132b" : colour,
+    textShadow:
+      style.textStyle === "outline"
+        ? "-2px 0 #10132b, 2px 0 #10132b, 0 -2px #10132b, 0 2px #10132b"
+        : style.textStyle === "plain" ? "0 2px 6px rgba(0,0,0,0.45)" : "none",
+    background: style.textStyle === "box" ? (style.color ?? "#ffe600") : "none",
+    padding: style.textStyle === "box" ? "0.05em 0.25em" : 0,
+    borderRadius: style.textStyle === "box" ? 6 : 0,
+    display: "inline",
+    boxDecorationBreak: "clone",
+    WebkitBoxDecorationBreak: "clone",
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-stretch justify-center bg-black/50 sm:items-center sm:p-4">
+      <div className="flex w-full max-w-2xl flex-col overflow-hidden bg-white sm:rounded-2xl sm:shadow-xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+          <h3 className="font-bold text-brand-text">Edit thumbnail</h3>
+          <button type="button" onClick={props.onClose} aria-label="Close" className="rounded-lg p-1.5 hover:bg-slate-100">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-5 overflow-y-auto p-4">
+          {/* Preview */}
+          <div>
+            <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-800">
+              {shown && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={shown} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              )}
+              <div className="absolute bottom-[12%] left-[6%] right-[38%] text-left">
+                <span style={previewWords}>{words.trim() || "Your words"}</span>
+              </div>
+            </div>
+            <p className="mt-1.5 text-[11px] text-slate-400">The preview is approximate. Apply draws the exact thumbnail.</p>
+          </div>
+
+          {/* Background */}
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Background</p>
+            {!frames && !framesError && (
+              <p className="flex items-center gap-2 text-xs text-slate-500">
+                <Loader2 size={12} className="animate-spin" /> Taking stills from your video…
+              </p>
+            )}
+            {framesError && <p className="text-xs text-amber-700">{framesError}</p>}
+            {options.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                {options.map((url) => (
+                  <button
+                    key={url}
+                    type="button"
+                    onClick={() => setBg(url)}
+                    aria-pressed={shown === url}
+                    className={`aspect-video overflow-hidden rounded-lg border-2 ${shown === url ? "border-amber-500" : "border-transparent hover:border-slate-300"}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="mt-1.5 text-[11px] text-slate-400">The first pictures are stills from your video. Pick a moment you like.</p>
+          </div>
+
+          {/* Words */}
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Words</p>
+            <input
+              value={words}
+              onChange={(e) => setWords(e.target.value)}
+              maxLength={60}
+              placeholder="Three or four short words"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold uppercase focus:outline-none focus:ring-2 focus:ring-primary-300"
+            />
+          </div>
+
+          {/* Font */}
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Font</p>
+            <div className="flex flex-wrap gap-2">
+              {THUMB_FONTS.map((f) => (
+                <Chip key={f.id} on={style.font === f.id} onClick={() => set("font", f.id)}>{f.label}</Chip>
+              ))}
+            </div>
+          </div>
+
+          {/* Size */}
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Size <span className="font-normal normal-case text-slate-400">({Math.round(style.size * 100)}%)</span>
+            </p>
+            <input
+              type="range"
+              min={70}
+              max={130}
+              value={Math.round(style.size * 100)}
+              onChange={(e) => set("size", Number(e.target.value) / 100)}
+              className="w-full accent-amber-600"
+              aria-label="Words size"
+            />
+          </div>
+
+          {/* Style */}
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Style</p>
+            <div className="flex flex-wrap gap-2">
+              {THUMB_TEXT_STYLES.map((t: { id: ThumbTextStyle; label: string }) => (
+                <Chip key={t.id} on={style.textStyle === t.id} onClick={() => set("textStyle", t.id)}>{t.label}</Chip>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              Outline has a dark edge. Plain has none. Box sets each line on a block in the colour below.
+            </p>
+          </div>
+
+          {/* Colour */}
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Colour</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => set("color", null)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium ${style.color === null ? "border-amber-500 bg-amber-50 text-amber-800" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+              >
+                Default
+              </button>
+              {THUMB_COLOURS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => set("color", c)}
+                  aria-label={`Colour ${c}`}
+                  aria-pressed={style.color === c}
+                  className={`h-7 w-7 rounded-full border border-slate-300 ${style.color === c ? "ring-2 ring-amber-500 ring-offset-1" : ""}`}
+                  style={{ background: c }}
+                />
+              ))}
+              <input
+                type="color"
+                value={style.color ?? "#ffffff"}
+                onChange={(e) => set("color", e.target.value)}
+                aria-label="Any colour"
+                className="h-7 w-9 cursor-pointer rounded border border-slate-200 bg-white p-0.5"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-4 py-3">
+          <button type="button" onClick={props.onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={props.busy || !words.trim()}
+            onClick={() => props.onApply({ backgroundUrl: shown ?? "", headline: words.trim(), style })}
+            className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+          >
+            {props.busy ? "Drawing…" : "Apply"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${on ? "border-amber-500 bg-amber-50 text-amber-800" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+    >
+      {children}
+    </button>
+  );
+}
