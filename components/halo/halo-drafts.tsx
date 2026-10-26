@@ -312,7 +312,7 @@ function ThumbEdit({ d, halo }: { d: HaloDraft; halo: Halo }) {
   if (!d.project_id) return null;
   const seo = d.projects?.seo_data ?? {};
 
-  async function apply(next: { backgroundUrl: string; headline: string; style: ThumbStyle }) {
+  async function apply(next: { backgroundUrl: string; headline: string; style: ThumbStyle; photoUrl?: string }) {
     setBusy(true);
     try {
       const res = await fetch("/api/tools/thumbnail", {
@@ -323,6 +323,8 @@ function ThumbEdit({ d, halo }: { d: HaloDraft; halo: Halo }) {
           headline: next.headline,
           style: next.style,
           ...(next.backgroundUrl ? { backgroundUrl: next.backgroundUrl } : {}),
+          // The person picked in the editor; left out, it keeps the one it has.
+          ...(next.photoUrl ? { photoUrl: next.photoUrl } : {}),
         }),
       });
       const out = await res.json().catch(() => ({}));
@@ -347,6 +349,7 @@ function ThumbEdit({ d, halo }: { d: HaloDraft; halo: Halo }) {
           headline={seo.thumbnail_headline ?? ""}
           style={cleanThumbStyle(seo.thumbnail_style)}
           currentBg={null}
+          showPerson
           busy={busy}
           onClose={() => setOpen(false)}
           onApply={(next) => void apply(next)}

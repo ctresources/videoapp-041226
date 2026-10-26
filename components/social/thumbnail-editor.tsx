@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { Loader2, X } from "lucide-react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Loader2, Upload, X } from "lucide-react";
+import toast from "react-hot-toast";
 import { createClient } from "@/lib/supabase/client";
+import { uploadImage } from "@/lib/utils/upload-image";
 import {
   THUMB_COLOURS,
   THUMB_FONTS,
@@ -41,7 +43,13 @@ export function ThumbnailEditor(props: {
   /** The backdrop the thumbnail on screen was built with, if any. */
   currentBg: string | null;
   busy: boolean;
-  onApply: (next: { backgroundUrl: string; headline: string; style: ThumbStyle }) => void;
+  /**
+   * Offer "Photo on it": the headshot, the avatar looks, or an upload
+   * (2026-10-26, the owner's ask). Off where the caller has its own picker.
+   */
+  showPerson?: boolean;
+  /** photoUrl is set only when the person was changed here. */
+  onApply: (next: { backgroundUrl: string; headline: string; style: ThumbStyle; photoUrl?: string }) => void;
   onClose: () => void;
 }) {
   const [frames, setFrames] = useState<Frame[] | null>(null);
@@ -51,17 +59,52 @@ export function ThumbnailEditor(props: {
   const [style, setStyle] = useState<ThumbStyle>(props.style);
   /** The agent's brand colours from Settings, offered first. */
   const [brandColors, setBrandColors] = useState<string[]>([]);
+  /** The person on it: "" keeps whoever it was built with. */
+  const [person, setPerson] = useState("");
+  const [people, setPeople] = useState<{ url: string; name: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
-      const { data } = await supabase.from("profiles").select("brand_colors").eq("id", user.id).maybeSingle();
-      const saved = ((data as { brand_colors: string[] | null } | null)?.brand_colors ?? [])
-        .filter((c) => /^#[0-9a-fA-F]{6}$/.test(c));
-      setBrandColors(saved);
+      const { data } = await supabase.from("profiles").select("brand_colors, avatar_url").eq("id", user.id).maybeSingle();
+      const row = data as { brand_colors: string[] | null; avatar_url: string | null } | null;
+      setBrandColors((row?.brand_colors ?? []).filter((c) => /^#[0-9a-fA-F]{6}$/.test(c)));
+      if (props.showPerson && row?.avatar_url) {
+        const headshot = row.avatar_url;
+        setPeople((p) => (p.some((x) => x.url === headshot) ? p : [{ url: headshot, name: "Your headshot" }, ...p]));
+      }
     });
-  }, []);
+  }, [props.showPerson]);
+
+  // The avatar looks, as more choices of who is on it.
+  useEffect(() => {
+    if (!props.showPerson) return;
+    fetch("/api/avatar/looks")
+      .then((r) => (r.ok ? r.json() : { looks: [] }))
+      .then((d) => {
+        const looks = ((d.looks ?? []) as { name: string; preview_image_url: string | null }[])
+          .filter((l): l is { name: string; preview_image_url: string } => !!l.preview_image_url)
+          .map((l) => ({ url: l.preview_image_url, name: l.name }));
+        setPeople((p) => [...p, ...looks.filter((l) => !p.some((x) => x.url === l.url))]);
+      })
+      .catch(() => {});
+  }, [props.showPerson]);
+
+  async function uploadPerson(file: File) {
+    setUploading(true);
+    try {
+      const url = await uploadImage(file, "thumb");
+      setPeople((p) => [{ url, name: "Your photo" }, ...p]);
+      setPerson(url);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "That photo could not be uploaded");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   useEffect(() => {
     if (!props.projectId) { setFrames([]); return; }
@@ -129,6 +172,10 @@ export function ThumbnailEditor(props: {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={shown} alt="" className="absolute inset-0 h-full w-full object-cover" />
               )}
+              {person && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={person} alt="" className="absolute bottom-0 right-[4%] h-[88%] w-auto rounded-t-xl object-cover" />
+              )}
               <div className="absolute bottom-[12%] left-[6%] right-[38%] text-left">
                 <span style={previewWords}>{words.trim() || "Your words"}</span>
               </div>
@@ -165,6 +212,46 @@ export function ThumbnailEditor(props: {
               <p className="mt-1.5 text-[11px] text-slate-400">The first pictures are stills from your video. Pick a moment you like.</p>
             )}
           </div>
+
+          {/* Who is on it (2026-10-26, the owner's ask). */}
+          {props.showPerson && (
+            <div>
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Photo on it</p>
+              <div className="flex flex-wrap items-center gap-2">
+                {people.map((p) => (
+                  <button
+                    key={p.url}
+                    type="button"
+                    onClick={() => setPerson(p.url)}
+                    title={p.name}
+                    aria-pressed={person === p.url}
+                    className={`h-14 w-14 overflow-hidden rounded-full border-2 ${person === p.url ? "border-amber-500" : "border-transparent hover:border-slate-300"}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  className="flex h-14 items-center gap-1.5 rounded-full border border-dashed border-slate-300 px-4 text-xs font-semibold text-slate-600 hover:border-slate-400 disabled:opacity-50"
+                >
+                  <Upload size={14} /> {uploading ? "Uploading…" : "Upload a photo"}
+                </button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void uploadPerson(f); }}
+                />
+              </div>
+              <p className="mt-1.5 text-[11px] text-slate-400">
+                {person ? "This photo goes on the thumbnail when you press Apply." : "Leave it and the thumbnail keeps the photo it has."}
+              </p>
+            </div>
+          )}
 
           {/* Words */}
           <div>
@@ -264,7 +351,7 @@ export function ThumbnailEditor(props: {
           <button
             type="button"
             disabled={props.busy || !words.trim()}
-            onClick={() => props.onApply({ backgroundUrl: shown ?? "", headline: words.trim(), style })}
+            onClick={() => props.onApply({ backgroundUrl: shown ?? "", headline: words.trim(), style, ...(person ? { photoUrl: person } : {}) })}
             className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
           >
             {props.busy ? "Drawing…" : "Apply"}
