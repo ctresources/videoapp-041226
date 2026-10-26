@@ -19,7 +19,12 @@ const STEPS = ["Looking up your town", "Finding what buyers there ask ChatGPT an
  * email and city, then the same research as AI Answer Blocks. Once a day per
  * email; the server says so if it's been used.
  */
-export function AiQuestionsBox() {
+/**
+ * compact: the hero's tighter version under the demo card (2026-10-26), with
+ * City, State and the button on one row, so the right column ends level
+ * with the left.
+ */
+export function AiQuestionsBox({ compact = false }: { compact?: boolean } = {}) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [city, setCity] = useState("");
@@ -71,10 +76,10 @@ export function AiQuestionsBox() {
     }
   }
 
-  const field = "w-full border border-slate-300 rounded-lg px-3.5 py-3 text-base text-slate-900 focus:border-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-900/15";
+  const field = `w-full border border-slate-300 rounded-lg px-3.5 ${compact ? "py-2.5" : "py-3"} text-base text-slate-900 focus:border-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-900/15`;
 
   return (
-    <div className="rounded-2xl border-2 border-blue-900 bg-white p-6 shadow-[0_18px_40px_-20px_rgba(30,58,138,0.35)]">
+    <div className={`rounded-2xl border-2 border-blue-900 bg-white ${compact ? "p-5" : "p-6"} shadow-[0_18px_40px_-20px_rgba(30,58,138,0.35)]`}>
       {blocks ? (
         <>
           <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-[#BA7517] mb-1.5">Your results, {shownFor.first}</p>
@@ -101,9 +106,9 @@ export function AiQuestionsBox() {
         </>
       ) : (
         <form onSubmit={submit} noValidate={false}>
-          <p className="text-sm font-extrabold uppercase tracking-[0.12em] text-[#BA7517] mb-1.5">Try it free</p>
-          <h2 className="text-2xl sm:text-[26px] font-black leading-tight text-slate-900 mb-1.5">What buyers in your area ask AI</h2>
-          <p className="text-base leading-relaxed text-slate-500 mb-4">
+          <p className={`text-sm font-extrabold uppercase tracking-[0.12em] text-[#BA7517] ${compact ? "mb-1" : "mb-1.5"}`}>Try it free</p>
+          <h2 className={`${compact ? "text-xl sm:text-[22px] mb-1" : "text-2xl sm:text-[26px] mb-1.5"} font-black leading-tight text-slate-900`}>What buyers in your area ask AI</h2>
+          <p className={`${compact ? "text-[15px] mb-3" : "text-base mb-4"} leading-relaxed text-slate-500`}>
             Answer these on video and you show up when buyers ask ChatGPT, Google or Siri.
           </p>
           {busy ? (
@@ -127,7 +132,7 @@ export function AiQuestionsBox() {
                   <input className={field} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required />
                 </label>
               </div>
-              <div className="grid grid-cols-[1fr_96px] gap-3 mb-3">
+              <div className={`grid gap-3 mb-3 ${compact ? "grid-cols-[1fr_96px] sm:grid-cols-[1fr_88px_auto] sm:items-end" : "grid-cols-[1fr_96px]"}`}>
                 <label className="block">
                   <span className="mb-1 block text-sm font-bold text-slate-800">City or town</span>
                   <input className={field} value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Maplewood" autoComplete="address-level2" required minLength={2} />
@@ -139,14 +144,21 @@ export function AiQuestionsBox() {
                     {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </label>
+                {compact && (
+                  <button type="submit" className="col-span-2 sm:col-span-1 flex items-center justify-center gap-2 rounded-lg bg-blue-900 px-5 py-[11px] text-base font-bold text-white hover:bg-blue-800 whitespace-nowrap">
+                    Show me the questions <ArrowRight size={17} />
+                  </button>
+                )}
               </div>
               {/* Hidden from people; bots fill it in. */}
               <input type="text" name="company" value={company} onChange={(e) => setCompany(e.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 opacity-0" />
-              <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-900 px-5 py-3.5 text-lg font-bold text-white hover:bg-blue-800">
-                Show me the questions <ArrowRight size={18} />
-              </button>
+              {!compact && (
+                <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-900 px-5 py-3.5 text-lg font-bold text-white hover:bg-blue-800">
+                  Show me the questions <ArrowRight size={18} />
+                </button>
+              )}
               {error && <p className="mt-3 text-sm font-medium text-red-600" role="alert">{error}</p>}
-              <p className="mt-3 text-xs leading-relaxed text-slate-400">
+              <p className={`${compact ? "mt-1" : "mt-3"} text-xs leading-relaxed text-slate-400`}>
                 We&apos;ll email you the questions too. By continuing you agree that SparkReels may contact you
                 about your results. No spam; unsubscribe anytime.{" "}
                 <Link href="/privacy" className="underline">Privacy</Link>

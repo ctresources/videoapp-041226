@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { ArrowRight, Mic, Play, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowRight, Mic, Volume2, VolumeX, X } from "lucide-react";
 import { AiQuestionsBox } from "@/components/marketing/ai-questions-box";
 import s from "./hero.module.css";
 
@@ -88,40 +88,62 @@ export function Hero() {
     <section className={`${s.hero} pt-24 pb-16 px-4 sm:px-6 border-b border-slate-200`}>
       <div className={`${s.glow} ${s.glowA}`} />
       <div className={`${s.glow} ${s.glowB}`} />
-      <div className="relative max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
-        <div>
+      <div className="relative max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start lg:items-stretch">
+        <div data-hero-left>
           <p className="text-xl sm:text-2xl font-black text-blue-900 tracking-wide">Speak, Spark, Share</p>
           <p className="text-lg sm:text-xl font-bold text-slate-400 mb-4 sm:whitespace-nowrap">No filming, no editing, no glam required.</p>
           <h1 className="text-4xl sm:text-6xl font-black leading-[1.05] mb-5 text-slate-900">
             Hit the Mic. Be <span key={word} className={s.rotor}>{ROTOR[word]}</span>
             <span className="block text-blue-900 mt-1">Become the go-to local expert in your town.</span>
           </h1>
-          <p className="text-xl text-slate-500 mb-5 leading-relaxed max-w-xl">
-            Most real estate agents are invisible online. SparkReels.ai fixes that — turning one
-            voice recording into a publish-ready video. A 60-second reel for social, or a full
-            8-minute market update built to rank on YouTube.
+          {/* The owner's copy (2026-10-26), under the headline. */}
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 mb-2">Turn One Idea Into Everywhere You Show Up</p>
+          <p className="text-xl text-slate-500 mb-3 leading-relaxed max-w-xl">
+            SparkReels helps real estate agents turn what they know into videos, blogs, shorts, social
+            content, YouTube content, and more—then publish it across the places their clients already
+            spend time.
           </p>
+          <p className="text-xl font-bold text-slate-900 mb-5">Stay visible. Build trust. Become the local expert.</p>
           <div className="flex items-start gap-3 border-l-4 border-amber-400 pl-4 mb-7">
             <p className="text-xl sm:text-2xl text-slate-600 leading-snug text-pretty">
               Agents who post video grow revenue <span className="font-black text-slate-900">49% faster</span> —
-              yet only <span className="font-black text-slate-900">8%</span> do it consistently.{" "}
-              <a href="#pain" className="font-black text-blue-900 underline decoration-2 underline-offset-2 hover:text-blue-700">Why?</a>
+              {/* "yet only…" on a line of its own (2026-10-26, the owner's ask). */}
+              <br className="hidden sm:inline" />{" "}
+              <span className="sm:whitespace-nowrap">
+                yet only <span className="font-black text-slate-900">8%</span> do it consistently.{" "}
+                <a href="#pain" className="font-black text-blue-900 underline decoration-2 underline-offset-2 hover:text-blue-700">Why?</a>
+              </span>
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
-            <a href="/beta" className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-900 text-white text-xl font-semibold px-7 py-4 shadow-[0_10px_24px_-10px_rgba(30,58,138,0.7)] hover:-translate-y-0.5 hover:bg-blue-800 transition">
-              Sign up for free <ArrowRight size={18} />
+          {/* Three buttons in one row on wide screens: sign up, the demo, and
+              the AI answer block form (2026-10-26, the owner's ask). */}
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2.5 items-stretch sm:items-center">
+            <a href="/beta" className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-900 text-white text-base font-semibold px-4 py-3 shadow-[0_10px_24px_-10px_rgba(30,58,138,0.7)] hover:-translate-y-0.5 hover:bg-blue-800 transition">
+              Create Your First Spark <ArrowRight size={17} />
             </a>
-            <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white text-slate-800 text-xl font-semibold px-7 py-4 hover:border-slate-400 hover:bg-slate-50 transition-colors">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-amber-500 text-white"><Play size={14} fill="currentColor" /></span>
-              Watch the demo
-            </button>
+            <a href="#how-it-works" className="inline-flex items-center justify-center gap-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-base font-semibold px-4 py-3 hover:border-slate-400 hover:bg-slate-50 transition-colors">
+              See How It Works
+            </a>
+            <a
+              href="#ai-questions"
+              onClick={(e) => {
+                e.preventDefault();
+                const box = document.getElementById("ai-questions");
+                box?.scrollIntoView({ behavior: "smooth", block: "center" });
+                // Straight into the first box, once it has scrolled into view.
+                setTimeout(() => box?.querySelector("input")?.focus({ preventScroll: true }), 500);
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-blue-900 bg-white text-blue-900 text-base font-semibold px-4 py-2.5 hover:bg-blue-50 transition-colors"
+            >
+              Try AI Answer Blocks <ArrowRight size={17} />
+            </a>
           </div>
           <a href="/beta" className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-base font-bold px-4 py-2 rounded-full mt-5 hover:bg-emerald-100 transition-colors">
             <span className={s.badgeDot} />
             First 100 agents get 1 free AI video — no credit card
           </a>
-          <p className="mt-6 text-xl font-semibold text-slate-400 tracking-wide">
+          <p className="mt-6 text-lg font-bold text-slate-700">No content calendar overwhelm. No filming every day. No marketing becoming a second job.</p>
+          <p className="mt-3 text-xl font-semibold text-slate-400 tracking-wide">
             Visibility <span className="text-slate-300">→</span> Credibility <span className="text-slate-300">→</span> Trust <span className="text-slate-300">→</span> Business
           </p>
           <p className="mt-2 text-base text-slate-400">No camera needed · Fair Housing compliant · Cancel anytime</p>
@@ -129,7 +151,7 @@ export function Hero() {
 
         {/* The demo a little lower, with the AI-questions form right under it
             (2026-10-26, the owner's ask). */}
-        <div className="flex flex-col gap-8 lg:pt-4">
+        <div data-hero-right className="flex flex-col gap-4">
         <div
           className={s.stage}
           onMouseMove={(e) => {
@@ -168,15 +190,14 @@ export function Hero() {
               {/* Spark */}
               <div className={`${s.scene} ${step === 1 ? s.sceneOn : ""}`}>
                 <div className="grid h-full grid-cols-[1fr_105px] gap-3 sm:grid-cols-[1fr_150px] sm:gap-4">
-                  <div className="flex flex-col gap-2.5">
+                  <div className="flex flex-col gap-2.5 lg:gap-2">
                     {["Writing your script", "Finding local b-roll", "Your avatar and voice", "Captions and music"].map((t, i) => (
                       <div key={t} className={`${s.step} ${done > i ? s.stepDone : ""}`}><span className={s.dot}>✓</span>{t}</div>
                     ))}
-                    <div className="mt-1 rounded-xl bg-white/95 p-3 text-[13px] text-slate-900">
+                    <div className="mt-1 rounded-xl bg-white/95 p-3 text-[13px] text-slate-900 lg:hidden">
                       <strong>Montgomery County market update</strong>
                       <div className={s.shimmer} style={{ width: "92%" }} />
                       <div className={s.shimmer} style={{ width: "78%" }} />
-                      <div className={s.shimmer} style={{ width: "85%" }} />
                     </div>
                   </div>
                   <div className={s.phone}><div className={s.pan} /><div className={s.cap}>{cap}</div></div>
@@ -213,7 +234,7 @@ export function Hero() {
             </div>
           </div>
         </div>
-        <AiQuestionsBox />
+        <div id="ai-questions" className="scroll-mt-24"><AiQuestionsBox compact /></div>
         </div>
       </div>
 
