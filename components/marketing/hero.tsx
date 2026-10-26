@@ -85,14 +85,13 @@ export function Hero() {
   }, [muted]);
 
   return (
-    <section className={`${s.hero} pt-28 pb-16 px-4 sm:px-6 border-b border-slate-200`}>
+    <section className={`${s.hero} pt-24 pb-16 px-4 sm:px-6 border-b border-slate-200`}>
       <div className={`${s.glow} ${s.glowA}`} />
       <div className={`${s.glow} ${s.glowB}`} />
-      <div className="relative max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      <div className="relative max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
         <div>
-          <p className="text-xl sm:text-2xl font-black text-blue-900 tracking-wide mb-4">
-            Speak, Spark, Share — <span className="text-slate-400 font-bold">no filming, no editing, no glam required.</span>
-          </p>
+          <p className="text-xl sm:text-2xl font-black text-blue-900 tracking-wide">Speak, Spark, Share</p>
+          <p className="text-lg sm:text-xl font-bold text-slate-400 mb-4 sm:whitespace-nowrap">No filming, no editing, no glam required.</p>
           <h1 className="text-4xl sm:text-6xl font-black leading-[1.05] mb-5 text-slate-900">
             Hit the Mic. Be <span key={word} className={s.rotor}>{ROTOR[word]}</span>
             <span className="block text-blue-900 mt-1">Become the go-to local expert in your town.</span>
@@ -130,7 +129,7 @@ export function Hero() {
 
         {/* The demo a little lower, with the AI-questions form right under it
             (2026-10-26, the owner's ask). */}
-        <div className="flex flex-col gap-8 lg:pt-12">
+        <div className="flex flex-col gap-8 lg:pt-4">
         <div
           className={s.stage}
           onMouseMove={(e) => {
