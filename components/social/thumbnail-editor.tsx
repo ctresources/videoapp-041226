@@ -97,7 +97,7 @@ export function ThumbnailEditor(props: {
   const [cutting, setCutting] = useState(false);
 
   useEffect(() => {
-    if (!person || cutouts[person]) return;
+    if (!person || person === "none" || cutouts[person]) return;
     let gone = false;
     setCutting(true);
     fetch("/api/tools/thumbnail/cutout", {
@@ -260,13 +260,13 @@ export function ThumbnailEditor(props: {
                   A new AI picture is made when you press Apply
                 </div>
               )}
-              {person && (
+              {person && person !== "none" && (
                 // The cut-out the thumbnail uses (2026-10-27): the person without
                 // their photo's background, as the finished thumbnail draws them.
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={cutouts[person] || person} alt="" className={`absolute bottom-0 ${side === "left" ? "left-[4%]" : "right-[4%]"} h-[88%] w-auto ${cutouts[person] ? "object-contain" : "rounded-t-xl object-cover opacity-60"}`} />
               )}
-              {person && !cutouts[person] && cutting && (
+              {person && person !== "none" && !cutouts[person] && cutting && (
                 <span className={`absolute bottom-3 ${side === "left" ? "left-3" : "right-3"} rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white`}>Removing the background…</span>
               )}
               <div className={`absolute bottom-[12%] ${side === "left" ? "left-[38%] right-[6%] text-right" : "left-[6%] right-[38%] text-left"}`}>
@@ -374,6 +374,15 @@ export function ThumbnailEditor(props: {
             <div>
               <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Photo on it</p>
               <div className="flex flex-wrap items-center gap-2">
+                {/* No person at all (2026-10-27, the owner's ask). */}
+                <button
+                  type="button"
+                  onClick={() => setPerson("none")}
+                  aria-pressed={person === "none"}
+                  className={`flex h-14 w-14 items-center justify-center rounded-full border-2 bg-slate-50 text-[11px] font-semibold text-slate-600 ${person === "none" ? "border-amber-500" : "border-slate-200 hover:border-slate-300"}`}
+                >
+                  No photo
+                </button>
                 {people.map((p) => (
                   <button
                     key={p.url}
@@ -404,7 +413,7 @@ export function ThumbnailEditor(props: {
                 />
               </div>
               <p className="mt-1.5 text-[11px] text-slate-400">
-                {person ? "This photo goes on the thumbnail when you press Apply." : "Leave it and the thumbnail keeps the photo it has."}
+                {person === "none" ? "No photo on the thumbnail: just the background and your words." : person ? "This photo goes on the thumbnail when you press Apply." : "Leave it and the thumbnail keeps the photo it has."}
               </p>
               <div className="mt-2 flex items-center gap-2">
                 <span className="text-xs text-slate-500">Stands on the</span>

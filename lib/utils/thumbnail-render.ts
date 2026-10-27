@@ -697,7 +697,9 @@ export async function renderAndSaveThumbnail(
   const rememberedPhoto = typeof (projectSeoData as { thumbnail_photo_url?: unknown } | null)?.thumbnail_photo_url === "string"
     ? ((projectSeoData as { thumbnail_photo_url: string }).thumbnail_photo_url)
     : null;
-  const photoSrc = opts.photoUrl || rememberedPhoto || p?.avatar_url;
+  // "none" (2026-10-27, the owner): no person on the thumbnail, kept across rebuilds.
+  const chosenPhoto = opts.photoUrl || rememberedPhoto;
+  const photoSrc = chosenPhoto === "none" ? null : (chosenPhoto || p?.avatar_url);
   /** The person, before sizing, kept so the tall version can place them too. */
   let cutoutForTall: Buffer | null = null;
   if (photoSrc) {
@@ -762,7 +764,7 @@ export async function renderAndSaveThumbnail(
           // the backdrop from the Share Kit, say — otherwise fell back to the
           // profile headshot and silently replaced a look the user had chosen
           // by hand. A backdrop swap should change the backdrop.
-          ...(photoSrc ? { thumbnail_photo_url: photoSrc } : {}),
+          ...(chosenPhoto === "none" ? { thumbnail_photo_url: "none" } : photoSrc ? { thumbnail_photo_url: photoSrc } : {}),
           // The words on the image, for the same reason: without them stored,
           // the field that edits them can only open empty, and every rebuild
           // has to let the AI write new ones over a headline someone chose.
