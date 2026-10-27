@@ -733,7 +733,16 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
         return;
       }
       try {
-        screen = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 30 } }, audio: false });
+        // This SparkReels tab is left out of the picker (2026-10-27, the owner:
+        // sharing it recorded the recording over and over). Chrome and Edge
+        // read these; other browsers ignore them.
+        screen = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: { ideal: 30 } },
+          audio: false,
+          selfBrowserSurface: "exclude",
+          preferCurrentTab: false,
+          surfaceSwitching: "include",
+        } as DisplayMediaStreamOptions);
       } catch (err) {
         const name = typeof err === "object" && err && "name" in err ? String((err as { name: unknown }).name) : "";
         setCamError(name === "NotAllowedError"
@@ -743,6 +752,11 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
       }
       screenStreamRef.current = screen;
       screen.getVideoTracks()[0]?.addEventListener("ended", () => screenShareEnded());
+      // A whole window or screen can still hold this page: say how to avoid the mirror.
+      const surface = (screen.getVideoTracks()[0]?.getSettings() as { displaySurface?: string } | undefined)?.displaySurface;
+      if (surface === "window" || surface === "monitor") {
+        toast("If SparkReels is on the screen you shared, the recording will show itself over and over. Share just the tab or window you want to show.", { duration: 9000 });
+      }
     }
     // A screen recording with the corner circle off needs no camera at all.
     const wantFace = !screenMode || screenBubble;
@@ -2031,7 +2045,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
               />
               <span>
                 <span className="block text-[14px] font-semibold text-spark-ink">Record your screen</span>
-                <span className="block text-[12px] text-spark-ink-muted">Horizontal, up to 10 minutes</span>
+                <span className="block text-[12px] text-spark-ink-muted">Horizontal, up to 10 minutes. Share the tab or window you want to show, not this SparkReels tab.</span>
               </span>
             </label>
             {screenMode && (
