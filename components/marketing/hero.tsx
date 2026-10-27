@@ -100,7 +100,7 @@ export function Hero() {
           <p className="text-2xl sm:text-3xl font-black text-slate-900 mb-2">Turn One Idea Into Everywhere You Show Up</p>
           <p className="text-xl text-slate-500 mb-3 leading-relaxed max-w-xl">
             SparkReels helps real estate agents turn what they know into videos, blogs, shorts, social
-            content, YouTube content, and more—then publish it across the places their clients already
+            content, YouTube content, Google Business posts, LinkedIn posts, and more—then publish it across the places their clients already
             spend time.
           </p>
           <p className="text-xl font-bold text-slate-900 mb-5">Stay visible. Build trust. Become the local expert.</p>

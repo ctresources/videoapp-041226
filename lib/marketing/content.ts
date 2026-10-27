@@ -232,6 +232,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
       "Listen to any draft read in your voice",
       "Record it myself, straight to the teleprompter",
       "A Monday email when they're ready",
+      "Weekly seller updates for your listings, sent through BoldTrail",
     ],
     forTitle: "Perfect if…",
     forList: [
@@ -243,6 +244,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
       { q: "Does AutoSparks post anything on its own?", a: "No. It writes drafts. Nothing is made or posted until you approve it." },
       { q: "Can I change the mix each week?", a: "Yes. Change how many videos and blog posts you get, and your post days, anytime." },
       { q: "Which plans include AutoSparks?", a: "All paid plans: Creator, Producer and Influencer." },
+      { q: "Can AutoSparks send my weekly seller updates?", a: "Yes. Each listing with its sellers in BoldTrail gets a weekly card. Add the week's numbers, watch the short video, and approve it: it emails your sellers through BoldTrail on the day you pick. Recording the video yourself on camera is unlimited." },
       { q: "Do the drafts use up my videos?", a: "Drafts don't. A video counts toward your plan only when you approve it and make it. Blog posts and camera recordings are unlimited." },
     ],
   },
@@ -283,7 +285,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
     faqs: [
       { q: "Do photo reels use my monthly videos?", a: "No. Photo reels are free and don't use anything from your monthly plan." },
       { q: "How many photos can I use?", a: "Up to 20 photos for a reel, and up to 12 in an Avatar video." },
-      { q: "Can I send the video to my seller?", a: "Yes. Seller Updates writes the email with a video, and you send it through BoldTrail or your own email." },
+      { q: "Can I send the video to my seller?", a: "Yes. Seller Updates writes the email with a video, and you send it through BoldTrail or your own email. On paid plans, AutoSparks can send it every week once you approve it." },
     ],
   },
 ];

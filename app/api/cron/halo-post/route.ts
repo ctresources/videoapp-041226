@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postReadyHaloVideos } from "@/lib/halo/post";
+import { sendDueSellerDrafts } from "@/lib/seller/auto";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 800;
@@ -16,6 +17,9 @@ export async function GET(req: NextRequest) {
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const results = await postReadyHaloVideos(createAdminClient(), { limit: 8 });
-  return NextResponse.json({ results });
+  const admin = createAdminClient();
+  const results = await postReadyHaloVideos(admin, { limit: 8 });
+  // Approved seller updates whose day has come (2026-10-26).
+  const sellers = await sendDueSellerDrafts(admin, 10);
+  return NextResponse.json({ results, sellers });
 }

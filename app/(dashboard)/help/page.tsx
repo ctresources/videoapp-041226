@@ -786,6 +786,22 @@ export default function HelpPage() {
                   the accounts you chose, and each caption links back to your Halo post.
                 </li>
               </ol>
+              {/* Seller Updates on AutoSparks (2026-10-26, the owner's mockup). */}
+              <span className="block mt-1.5">
+                <strong>Seller updates</strong> (on AutoSparks, paid plans) send your weekly seller update by
+                itself. In the <strong>Seller updates</strong> box, turn it <strong>On</strong> and pick the
+                day and time, the video (<strong>Avatar in circle</strong> or <strong>Email only</strong>) and
+                whether the sellers also get a text. Every listing with its sellers added from BoldTrail gets a
+                card for that day (a listing without them shows <strong>Add sellers</strong>). On the card, type
+                the week&apos;s numbers (last week&apos;s show in grey; all optional) and what buyers said, then
+                press <strong>Write it &amp; make video</strong>, <strong>Email only</strong>,{" "}
+                <strong>Record it myself · unlimited</strong> or <strong>Skip this week</strong>. When the video
+                is done (about 5 to 10 minutes), <strong>Watch</strong> it, <strong>Preview email</strong>,
+                and press <strong>Approve to send</strong>: it emails each seller through BoldTrail on its day,
+                video included. <strong>Don&apos;t send it yourself</strong> from Spark Tools, or they get it
+                twice. The Avatar in circle video uses 1 short video per listing each week; Email only uses
+                none, and recording it yourself on camera is unlimited.
+              </span>
               <span className="block mt-1.5">
                 <strong>Don&apos;t post an approved video yourself</strong> from My Sparks or the Publish window.
                 It posts by itself, so posting it by hand puts it up twice. The Publish window warns you when a
@@ -1299,6 +1315,10 @@ export default function HelpPage() {
                   video included, with an optional short text to say it&apos;s on its way. The update
                   then shows when it was sent and to whom. The seller has to be a contact in BoldTrail
                   already, and BoldTrail has to be connected in Settings.
+                </li>
+                <li>
+                  <strong>Every week by itself:</strong> turn on <strong>Seller updates</strong> on AutoSparks
+                  (step 16). You add the numbers, watch the video and approve; it sends on its day.
                 </li>
                 <li>
                   <strong>From your own email:</strong> press <strong>Copy as HTML</strong>, paste it into

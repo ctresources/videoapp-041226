@@ -14,6 +14,7 @@ import { useAuth } from "@/providers/supabase-provider";
 import { PAID_TIERS } from "@/lib/utils/plan-features";
 import { useHalo } from "@/components/halo/use-halo";
 import { HaloDrafts, SparkleeDrafts } from "@/components/halo/halo-drafts";
+import { SellerAutoSection } from "@/components/seller/seller-auto-section";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
 
 /**
@@ -383,6 +384,8 @@ export default function AutopilotPage() {
 
       <SparkleeDrafts halo={halo} needsVideo={needsVideo} onOutOfVideos={() => setOutOfVideos(true)} />
       <HaloDrafts halo={halo} needsVideo={needsVideo} onOutOfVideos={() => setOutOfVideos(true)} />
+      {/* Seller updates through BoldTrail (2026-10-26). */}
+      <SellerAutoSection />
       {halo.drafts.length > 0 && (
         <p className="mt-1 text-xs font-bold uppercase tracking-[.12em] text-spark-ink-faint">AutoSparks</p>
       )}
