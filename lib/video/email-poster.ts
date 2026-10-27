@@ -71,3 +71,53 @@ export async function saveEmailPoster(
   // email app that has seen the old address would keep showing the old one.
   return `${admin.storage.from("assets").getPublicUrl(path).data.publicUrl}?v=${Date.now()}`;
 }
+
+/**
+ * The video's designed thumbnail with the play button drawn on (2026-10-27,
+ * the owner: the email showed a still from the video, not her thumbnail).
+ * Kept per thumbnail, so a new thumbnail gets a new picture. Null if the
+ * thumbnail can't be read; the caller then uses a still from the video.
+ */
+export async function saveThumbnailPoster(
+  admin: SupabaseClient, userId: string, videoId: string, thumbnailUrl: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch(thumbnailUrl);
+    if (!res.ok) return null;
+    const sharp = (await import("sharp")).default;
+    const w = 1104;
+    const h = Math.round(w * 9 / 16);
+    const base = await sharp(Buffer.from(await res.arrayBuffer())).rotate().resize(w, h, { fit: "cover", position: "centre" }).toBuffer();
+    const r = 64;
+    const play = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+      <circle cx="${w / 2}" cy="${h / 2}" r="${r}" fill="#ffffff" fill-opacity="0.92"/>
+      <path d="M ${w / 2 - r * 0.32} ${h / 2 - r * 0.45} L ${w / 2 + r * 0.5} ${h / 2} L ${w / 2 - r * 0.32} ${h / 2 + r * 0.45} Z" fill="#A3660F"/>
+    </svg>`);
+    const out = await sharp(base).composite([{ input: play }]).jpeg({ quality: 84 }).toBuffer();
+    const { createHash } = await import("crypto");
+    const tag = createHash("sha1").update(thumbnailUrl).digest("hex").slice(0, 12);
+    const path = `thumbnails/${userId}/thumbposter_${videoId}_${tag}.jpg`;
+    const { error } = await admin.storage.from("assets").upload(path, out, { contentType: "image/jpeg", upsert: true });
+    if (error) return null;
+    return admin.storage.from("assets").getPublicUrl(path).data.publicUrl;
+  } catch (err) {
+    console.error("[email-poster] thumbnail poster failed:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+/** The picture an email shows for a video: its thumbnail if it has one, else a still. */
+export async function emailPosterFor(
+  admin: SupabaseClient, userId: string,
+  video: { id: string; video_url: string; duration_seconds: number | null; email_poster_url: string | null },
+  thumbnailUrl: string | null,
+): Promise<string | null> {
+  if (thumbnailUrl && /^https:\/\//.test(thumbnailUrl)) {
+    const p = await saveThumbnailPoster(admin, userId, video.id, thumbnailUrl);
+    if (p) return p;
+  }
+  if (video.email_poster_url) return video.email_poster_url;
+  const p = await saveEmailPoster(admin, userId, video.id, video.video_url, video.duration_seconds, "video_email");
+  if (p) await admin.from("generated_videos").update({ email_poster_url: p }).eq("id", video.id);
+  return p;
+}

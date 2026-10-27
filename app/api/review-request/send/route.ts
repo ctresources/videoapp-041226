@@ -5,7 +5,7 @@ import { findOrCreateContact, loadBoldTrailToken, sendBoldTrailEmail } from "@/l
 import { loadAgentSignature } from "@/lib/utils/agent-signature";
 import { greetingName, reviewRequestAsHtml, reviewRequestAsText } from "@/lib/utils/newsletter-html";
 import { isHeygenUrl } from "@/lib/utils/video-url";
-import { saveEmailPoster } from "@/lib/video/email-poster";
+import { emailPosterFor } from "@/lib/video/email-poster";
 import { sendAgentEmailViaSparkReels } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const [{ data: prof }, { data: video }] = await Promise.all([
     admin.from("profiles").select("google_review_url, email, full_name").eq("id", user.id).single(),
-    admin.from("generated_videos").select("id, video_url, duration_seconds, email_poster_url").eq("id", body.videoId).eq("user_id", user.id).maybeSingle(),
+    admin.from("generated_videos").select("id, video_url, duration_seconds, email_poster_url, projects(thumbnail_url)").eq("id", body.videoId).eq("user_id", user.id).maybeSingle(),
   ]);
   const p = prof as { google_review_url: string | null; email: string | null; full_name: string | null } | null;
   const reviewUrl = p?.google_review_url?.trim() ?? "";
@@ -60,13 +60,12 @@ export async function POST(req: NextRequest) {
   const url = (video?.video_url as string | null) ?? "";
   if (!video || !/^https:\/\//.test(url) || isHeygenUrl(url)) return NextResponse.json({ error: "That video isn't ready to email yet." }, { status: 404 });
 
-  // The still with a play button, made once and kept on the video.
-  let posterUrl = (video.email_poster_url as string | null) ?? null;
+  // The thumbnail they made, with a play button; a still only without one.
   const seconds = (video.duration_seconds as number | null) ?? null;
-  if (!posterUrl) {
-    posterUrl = await saveEmailPoster(admin, user.id, video.id as string, url, seconds, "video_email");
-    if (posterUrl) await admin.from("generated_videos").update({ email_poster_url: posterUrl }).eq("id", video.id);
-  }
+  const proj = (Array.isArray(video.projects) ? video.projects[0] : video.projects) as { thumbnail_url?: string | null } | null;
+  const posterUrl = await emailPosterFor(admin, user.id,
+    { id: video.id as string, video_url: url, duration_seconds: seconds, email_poster_url: (video.email_poster_url as string | null) ?? null },
+    proj?.thumbnail_url ?? null);
   const v = { url, posterUrl, seconds };
   const signature = await loadAgentSignature(admin, user.id);
   const agentName = signature.name || p?.full_name || null;

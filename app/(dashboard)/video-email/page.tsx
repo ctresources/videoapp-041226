@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { ArrowLeft, Loader2, RefreshCw, Send } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw, Send, X } from "lucide-react";
 import { EmailResult } from "@/components/email/email-result";
-import { BoldTrailPeople, BT_MAX } from "@/components/email/boldtrail-send";
+import { BoldTrailPeople, BT_MAX, type BtContact } from "@/components/email/boldtrail-send";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
-import { videoEmailAsHtml, videoEmailAsText, type SellerVideo } from "@/lib/utils/newsletter-html";
+import { greetingName, videoEmailAsHtml, videoEmailAsText, type SellerVideo } from "@/lib/utils/newsletter-html";
 import type { EmailSignature } from "@/lib/utils/email-html";
 import { showTrialLock } from "@/lib/utils/trial-lock";
 
@@ -18,11 +18,11 @@ import { showTrialLock } from "@/lib/utils/trial-lock";
  * confirmation. Without BoldTrail it is still a copy-and-paste email.
  */
 
-type Contact = { id: string; name: string; email: string };
+type Contact = { id?: string; name: string; email: string };
 const MAX = BT_MAX;
 const eyebrow = "mb-2 text-[11.5px] font-bold uppercase tracking-[0.12em] text-spark-ink";
 const input = "w-full rounded-[10px] border border-spark-rule bg-[#fdfbf7] px-3 py-2 text-[16px] text-spark-ink outline-none focus:border-[#A3660F] sm:text-[14px]";
-const firstOf = (c?: Contact) => (c && !c.name.includes("@") ? c.name.split(/\s+/)[0] : "");
+const firstOf = (c?: Contact) => greetingName(c?.name);
 
 export default function VideoEmailPage() {
   const [videoId, setVideoId] = useState("");
@@ -34,6 +34,9 @@ export default function VideoEmailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [to, setTo] = useState<Contact[]>([]);
+  // Typed in, for sending without BoldTrail (2026-10-27, the owner's ask).
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [note, setNote] = useState("");
   const [writing, setWriting] = useState(false);
@@ -88,6 +91,15 @@ export default function VideoEmailPage() {
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  function addTyped() {
+    const email = newEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast.error("Enter their whole email address."); return; }
+    if (to.length >= MAX) { toast.error(`Up to ${MAX} people at a time.`); return; }
+    if (to.some((c) => c.email === email)) return;
+    setTo([...to, { name: newName.trim(), email }]);
+    setNewName(""); setNewEmail("");
+  }
+
   /** The Send button under the To box: says what's missing instead of doing nothing. */
   function startSend() {
     if (to.length === 0) { toast.error("Add at least one person first: type a name or email above."); return; }
@@ -110,7 +122,7 @@ export default function VideoEmailPage() {
       setLastSent({ at: d.sentAt, to: results });
       const failed = results.filter((r) => !r.sent);
       if (failed.length) toast.error(`Not sent to ${failed.map((r) => r.name).join(", ")}.`);
-      else toast.success(`Sent to ${results.length} ${results.length === 1 ? "person" : "people"} through BoldTrail.`);
+      else toast.success(`Sent to ${results.length} ${results.length === 1 ? "person" : "people"}${boldtrail ? " through BoldTrail" : ""}.`);
       setConfirming(false);
       setTo([]);
     } catch (err) {
@@ -149,13 +161,13 @@ export default function VideoEmailPage() {
       ) : (
         <div className="grid gap-5 lg:grid-cols-2 lg:items-stretch">
           <div className="flex flex-col rounded-2xl border border-spark-rule bg-white p-4 sm:p-5">
-            <p className={eyebrow}>To · from your BoldTrail</p>
+            <p className={eyebrow}>{boldtrail ? "To · from your BoldTrail, or anyone new" : "To"}</p>
             {boldtrail ? (
               <>
                 {/* Same people box as the Share Kit (2026-10-24, the owner's
                     ask): search BoldTrail by name or email, or add someone new. */}
                 <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-2.5">
-                  <BoldTrailPeople to={to} onChange={setTo} picks={picks} />
+                  <BoldTrailPeople to={to.filter((c): c is BtContact => !!c.id)} onChange={setTo} picks={picks.filter((c): c is BtContact => !!c.id)} />
                 </div>
                 <p className="mt-1.5 text-[11.5px] text-spark-ink-muted">Up to {MAX} people, each sent their own email.</p>
                 <button
@@ -168,9 +180,36 @@ export default function VideoEmailPage() {
                 </button>
               </>
             ) : (
-              <p className="rounded-xl border border-dashed border-spark-rule p-3 text-[13px] text-spark-ink-muted">
-                <Link href="/settings" className="font-semibold text-[#A3660F] hover:underline">Connect BoldTrail in Settings</Link> to send it from here. You can still copy it below.
-              </p>
+              <>
+                <div className="grid grid-cols-[1fr_1.4fr_auto] gap-2">
+                  <input className={input} placeholder="First name" value={newName} onChange={(e) => setNewName(e.target.value)} />
+                  <input className={input} placeholder="Email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTyped(); } }} />
+                  <button type="button" onClick={addTyped} className="rounded-[10px] border border-spark-rule bg-white px-3 text-[13px] font-semibold text-spark-ink hover:border-[#d9c6a8]">Add</button>
+                </div>
+                {to.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {to.map((c) => (
+                      <span key={c.email} className="inline-flex items-center gap-1 rounded-full border border-spark-rule bg-[#faf9f5] px-2.5 py-1 text-[13px]">
+                        {c.name ? `${c.name} · ` : ""}{c.email}
+                        <button type="button" aria-label="Remove" onClick={() => setTo(to.filter((x) => x.email !== c.email))}><X size={12} /></button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <p className="mt-1.5 text-[11.5px] text-spark-ink-muted">
+                  Up to {MAX} people. It comes from &ldquo;{signature.name || "you"} via SparkReels&rdquo; and replies go to your email; send yourself a test first.{" "}
+                  <Link href="/settings#crm" className="font-semibold text-[#A3660F] hover:underline">Connect BoldTrail</Link> to send from your own address.
+                </p>
+                <button
+                  type="button"
+                  onClick={startSend}
+                  disabled={sending}
+                  className="mt-2.5 flex w-fit items-center gap-1.5 rounded-[10px] bg-spark-amber px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-60"
+                >
+                  <Send size={13} /> Send{to.length ? ` to ${to.length}` : ""}
+                </button>
+              </>
             )}
 
             <p className={`${eyebrow} mt-4`}>Subject</p>
@@ -221,9 +260,9 @@ export default function VideoEmailPage() {
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" onClick={() => !sending && setConfirming(false)}>
           <div role="dialog" aria-label="Send this video?" className="w-full max-w-[460px] rounded-2xl border border-spark-rule bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="mb-2 text-[17px] font-bold text-spark-ink">Send this video?</h3>
-            <p className="my-1.5 text-[14px] text-spark-ink-soft"><b>To:</b> {to.map((c) => c.name).join(", ")}</p>
+            <p className="my-1.5 text-[14px] text-spark-ink-soft"><b>To:</b> {to.map((c) => c.name || c.email).join(", ")}</p>
             <p className="my-1.5 text-[14px] text-spark-ink-soft"><b>Subject:</b> {subject}</p>
-            <p className="my-1.5 text-[14px] text-spark-ink-soft"><b>From:</b> your BoldTrail email</p>
+            <p className="my-1.5 text-[14px] text-spark-ink-soft"><b>From:</b> {boldtrail ? "your BoldTrail email" : `${signature.name || "you"} via SparkReels (replies go to you)`}</p>
             <p className="my-2 text-[12.5px] text-spark-ink-muted">Each person gets their own email with their first name.</p>
             <div className="mt-4 flex justify-end gap-2">
               <button type="button" onClick={() => setConfirming(false)} disabled={sending} className="rounded-[10px] border border-spark-rule bg-white px-4 py-2 text-[13.5px] font-semibold text-spark-ink">Cancel</button>

@@ -5,7 +5,7 @@ import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { loadAgentSignature } from "@/lib/utils/agent-signature";
 import { loadBoldTrailToken } from "@/lib/api/boldtrail";
 import { writeVideoEmail } from "@/lib/api/video-email";
-import { saveEmailPoster } from "@/lib/video/email-poster";
+import { emailPosterFor } from "@/lib/video/email-poster";
 import { isHeygenUrl } from "@/lib/utils/video-url";
 import { loadQuickPicks } from "@/lib/api/boldtrail-picks";
 
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: video } = await admin
     .from("generated_videos")
-    .select("id, video_url, duration_seconds, render_status, email_poster_url, project_id, projects(title, ai_script, seo_data, location_city, location_state)")
+    .select("id, video_url, duration_seconds, render_status, email_poster_url, project_id, projects(title, thumbnail_url, ai_script, seo_data, location_city, location_state)")
     .eq("id", videoId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "That video isn't ready to email yet." }, { status: 404 });
   }
   const project = (Array.isArray(video.projects) ? video.projects[0] : video.projects) as {
-    title?: string | null; ai_script?: { script?: string } | null; seo_data?: { description?: string } | null;
+    title?: string | null; thumbnail_url?: string | null; ai_script?: { script?: string } | null; seo_data?: { description?: string } | null;
     location_city?: string | null; location_state?: string | null;
   } | null;
   const title = project?.title || "My latest video";
@@ -65,12 +65,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(written);
   }
 
-  // The still with a play button, made the first time and kept on the video.
-  let posterUrl = (video.email_poster_url as string | null) ?? null;
-  if (!posterUrl) {
-    posterUrl = await saveEmailPoster(admin, user.id, videoId, url, seconds, "video_email");
-    if (posterUrl) await admin.from("generated_videos").update({ email_poster_url: posterUrl }).eq("id", videoId);
-  }
+  // The thumbnail they made, with a play button; a still from the video only
+  // when there is no thumbnail (2026-10-27, the owner's ask).
+  const posterUrl = await emailPosterFor(admin, user.id,
+    { id: videoId, video_url: url, duration_seconds: seconds, email_poster_url: (video.email_poster_url as string | null) ?? null },
+    project?.thumbnail_url ?? null);
 
   const [signature, token, picks, { data: sends }] = await Promise.all([
     loadAgentSignature(admin, user.id),
