@@ -74,6 +74,7 @@ export function ReviewRequestTool() {
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   const [note, setNote] = useState(DEFAULT_NOTE);
   const [confirming, setConfirming] = useState(false);
+  const [copyMe, setCopyMe] = useState(false);
   const [sending, setSending] = useState(false);
   const [lastSent, setLastSent] = useState<{ name: string; sent: boolean }[] | null>(null);
 
@@ -211,7 +212,7 @@ export function ReviewRequestTool() {
       const res = await fetch("/api/review-request/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ videoId: video?.id, subject, note, people }),
+        body: JSON.stringify({ videoId: video?.id, subject, note, people, copyMe }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d?.error || "Couldn't send it.");
@@ -258,10 +259,22 @@ export function ReviewRequestTool() {
             {boldtrail ? (
               <BoldTrailPeople
                 to={people.filter((p): p is BtContact => !!p.id)}
-                onChange={(next) => setPeople(next)}
+                onChange={(next) => setPeople([...next, ...people.filter((p) => !p.id)])}
                 picks={picks}
+                onAddPlain={(c) => { if (!people.some((x) => x.email === c.email)) setPeople([...people, c]); }}
+                extra={people.filter((p) => !p.id).length}
               />
             ) : null}
+            {boldtrail && people.some((p) => !p.id) && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {people.filter((p) => !p.id).map((p) => (
+                  <span key={p.email} className="inline-flex items-center gap-1 rounded-full border border-spark-rule bg-[#faf9f5] px-2.5 py-1 text-[13px]">
+                    {p.name ? `${p.name} · ` : ""}{p.email}
+                    <button type="button" aria-label="Remove" onClick={() => setPeople(people.filter((x) => x.email !== p.email || x.id))}><X size={12} /></button>
+                  </span>
+                ))}
+              </div>
+            )}
             {boldtrail && (
               <p className="mt-1.5 text-[12px] text-spark-ink-faint">A couple? Add each one so both can leave a review. A contact named like &ldquo;Jane &amp; Tom Smith&rdquo; is greeted &ldquo;Hi Jane and Tom,&rdquo;.</p>
             )}
@@ -375,15 +388,19 @@ export function ReviewRequestTool() {
           </Step>
 
           <Step n={4} title="Send">
-            <Button onClick={startSend} className="gap-1.5" disabled={!reviewUrl}><Send size={14} /> Send to {people.length || "…"} {people.length === 1 ? "person" : "people"}</Button>
+            <Button onClick={startSend} className="gap-1.5" disabled={!reviewUrl}><Send size={14} /> Send email{people.length ? ` to ${people.length}` : ""}</Button>
             <p className="mt-1.5 text-[12px] text-spark-ink-faint">
               {boldtrail
-                ? "Through your BoldTrail: each person gets their own email from your address. Someone new is added to your BoldTrail first."
+                ? "BoldTrail contacts get it from your BoldTrail address. Someone new you didn't add to BoldTrail gets it from you via SparkReels, with replies to your email."
                 : `From "${signature.name || "you"} via SparkReels", and replies go to your email. It can land in Promotions or spam more than your own email; send yourself a test first.`}
             </p>
             {confirming && (
               <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[13px] text-amber-900">
                 Send this to {people.map((p) => p.name || p.email).join(", ")}?
+                <label className="mt-2 flex cursor-pointer items-center gap-2 text-[13px]">
+                  <input type="checkbox" checked={copyMe} onChange={(e) => setCopyMe(e.target.checked)} className="h-4 w-4 accent-[#BA7517]" />
+                  Send me a copy
+                </label>
                 <div className="mt-2 flex gap-2">
                   <Button size="sm" onClick={() => void send()} loading={sending}>Send now</Button>
                   <Button size="sm" variant="outline" onClick={() => setConfirming(false)}>Not yet</Button>

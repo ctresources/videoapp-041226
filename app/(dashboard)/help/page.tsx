@@ -1241,16 +1241,21 @@ export default function HelpPage() {
               {/* Email it, added 2026-10-15. */}
               <span className="block mt-1.5">
                 <strong>Email it.</strong> Any finished video in My Sparks can be emailed. Press{" "}
-                <strong>Email it</strong>, add up to 10 people from your BoldTrail by their email
-                (people you&apos;ve sent a video to before, and your sellers, are one tap), and
-                SparkReels writes a short subject and note that you can change or say out loud. Put{" "}
-                <strong>{"{first name}"}</strong> in the note and each person sees their own name. The
-                email shows a picture from the video with a play button and a{" "}
-                <strong>Watch the video</strong> button; email can&apos;t play a video inside the
-                message, so a tap opens it. <strong>Send through BoldTrail</strong> asks you to
-                confirm, then each person gets their own email from your BoldTrail address. Without
-                BoldTrail, copy it into your own email instead. For your whole list, use your email
-                tool or BoldTrail&apos;s own campaigns, which handle unsubscribes.
+                <strong>Email it</strong> and add up to 10 people: search your BoldTrail by name or email
+                (people you&apos;ve sent a video to before, and your sellers, are one tap), or{" "}
+                <strong>Add someone new</strong> with their name and email. Someone new is only saved to
+                your BoldTrail if you tick <strong>Also add them to my BoldTrail</strong>. Without
+                BoldTrail, type their first name and email. SparkReels writes a short subject and note
+                that you can change or say out loud. Put <strong>{"{first name}"}</strong> in the note and
+                each person sees their own name (a couple typed as &ldquo;Jane and Tom&rdquo; gets
+                &ldquo;Hi Jane and Tom&rdquo;). The email shows your video&apos;s thumbnail, the one you
+                edited, with a play button and a <strong>Watch the video</strong> button; email can&apos;t
+                play a video inside the message, so a tap opens it. <strong>Send email</strong> asks you to
+                confirm; tick <strong>Send me a copy</strong> to get one yourself, showing who it went to.
+                BoldTrail contacts get it from your BoldTrail address; everyone else gets it from
+                &ldquo;your name via SparkReels&rdquo;, with replies going to your own email (up to 30 a
+                day). For your whole list, use your email tool or BoldTrail&apos;s own campaigns, which
+                handle unsubscribes.
               </span>
             </Step>
           </div>
@@ -1309,10 +1314,12 @@ export default function HelpPage() {
                 <strong>Photo reel</strong> (upload your photos; the words show as text cards or your cloned voice
                 reads them; free) or <strong>Use a video I made</strong>. <strong>3 The email</strong>: the
                 subject and note; {"{first name}"} becomes each person&apos;s first name.{" "}
-                <strong>4 Send</strong>: with BoldTrail connected, each person gets their own email from your
-                BoldTrail address, and someone new is added to your BoldTrail first. Without BoldTrail it comes
-                from &ldquo;your name via SparkReels&rdquo; and replies go to your own email; it can land in
-                Promotions or spam more often, so use <strong>Send me a test</strong> first.
+                <strong>4 Send email</strong>: BoldTrail contacts get it from your BoldTrail address. Someone
+                new is saved to BoldTrail only if you tick <strong>Also add them to my BoldTrail</strong>;
+                otherwise, and without BoldTrail, it comes from &ldquo;your name via SparkReels&rdquo; and replies
+                go to your own email. That can land in Promotions or spam more often, so use{" "}
+                <strong>Send me a test</strong> first. Tick <strong>Send me a copy</strong> when you send to get
+                one yourself. The email shows your video&apos;s thumbnail with a play button.
               </span>
               {/* Seller Update, added 2026-10-15; any day, From your listings
                   and the video update the same day. */}

@@ -37,6 +37,7 @@ export default function VideoEmailPage() {
   // Typed in, for sending without BoldTrail (2026-10-27, the owner's ask).
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [copyMe, setCopyMe] = useState(false);
   const [subject, setSubject] = useState("");
   const [note, setNote] = useState("");
   const [writing, setWriting] = useState(false);
@@ -114,7 +115,7 @@ export default function VideoEmailPage() {
       const res = await fetch("/api/video-email/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ videoId, subject, note, contacts: to }),
+        body: JSON.stringify({ videoId, subject, note, contacts: to, copyMe }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d?.error || "Couldn't send it.");
@@ -122,7 +123,7 @@ export default function VideoEmailPage() {
       setLastSent({ at: d.sentAt, to: results });
       const failed = results.filter((r) => !r.sent);
       if (failed.length) toast.error(`Not sent to ${failed.map((r) => r.name).join(", ")}.`);
-      else toast.success(`Sent to ${results.length} ${results.length === 1 ? "person" : "people"}${boldtrail ? " through BoldTrail" : ""}.`);
+      else toast.success(`Sent to ${results.length} ${results.length === 1 ? "person" : "people"}.`);
       setConfirming(false);
       setTo([]);
     } catch (err) {
@@ -167,7 +168,23 @@ export default function VideoEmailPage() {
                 {/* Same people box as the Share Kit (2026-10-24, the owner's
                     ask): search BoldTrail by name or email, or add someone new. */}
                 <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-2.5">
-                  <BoldTrailPeople to={to.filter((c): c is BtContact => !!c.id)} onChange={setTo} picks={picks.filter((c): c is BtContact => !!c.id)} />
+                  <BoldTrailPeople
+                    to={to.filter((c): c is BtContact => !!c.id)}
+                    onChange={(next) => setTo([...next, ...to.filter((c) => !c.id)])}
+                    picks={picks.filter((c): c is BtContact => !!c.id)}
+                    onAddPlain={(c) => { if (!to.some((x) => x.email === c.email)) setTo([...to, c]); }}
+                    extra={to.filter((c) => !c.id).length}
+                  />
+                  {to.some((c) => !c.id) && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {to.filter((c) => !c.id).map((c) => (
+                        <span key={c.email} className="inline-flex items-center gap-1 rounded-full border border-spark-rule bg-white px-2.5 py-1 text-[12.5px]">
+                          {c.name ? `${c.name} · ` : ""}<span className="text-[11px] text-spark-ink-muted">{c.email}</span>
+                          <button type="button" aria-label="Remove" onClick={() => setTo(to.filter((x) => x.email !== c.email || x.id))}><X size={12} /></button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <p className="mt-1.5 text-[11.5px] text-spark-ink-muted">Up to {MAX} people, each sent their own email.</p>
                 <button
@@ -176,7 +193,7 @@ export default function VideoEmailPage() {
                   disabled={sending}
                   className="mt-2.5 flex w-fit items-center gap-1.5 rounded-[10px] bg-orange-600 px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-60"
                 >
-                  <Send size={13} /> Send through BoldTrail{to.length ? ` to ${to.length}` : ""}
+                  <Send size={13} /> Send email{to.length ? ` to ${to.length}` : ""}
                 </button>
               </>
             ) : (
@@ -236,11 +253,11 @@ export default function VideoEmailPage() {
                 subject={subject}
                 html={built.html}
                 text={built.text}
-                leading={boldtrail && to.length > 0 && subject.trim() ? (
-                  <button type="button" onClick={() => setConfirming(true)} className="flex items-center gap-1.5 rounded-[10px] bg-orange-600 px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90">
-                    <Send size={13} /> Send through BoldTrail
+                leading={(
+                  <button type="button" onClick={startSend} className="flex items-center gap-1.5 rounded-[10px] bg-orange-600 px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90">
+                    <Send size={13} /> Send email{to.length ? ` to ${to.length}` : ""}
                   </button>
-                ) : undefined}
+                )}
                 footer={lastSent ? (
                   <p className="mt-2 text-[12.5px] font-semibold text-green-700">
                     ✓ Last sent {when(lastSent.at)} to {lastSent.to.filter((r) => r.sent).map((r) => r.name).join(", ")}
@@ -262,8 +279,12 @@ export default function VideoEmailPage() {
             <h3 className="mb-2 text-[17px] font-bold text-spark-ink">Send this video?</h3>
             <p className="my-1.5 text-[14px] text-spark-ink-soft"><b>To:</b> {to.map((c) => c.name || c.email).join(", ")}</p>
             <p className="my-1.5 text-[14px] text-spark-ink-soft"><b>Subject:</b> {subject}</p>
-            <p className="my-1.5 text-[14px] text-spark-ink-soft"><b>From:</b> {boldtrail ? "your BoldTrail email" : `${signature.name || "you"} via SparkReels (replies go to you)`}</p>
+            <p className="my-1.5 text-[14px] text-spark-ink-soft"><b>From:</b> {to.every((c) => c.id) ? "your BoldTrail email" : to.some((c) => c.id) ? `your BoldTrail email for BoldTrail contacts; ${signature.name || "you"} via SparkReels for the others (replies go to you)` : `${signature.name || "you"} via SparkReels (replies go to you)`}</p>
             <p className="my-2 text-[12.5px] text-spark-ink-muted">Each person gets their own email with their first name.</p>
+            <label className="my-2 flex cursor-pointer items-center gap-2 text-[13.5px] text-spark-ink-soft">
+              <input type="checkbox" checked={copyMe} onChange={(e) => setCopyMe(e.target.checked)} className="h-4 w-4 accent-orange-600" />
+              Send me a copy
+            </label>
             <div className="mt-4 flex justify-end gap-2">
               <button type="button" onClick={() => setConfirming(false)} disabled={sending} className="rounded-[10px] border border-spark-rule bg-white px-4 py-2 text-[13.5px] font-semibold text-spark-ink">Cancel</button>
               <button type="button" onClick={send} disabled={sending} className="flex items-center gap-1.5 rounded-[10px] bg-orange-600 px-4 py-2 text-[13.5px] font-bold text-white disabled:opacity-60">

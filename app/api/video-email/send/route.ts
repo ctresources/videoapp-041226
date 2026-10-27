@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { findOrCreateContact, loadBoldTrailToken, sendBoldTrailEmail } from "@/lib/api/boldtrail";
+import { loadBoldTrailToken, sendBoldTrailEmail } from "@/lib/api/boldtrail";
 import { loadAgentSignature } from "@/lib/utils/agent-signature";
 import { greetingName, videoEmailAsHtml, videoEmailAsText } from "@/lib/utils/newsletter-html";
 import { emailPosterFor } from "@/lib/video/email-poster";
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = (await req.json().catch(() => ({}))) as { videoId?: string; subject?: string; note?: string; contacts?: Contact[] };
+  const body = (await req.json().catch(() => ({}))) as { videoId?: string; subject?: string; note?: string; contacts?: Contact[]; copyMe?: boolean };
   const subject = (body.subject ?? "").trim().slice(0, 150);
   const note = (body.note ?? "").trim().slice(0, 3000);
   const emailOk = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -59,12 +59,13 @@ export async function POST(req: NextRequest) {
   const proj = (Array.isArray(video.projects) ? video.projects[0] : video.projects) as { thumbnail_url?: string | null } | null;
 
   const token = await loadBoldTrailToken(admin, user.id);
-  if (!token) {
+  const plain = contacts.filter((c) => !c.id || !token).length;
+  if (plain > 0) {
     const since = new Date(Date.now() - 86_400_000).toISOString();
     const { data: recent } = await admin.from("video_email_sends").select("sent_to").eq("user_id", user.id).gte("sent_at", since);
     const today = ((recent ?? []) as { sent_to: { via?: string; sent?: boolean }[] }[])
       .reduce((n, r) => n + (r.sent_to ?? []).filter((x) => x.via === "sparkreels" && x.sent).length, 0);
-    if (today + contacts.length > SPARKREELS_PER_DAY) {
+    if (today + plain > SPARKREELS_PER_DAY) {
       return NextResponse.json({ error: `Up to ${SPARKREELS_PER_DAY} emails a day without BoldTrail. Try the rest tomorrow.` }, { status: 429 });
     }
   }
@@ -79,14 +80,10 @@ export async function POST(req: NextRequest) {
   for (const c of contacts) {
     const first = greetingName(c.name);
     const html = videoEmailAsHtml({ subject, note, firstName: first, video: v, signature });
-    if (token) {
-      let id = c.id;
-      if (!id) {
-        const [fn, ...rest] = (c.name || "").split(/\s+/);
-        const made = await findOrCreateContact(token, { email: c.email, firstName: fn || "", lastName: rest.join(" ") });
-        id = made.contact?.id;
-        if (!id) { results.push({ ...c, sent: false, via: "boldtrail", error: made.error || "Couldn't add them to BoldTrail." }); continue; }
-      }
+    // A BoldTrail contact goes through BoldTrail; someone typed in (not saved
+    // to BoldTrail) is emailed by SparkReels (2026-10-27, the owner's ask).
+    if (token && c.id) {
+      const id = c.id;
       const r = await sendBoldTrailEmail(token, id, subject, html);
       results.push({ ...c, id, sent: r.ok, via: "boldtrail", ...(r.ok ? {} : { error: `BoldTrail said ${r.status}` }) });
       if (!r.ok) console.error("[video-email] send failed", id, r.status, r.text);
@@ -98,6 +95,17 @@ export async function POST(req: NextRequest) {
   }
 
   const sent = results.filter((r) => r.sent);
+  // Send me a copy (2026-10-27, the owner's ask): one copy to the agent, so
+  // they can see it went out and to whom.
+  if (body.copyMe && sent.length && replyTo) {
+    const who = sent.map((r) => r.name || r.email).join(", ");
+    await sendAgentEmailViaSparkReels({
+      to: replyTo, agentName: signature.name ?? null, replyTo,
+      subject: `[Copy] ${subject}`,
+      html: `<p style="font-family:Arial,sans-serif;font-size:13px;color:#555;margin:0 0 12px">Your copy. Sent to ${who.replace(/[<>&]/g, "")}.</p>` + videoEmailAsHtml({ subject, note, firstName: greetingName(sent[0]?.name), video: v, signature }),
+      text: `Your copy. Sent to ${who}.\n\n` + videoEmailAsText({ note, firstName: greetingName(sent[0]?.name), video: v, signature }),
+    }).catch(() => false);
+  }
   if (sent.length) {
     await admin.from("video_email_sends").insert({
       user_id: user.id, video_id: body.videoId, subject, note, sent_to: results,
@@ -108,5 +116,5 @@ export async function POST(req: NextRequest) {
     response_status: sent.length === results.length ? 200 : sent.length ? 207 : 502,
   });
   if (!sent.length) return NextResponse.json({ error: results[0]?.error ?? "It didn't send. Try again.", results }, { status: 502 });
-  return NextResponse.json({ sentAt: new Date().toISOString(), results, via: token ? "boldtrail" : "sparkreels" });
+  return NextResponse.json({ sentAt: new Date().toISOString(), results });
 }

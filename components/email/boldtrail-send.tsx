@@ -34,10 +34,21 @@ export function BoldTrailPeople({
   to,
   onChange,
   picks,
+  onAddPlain,
+  extra = 0,
 }: {
   to: BtContact[];
   onChange: (next: BtContact[]) => void;
   picks: BtContact[];
+  /**
+   * Someone typed in who isn't saved to BoldTrail (2026-10-27, the owner: not
+   * everyone should become a BoldTrail lead). When given, "Add someone new"
+   * asks first, unticked; unticked people come back here and are emailed by
+   * SparkReels instead.
+   */
+  onAddPlain?: (c: { name: string; email: string }) => void;
+  /** People on the list who aren't in `to` (the plain ones), for the limit. */
+  extra?: number;
 }) {
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<BtContact[]>([]);
@@ -47,6 +58,7 @@ export function BoldTrailPeople({
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [adding, setAdding] = useState(false);
+  const [saveToBt, setSaveToBt] = useState(false);
   const seq = useRef(0);
   // The latest list, so an add after an await never works from a stale copy.
   const toRef = useRef(to);
@@ -94,7 +106,14 @@ export function BoldTrailPeople({
   async function addNew() {
     if (!newName.trim()) { toast.error("Enter their name."); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) { toast.error("Enter their email."); return; }
-    if (toRef.current.length >= MAX) { toast.error(`Up to ${MAX} people at a time.`); return; }
+    if (toRef.current.length + extra >= MAX) { toast.error(`Up to ${MAX} people at a time.`); return; }
+    if (onAddPlain && !saveToBt) {
+      onAddPlain({ name: newName.trim(), email: newEmail.trim().toLowerCase() });
+      setNewOpen(false);
+      setNewName("");
+      setNewEmail("");
+      return;
+    }
     setAdding(true);
     try {
       const res = await fetch("/api/boldtrail/contact", {
@@ -191,7 +210,14 @@ export function BoldTrailPeople({
             {adding ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />} Add
           </button>
           <button type="button" onClick={() => setNewOpen(false)} aria-label="Cancel" className="text-spark-ink-muted hover:text-red-600"><X size={14} /></button>
-          <p className="w-full text-[11.5px] text-spark-ink-muted">Also saved to your BoldTrail as a Sphere contact.</p>
+          {onAddPlain ? (
+            <label className="flex w-full cursor-pointer items-center gap-1.5 text-[12px] text-spark-ink-soft">
+              <input type="checkbox" checked={saveToBt} onChange={(e) => setSaveToBt(e.target.checked)} className="h-3.5 w-3.5 accent-orange-600" />
+              Also add them to my BoldTrail
+            </label>
+          ) : (
+            <p className="w-full text-[11.5px] text-spark-ink-muted">Also saved to your BoldTrail as a Sphere contact.</p>
+          )}
         </div>
       )}
       {free.length > 0 && (
