@@ -32,7 +32,8 @@ export interface SellerAutoSettings {
   text: boolean;
 }
 
-export const SELLER_AUTO_DEFAULTS: SellerAutoSettings = { enabled: false, weekday: 5, time: "09:00", video: "circle", text: true };
+// Text off until a BoldTrail text has been tested (2026-10-26, the owner's ask).
+export const SELLER_AUTO_DEFAULTS: SellerAutoSettings = { enabled: false, weekday: 5, time: "09:00", video: "circle", text: false };
 
 export function sanitizeSellerAuto(raw: unknown): SellerAutoSettings {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;

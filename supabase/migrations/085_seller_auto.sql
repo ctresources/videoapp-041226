@@ -20,7 +20,7 @@ create table if not exists public.seller_auto_drafts (
   status text not null default 'open'
     check (status in ('open', 'making', 'ready', 'approved', 'sent', 'skipped', 'failed')),
   mode text not null default 'video' check (mode in ('video', 'camera', 'email')),
-  also_text boolean not null default true,
+  also_text boolean not null default false,
   project_id uuid,
   video_id uuid,
   error text,
