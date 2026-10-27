@@ -85,9 +85,11 @@
  * height is left and its scenes are laid out a little tighter.
  */
 @media (min-width: 1024px) {
-  .stage { flex: 1; display: flex; flex-direction: column; }
-  .card { flex: 1; display: flex; flex-direction: column; }
-  .screen { height: auto; flex: 1; min-height: 250px; }
+  /* Tighter since 2026-10-26 (the owner's ask), so the AI-questions box
+     under it moves up and takes the room it frees. */
+  .stage { flex: none; display: flex; flex-direction: column; }
+  .card { flex: none; display: flex; flex-direction: column; padding: 12px; }
+  .screen { height: 296px; flex: none; margin-top: 10px; }
   .mic { width: 84px; height: 84px; top: 32%; }
   .wave { top: 57%; }
   .said { font-size: 15px; min-height: 52px; padding: 9px 12px; left: 16px; right: 16px; bottom: 14px; }

@@ -238,7 +238,7 @@ export function Hero() {
             </div>
           </div>
         </div>
-        <div id="ai-questions" className="scroll-mt-24"><AiQuestionsBox compact /></div>
+        <div id="ai-questions" className="scroll-mt-24 lg:flex lg:flex-1 lg:flex-col"><AiQuestionsBox compact /></div>
         </div>
       </div>
 
