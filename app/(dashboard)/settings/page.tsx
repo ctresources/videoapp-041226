@@ -14,6 +14,7 @@ import { BrandKitPicker } from "@/components/settings/brand-kit-picker";
 import { SignOutGuard } from "@/components/recovery/sign-out-guard";
 import { SettingsSteps } from "@/components/settings/settings-steps";
 import { StudioChecklist } from "@/components/settings/studio-checklist";
+import { ReviewLinkCard } from "@/components/settings/review-link-card";
 import { HomeScreenCard } from "@/components/settings/home-screen-card";
 import { AffiliateCard } from "@/components/settings/affiliate-card";
 import { HaloSettingsCard } from "@/components/halo/halo-settings-card";
@@ -513,6 +514,9 @@ export default function SettingsPage() {
       </Card>
 
       {/* Import by email */}
+      {/* The Google review link, for Ask for Google Review Video Email (2026-10-27). */}
+      <ReviewLinkCard userId={user.id} />
+
       <Card id="email-import" className="scroll-mt-28">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-9 h-9 bg-spark-amber-tint rounded-xl flex items-center justify-center">

@@ -220,3 +220,54 @@ export function videoEmailAsText(opts: { note: string; firstName?: string | null
     ...emailSignatureText(opts.signature),
   ].join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
+
+/**
+ * Ask for Google Review Video Email (2026-10-27): the note, the video as a
+ * still with a play button, then a big gold button to the agent's Google
+ * review page, and the sign-off.
+ */
+export function reviewRequestAsHtml(opts: {
+  subject: string; note: string; firstName?: string | null; video: SellerVideo; reviewUrl: string; signature: EmailSignature;
+}): string {
+  const paras = personalNote(opts.note, opts.firstName).split(/\n+/).map((s) => s.trim()).filter(Boolean);
+  const star = isUrl(opts.reviewUrl)
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 8px;"><tr><td align="center" bgcolor="#BA7517" style="border-radius:10px;mso-padding-alt:16px 24px;"><a href="${esc(opts.reviewUrl)}" style="display:block;padding:16px 24px;font-family:${FONT};font-size:18px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:10px;"><span style="color:#ffffff;text-decoration:none;">&#9733;&#9733;&#9733;&#9733;&#9733;&nbsp; Leave me a Google review</span></a></td></tr></table>
+<p style="margin:0 0 20px;font-family:${FONT};font-size:14px;color:${MUTED};text-align:center;">It takes about a minute. Thank you!</p>`
+    : "";
+  return emailShell({
+    title: opts.subject,
+    preview: paras[0] ?? opts.subject,
+    inner: `<tr><td style="padding:28px 24px 24px;">
+${paras.map(emailP).join("\n")}
+${videoBlock(opts.video, "Watch my video")}
+${star}
+${emailSignatureHtml(opts.signature)}
+</td></tr>`,
+  });
+}
+
+export function reviewRequestAsText(opts: { note: string; firstName?: string | null; video: SellerVideo; reviewUrl: string; signature: EmailSignature }): string {
+  return [
+    personalNote(opts.note, opts.firstName), "",
+    `Watch my video: ${opts.video.url}`, "",
+    `Leave me a Google review: ${opts.reviewUrl}`, "",
+    ...emailSignatureText(opts.signature),
+  ].join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
+ * The name for "Hi …," (2026-10-27, the owner: "what if it's a husband and
+ * wife"). One person: their first name. A couple, "Jane and Tom" or
+ * "Jane & Tom Smith": both first names, the shared surname dropped.
+ */
+export function greetingName(name?: string | null): string {
+  const n = (name ?? "").trim();
+  if (!n || n.includes("@")) return "";
+  if (/\s(&|and|\+)\s/i.test(n)) {
+    const [a, b] = n.split(/\s+(?:&|and|\+)\s+/i);
+    const first = (a ?? "").split(/\s+/)[0];
+    const second = (b ?? "").split(/\s+/)[0];
+    return second ? `${first} and ${second}` : first;
+  }
+  return n.split(/\s+/)[0];
+}

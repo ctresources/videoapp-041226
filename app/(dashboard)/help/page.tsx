@@ -1266,7 +1266,7 @@ export default function HelpPage() {
               <Link href="/tools" className="text-primary-600 font-medium hover:underline">Spark Tools</Link> is in four
               groups: <strong>For a video</strong> (Thumbnail, Title, Description, Tags, Script),{" "}
               <strong>Images &amp; banners</strong>, <strong>Profile &amp; reviews</strong> (Channel Name,
-              LinkedIn Profile, Google Reviews) and <strong>Sellers &amp; AI search</strong> (Seller Update,
+              LinkedIn Profile, Google Reviews, Ask for Google Review Video Email) and <strong>Sellers &amp; AI search</strong> (Seller Update,
               AI Answer Blocks). Pick a group, then a tool.{" "}
               You don&apos;t need Spark Tools to
               make a video — Spark Studio generates everything automatically. Use these to iterate: brainstorm
@@ -1288,7 +1288,26 @@ export default function HelpPage() {
                 <strong>Write my own</strong> gives you an empty box. Nothing goes to Google until
                 you press <strong>Post reply</strong>. A reply you&apos;ve already posted can be
                 edited or removed. Read a drafted reply to a low rating with extra care before
-                posting it.
+                posting it. <strong>Ask for more reviews</strong> at the top opens the next tool.
+              </span>
+              {/* Ask for Google Review Video Email (2026-10-27). */}
+              <span className="block mt-1.5">
+                <strong>Ask for Google Review Video Email</strong> sends past clients a short video asking for a
+                review, with a big gold <strong>Leave me a Google review</strong> button under it. First save your
+                link in Settings under <strong>Your Google review link</strong> (in your Google Business Profile:{" "}
+                <strong>Ask for reviews</strong> → <strong>Copy link</strong>). Then, in four steps:{" "}
+                <strong>1 Who</strong>: up to 10 people, picked from BoldTrail by name or email, or typed in by
+                first name and email. <strong>2 Your video</strong>: edit the words, then{" "}
+                <strong>Record it myself</strong> (free, unlimited: the camera opens with the words on the
+                teleprompter, and when it&apos;s saved, come back and it&apos;s picked for you),{" "}
+                <strong>Avatar in circle</strong> (up to 60 seconds, uses 1 short video),{" "}
+                <strong>Photo reel</strong> (upload your photos; the words show as text cards or your cloned voice
+                reads them; free) or <strong>Use a video I made</strong>. <strong>3 The email</strong>: the
+                subject and note; {"{first name}"} becomes each person&apos;s first name.{" "}
+                <strong>4 Send</strong>: with BoldTrail connected, each person gets their own email from your
+                BoldTrail address, and someone new is added to your BoldTrail first. Without BoldTrail it comes
+                from &ldquo;your name via SparkReels&rdquo; and replies go to your own email; it can land in
+                Promotions or spam more often, so use <strong>Send me a test</strong> first.
               </span>
               {/* Seller Update, added 2026-10-15; any day, From your listings
                   and the video update the same day. */}

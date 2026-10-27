@@ -891,6 +891,31 @@ export async function sendAutopilotWeek({
 }
 
 /**
+ * An agent's own email to one person, sent by SparkReels for an agent without
+ * BoldTrail (2026-10-27, Ask for Google Review Video Email). From
+ * "<Agent> via SparkReels", so it is plainly theirs; replies go to the agent.
+ */
+export async function sendAgentEmailViaSparkReels({ to, agentName, replyTo, subject, html, text }: {
+  to: string; agentName: string | null; replyTo: string | null; subject: string; html: string; text: string;
+}): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+  const name = (agentName || "Your agent").replace(/[<>"]/g, "").trim().slice(0, 60);
+  const res = await resendPost({
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: `${name} via SparkReels <noreply@sparkreels.ai>`,
+      to,
+      ...(replyTo ? { reply_to: replyTo } : {}),
+      subject,
+      html,
+      text,
+    }),
+  }).catch(() => null);
+  return !!res?.ok;
+}
+
+/**
  * "Your video is ready" (2026-10-26, usability sweep #9). Sent only when
  * Sparklee's in-app pop-up didn't show it first.
  */

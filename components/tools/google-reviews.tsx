@@ -39,7 +39,7 @@ const day = (iso: string) => {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 };
 
-export function GoogleReviewsTool({ onTrialLock }: { onTrialLock?: (data: unknown) => boolean }) {
+export function GoogleReviewsTool({ onTrialLock, onAskForReviews }: { onTrialLock?: (data: unknown) => boolean; /** Opens Ask for Google Review Video Email (2026-10-27). */ onAskForReviews?: () => void }) {
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -161,6 +161,11 @@ export function GoogleReviewsTool({ onTrialLock }: { onTrialLock?: (data: unknow
 
   return (
     <div>
+      {onAskForReviews && (
+        <div className="mb-3 flex justify-end">
+          <Button size="sm" variant="outline" onClick={onAskForReviews}>Ask for more reviews</Button>
+        </div>
+      )}
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
         {average !== null && (
           <p className="flex items-center gap-1.5 text-lg font-bold text-brand-text">
