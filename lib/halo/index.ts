@@ -678,5 +678,8 @@ export async function morningRun(admin: Admin, profile: HaloProfile): Promise<{ 
   }
   const { ids, written } = await planHaloDrafts(admin, profile);
   await written;
+  // Posted videos now showing on their Halo post (2026-10-26).
+  const { checkOnHaloPosts } = await import("@/lib/halo/on-post");
+  await checkOnHaloPosts(admin, profile.id);
   return { checked: sites.length, drafts: ids.length };
 }

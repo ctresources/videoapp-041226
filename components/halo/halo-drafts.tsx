@@ -514,7 +514,7 @@ export function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; hal
           // owner's ask): it lands in My Sparks and posts on its day by itself.
           <div className="w-full rounded-xl border border-spark-rule bg-[#faf9f5] px-3.5 py-3">
             {/* The status line above says it's approved and when it posts. */}
-            {d.source === "halo" && <p className="mb-2.5 text-[13px] leading-relaxed text-spark-ink-soft">{haloTextNote(d)}</p>}
+            {d.source === "halo" && !d.on_halo_at && <p className="mb-2.5 text-[13px] leading-relaxed text-spark-ink-soft">{haloTextNote(d)}</p>}
             <WhenInput d={d} halo={halo} />
             {/* Watch, thumbnail and words stay changeable here until it posts
                 (2026-10-26, the owner's ask). Open My Sparks and Make another
@@ -527,7 +527,7 @@ export function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; hal
             {d.videoUrl && (
               <a href={d.videoUrl} target="_blank" rel="noreferrer"><Button size="sm" variant="outline" className="gap-1.5"><Play size={13} /> Watch</Button></a>
             )}
-            {d.source === "halo" && d.status === "scheduled" && Date.parse(d.slot_at) > Date.now() && (
+            {d.source === "halo" && !d.on_halo_at && d.status === "scheduled" && Date.parse(d.slot_at) > Date.now() && (
               <span className="w-full text-[13px] text-spark-ink-muted">{haloTextNote(d)}</span>
             )}
           </>
@@ -536,12 +536,24 @@ export function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; hal
       {/* Always there on a Halo card, so a video posted by hand can go on
           the post too; the sheet takes a pasted link (2026-10-26). */}
       {d.source === "halo" && d.status !== "writing" && d.status !== "failed" && (
-        <div className="mt-2">
-          <button type="button" onClick={() => setSheet((x) => !x)}
-            className="rounded-lg bg-spark-blue px-3 py-1.5 text-sm font-semibold text-white">Put on my Halo post</button>
-        </div>
+        d.on_halo_at ? (
+          // Seen on the post by the morning check, or marked (2026-10-26).
+          <div className="mt-2 flex items-center gap-2">
+            <span className="rounded-full border border-[#bfe3cf] bg-[#e8f5ee] px-3 py-1 text-sm font-semibold text-[#0f7a52]">✓ On your Halo post</span>
+            <button type="button" onClick={() => void halo.markOnHalo(d, false)} className="text-xs text-spark-ink-faint underline">Not yet</button>
+          </div>
+        ) : (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => setSheet((x) => !x)}
+              className="rounded-lg bg-spark-blue px-3 py-1.5 text-sm font-semibold text-white">Put on my Halo post</button>
+            {(d.videoUrl || d.youtubeUrl || d.madeVideo?.ready) && (
+              <button type="button" onClick={() => { setSheet(false); void halo.markOnHalo(d, true); }}
+                className="rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-sm font-semibold text-spark-ink">It&apos;s on my post</button>
+            )}
+          </div>
+        )
       )}
-      {sheet && <PutOnHalo d={d} />}
+      {sheet && !d.on_halo_at && <PutOnHalo d={d} />}
     </div>
   );
 }
@@ -587,7 +599,15 @@ export function HaloDrafts({ halo, needsVideo, onOutOfVideos }: {
   const { settings } = halo;
   // Sparklee's own requests have their own section (SparkleeDrafts).
   const drafts = halo.drafts.filter((d) => d.source !== "sparklee");
+  const [showDone, setShowDone] = useState(false);
   if (!settings || (!drafts.length && !halo.pages.length)) return null;
+  // Finished: posted, and (for a Halo post) on the post. They fold away once
+  // newer cards are there, and stay open while they're all there is
+  // (2026-10-26, the owner's ask).
+  const isDone = (d: HaloDraft) => d.status === "posted" && (d.source !== "halo" || !!d.on_halo_at);
+  const done = drafts.filter(isDone);
+  const open = drafts.filter((d) => !isDone(d));
+  const fold = done.length > 0 && open.length > 0;
 
   // "November · 3 of 4 planned": the month of the next Halo day.
   const halos = drafts.filter((d) => d.source === "halo");
@@ -610,7 +630,15 @@ export function HaloDrafts({ halo, needsVideo, onOutOfVideos }: {
           </span>
         )}
       </div>
-      {drafts.map((d) => <Card key={d.id} d={d} halo={halo} needsVideo={needsVideo.has(d.id)} onOutOfVideos={onOutOfVideos} />)}
+      {open.map((d) => <Card key={d.id} d={d} halo={halo} needsVideo={needsVideo.has(d.id)} onOutOfVideos={onOutOfVideos} />)}
+      {fold && (
+        <button type="button" onClick={() => setShowDone((x) => !x)}
+          className="flex items-center justify-between rounded-2xl border border-spark-rule bg-[#faf9f5] px-4 py-3 text-left">
+          <span className="text-sm font-semibold text-spark-ink">Done · {done.length} posted{done.some((d) => d.source === "halo") ? " and on your Halo posts" : ""}</span>
+          <span className="text-[13px] font-semibold text-[#A3660F]">{showDone ? "Hide ▴" : "Show ▾"}</span>
+        </button>
+      )}
+      {(!fold || showDone) && done.map((d) => <Card key={d.id} d={d} halo={halo} needsVideo={needsVideo.has(d.id)} onOutOfVideos={onOutOfVideos} />)}
       <AlsoNew halo={halo} />
     </div>
   );

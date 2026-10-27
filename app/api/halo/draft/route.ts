@@ -39,6 +39,14 @@ export async function POST(req: NextRequest) {
   if (!d || !["halo", "halo_promo", "email", "sparklee"].includes(d.source)) return NextResponse.json({ error: "Draft not found." }, { status: 404 });
   const editable = d.status === "draft" || d.status === "failed";
 
+  // It's on my post / not yet (2026-10-26): the card stops (or starts) asking
+  // to text Halo. The morning run marks it too when it sees the video.
+  if (action === "onHalo") {
+    const on = body.value !== false;
+    await s.admin.from("autopilot_drafts").update({ on_halo_at: on ? new Date().toISOString() : null }).eq("id", d.id);
+    return NextResponse.json({ onHalo: on });
+  }
+
   if (action === "setup") {
     // Approved but not yet posted: only the words may still change, since the
     // video is already made (2026-10-26).

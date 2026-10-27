@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { createClient } from "@/lib/supabase/client";
 import type { HaloSettings, HaloSetup, PromoAngle } from "@/lib/halo";
@@ -28,6 +28,8 @@ export interface HaloDraft {
   halo_page_id: string | null;
   video_id: string | null;
   post_error: string | null;
+  /** Seen on its Halo post, or marked so (2026-10-26). */
+  on_halo_at?: string | null;
   projects: {
     title: string | null; thumbnail_url: string | null; location_city: string | null; location_state: string | null;
     ai_script: { hook?: string; script?: string; cta?: string; title?: string } | null;
@@ -66,6 +68,8 @@ export function useHalo(userId: string | undefined) {
   const [twinLookId, setTwinLookId] = useState<string | null>(null);
   const [connected, setConnected] = useState<string[] | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const checkedOnPost = useRef(false);
+  const loadDraftsRef = useRef<(() => Promise<void>) | null>(null);
 
   const loadDrafts = useCallback(async () => {
     if (!userId) return;
@@ -73,7 +77,7 @@ export function useHalo(userId: string | undefined) {
     const since = new Date(Date.now() - 21 * 86_400_000).toISOString();
     const { data } = await sb
       .from("autopilot_drafts")
-      .select("id, slot_at, status, source, source_url, source_kind, topic, setup, project_id, halo_page_id, video_id, post_error, projects(title, thumbnail_url, location_city, location_state, ai_script, seo_data)")
+      .select("id, slot_at, status, source, source_url, source_kind, topic, setup, project_id, halo_page_id, video_id, post_error, on_halo_at, projects(title, thumbnail_url, location_city, location_state, ai_script, seo_data)")
       .in("source", ["halo", "halo_promo", "email", "sparklee"])
       .neq("status", "skipped")
       .gte("slot_at", since)
@@ -118,7 +122,17 @@ export function useHalo(userId: string | undefined) {
       }
     }
     setDrafts(list);
+    // Posted Halo videos not yet seen on their post: look once now rather
+    // than waiting for the morning run (2026-10-26).
+    if (!checkedOnPost.current && list.some((d) => d.source === "halo" && (d.status === "posted" || d.status === "scheduled") && !d.on_halo_at)) {
+      checkedOnPost.current = true;
+      void fetch("/api/halo/on-post", { method: "POST" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((b) => { if (b?.found) void loadDraftsRef.current?.(); })
+        .catch(() => {});
+    }
   }, [userId]);
+  loadDraftsRef.current = loadDrafts;
 
   const loadPages = useCallback(async (types: string[]) => {
     if (!userId) return;
@@ -266,6 +280,13 @@ export function useHalo(userId: string | undefined) {
     return { ...r.out, status: r.status };
   }, [loadDrafts]);
 
+  /** It's on my post (or not yet): stops the card asking to text Halo. */
+  const markOnHalo = useCallback(async (d: HaloDraft, value: boolean) => {
+    setDrafts((list) => list.map((x) => (x.id === d.id ? { ...x, on_halo_at: value ? new Date().toISOString() : null } : x)));
+    const r = await draftAction({ draftId: d.id, action: "onHalo", value });
+    if (!r.ok) void loadDrafts();
+  }, [draftAction, loadDrafts]);
+
   const promo = useCallback(async (siteId: string, angle: PromoAngle, replaceDraftId?: string) => {
     const r = await post("/api/halo/promo", { siteId, angle, replaceDraftId });
     if (!r.ok) { toast.error(String(r.out.error ?? "Couldn't start the promo video.")); return false; }
@@ -276,7 +297,7 @@ export function useHalo(userId: string | undefined) {
 
   return {
     loaded, settings, sites, drafts, pages, looks, twinLookId, connected,
-    saveSettings, addSite, removeSite, patchSetup, setWhen, setPicture, skip, useInstead, make, approve, promo,
+    saveSettings, addSite, removeSite, patchSetup, setWhen, setPicture, skip, useInstead, make, approve, promo, markOnHalo,
     reload: loadAll,
     reloadDrafts: loadDrafts,
   };

@@ -820,6 +820,14 @@ export default function HelpPage() {
                 YouTube link]&rdquo;. <strong>Skip</strong> sets a draft aside and its day is filled with the
                 next new post.
               </span>
+              {/* On your Halo post, and folding finished cards (2026-10-26). */}
+              <span className="block mt-1.5">
+                Once Halo has added it, the card says <strong>✓ On your Halo post</strong> and stops asking you to
+                text Halo. SparkReels looks at your Halo post for the video each morning and when you open
+                AutoSparks; if it hasn&apos;t noticed yet, press <strong>It&apos;s on my post</strong> (and{" "}
+                <strong>Not yet</strong> undoes it). Finished cards (posted, and on your Halo post) fold into a{" "}
+                <strong>Done</strong> line once newer cards arrive; <strong>Show</strong> opens them again.
+              </span>
               <span className="block mt-3 font-semibold text-brand-text">Promo video for your Halo referral page</span>
               <span className="block mt-1">
                 Add your Halo referral page too. It is marked <strong>Affiliate</strong> and has a{" "}
