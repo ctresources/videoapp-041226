@@ -92,6 +92,25 @@ export function ThumbnailEditor(props: {
   const [people, setPeople] = useState<{ url: string; name: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  /** Each picked photo's cut-out, for the preview (2026-10-27). */
+  const [cutouts, setCutouts] = useState<Record<string, string>>({});
+  const [cutting, setCutting] = useState(false);
+
+  useEffect(() => {
+    if (!person || cutouts[person]) return;
+    let gone = false;
+    setCutting(true);
+    fetch("/api/tools/thumbnail/cutout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: person }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!gone && d?.url) setCutouts((c) => ({ ...c, [person]: d.url as string })); })
+      .catch(() => { /* the preview keeps the photo as it is */ })
+      .finally(() => { if (!gone) setCutting(false); });
+    return () => { gone = true; };
+  }, [person, cutouts]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -220,7 +239,7 @@ export function ThumbnailEditor(props: {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-stretch justify-center bg-black/50 sm:items-center sm:p-4">
-      <div className="flex w-full max-w-2xl flex-col overflow-hidden bg-white sm:rounded-2xl sm:shadow-xl">
+      <div className="flex w-full max-w-xl flex-col overflow-hidden bg-white sm:max-h-[88vh] sm:rounded-2xl sm:shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h3 className="font-bold text-brand-text">Edit thumbnail</h3>
           <button type="button" onClick={props.onClose} aria-label="Close" className="rounded-lg p-1.5 hover:bg-slate-100">
@@ -242,8 +261,13 @@ export function ThumbnailEditor(props: {
                 </div>
               )}
               {person && (
+                // The cut-out the thumbnail uses (2026-10-27): the person without
+                // their photo's background, as the finished thumbnail draws them.
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={person} alt="" className={`absolute bottom-0 ${side === "left" ? "left-[4%]" : "right-[4%]"} h-[88%] w-auto rounded-t-xl object-cover`} />
+                <img src={cutouts[person] || person} alt="" className={`absolute bottom-0 ${side === "left" ? "left-[4%]" : "right-[4%]"} h-[88%] w-auto ${cutouts[person] ? "object-contain" : "rounded-t-xl object-cover opacity-60"}`} />
+              )}
+              {person && !cutouts[person] && cutting && (
+                <span className={`absolute bottom-3 ${side === "left" ? "left-3" : "right-3"} rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white`}>Removing the background…</span>
               )}
               <div className={`absolute bottom-[12%] ${side === "left" ? "left-[38%] right-[6%] text-right" : "left-[6%] right-[38%] text-left"}`}>
                 <span style={previewWords}>{words.trim() || "Your words"}</span>

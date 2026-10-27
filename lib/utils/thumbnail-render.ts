@@ -705,31 +705,7 @@ export async function renderAndSaveThumbnail(
       // Cutout cache: each unique photo is background-removed once, ever —
       // repeat renders reuse the stored cutout, so the remove.bg free tier
       // (50 images/month) is effectively unlimited.
-      const cutoutKey = `thumbnails/cutouts/${createHash("sha1").update(photoSrc).digest("hex")}.png`;
-      let photoInput: Buffer | null = null;
-
-      if (process.env.REMOVEBG_API_KEY) {
-        const { data: cached } = await admin.storage.from("assets").download(cutoutKey);
-        if (cached) photoInput = Buffer.from(await cached.arrayBuffer());
-      }
-
-      if (!photoInput) {
-        const res = await fetch(photoSrc);
-        if (res.ok) {
-          photoInput = Buffer.from(await res.arrayBuffer());
-          const cutout = await removeImageBackground(photoInput);
-          if (cutout) {
-            // Trim the transparent padding around the cutout so the subject
-            // sizes and anchors consistently.
-            try {
-              photoInput = await sharp(cutout).trim().png().toBuffer();
-            } catch {
-              photoInput = cutout;
-            }
-            await admin.storage.from("assets").upload(cutoutKey, photoInput, { contentType: "image/png", upsert: true });
-          }
-        }
-      }
+      const photoInput = (await personCutout(admin, photoSrc))?.buffer ?? null;
 
       if (photoInput) {
         cutoutForTall = photoInput;
@@ -812,4 +788,35 @@ export async function renderAndSaveThumbnail(
 
   // The market that was printed, so the boxes that edit it can show it.
   return { url: publicUrl, headline: headlineText, backgroundUrl, scene: sceneUsed, city: city ?? "", state: state ?? "" };
+}
+
+
+/**
+ * The person with the background removed, made once per photo and kept in
+ * storage (the remove.bg free tier allows 50 a month, so each photo is cut out
+ * once, ever). Used by the thumbnail renderer and, since 2026-10-27, by the
+ * editor's preview so it shows the cut-out the thumbnail will use. Without a
+ * remove.bg key, or if it fails, the photo as it is.
+ */
+export async function personCutout(
+  admin: ReturnType<typeof createAdminClient>,
+  photoSrc: string,
+): Promise<{ buffer: Buffer; url: string | null; cut: boolean } | null> {
+  const cutoutKey = `thumbnails/cutouts/${createHash("sha1").update(photoSrc).digest("hex")}.png`;
+  const publicUrl = () => admin.storage.from("assets").getPublicUrl(cutoutKey).data.publicUrl;
+  if (process.env.REMOVEBG_API_KEY) {
+    const { data: cached } = await admin.storage.from("assets").download(cutoutKey);
+    if (cached) return { buffer: Buffer.from(await cached.arrayBuffer()), url: publicUrl(), cut: true };
+  }
+  const res = await fetch(photoSrc);
+  if (!res.ok) return null;
+  const original = Buffer.from(await res.arrayBuffer());
+  const cutout = await removeImageBackground(original);
+  if (!cutout) return { buffer: original, url: null, cut: false };
+  let trimmed = cutout;
+  const sharp = (await import("sharp")).default;
+  // Trim the transparent padding so the subject sizes and anchors consistently.
+  try { trimmed = await sharp(cutout).trim().png().toBuffer(); } catch { /* keep it untrimmed */ }
+  await admin.storage.from("assets").upload(cutoutKey, trimmed, { contentType: "image/png", upsert: true });
+  return { buffer: trimmed, url: publicUrl(), cut: true };
 }

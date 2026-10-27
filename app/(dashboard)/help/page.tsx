@@ -1264,10 +1264,15 @@ export default function HelpPage() {
           <div className="flex flex-col gap-4">
             <Step n={23} title="The Everyday Tools" icon={Wand2}>
               <Link href="/tools" className="text-primary-600 font-medium hover:underline">Spark Tools</Link> is in four
-              groups: <strong>For a video</strong> (Thumbnail, Title, Description, Tags, Script),{" "}
+              groups: <strong>For a video</strong> (Thumbnail, Title, Description, Tags, Script, Record My Screen),{" "}
               <strong>Images &amp; banners</strong>, <strong>Profile &amp; reviews</strong> (Channel Name,
               LinkedIn Profile, Google Reviews, Ask for Google Review Video Email) and <strong>Sellers &amp; AI search</strong> (Seller Update,
               AI Answer Blocks). Pick a group, then a tool.{" "}
+              <strong>Record My Screen</strong> is the simple screen recorder: tick or untick{" "}
+              <strong>Show me in a corner circle</strong>, press <strong>Start recording</strong>, pick the tab or window
+              to show, talk as you go, and press Stop. Up to 10 minutes, free, saved to My Sparks with Watch,
+              Download, Publish and Email it. Showing a web page? Open it in another tab first and pick that tab:
+              the tab you record from is never offered, so the recording can't show itself.{" "}
               You don&apos;t need Spark Tools to
               make a video — Spark Studio generates everything automatically. Use these to iterate: brainstorm
               8 title angles before committing, draft and compare scripts without creating projects, regenerate a

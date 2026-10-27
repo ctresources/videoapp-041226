@@ -17,6 +17,7 @@ import { DEFAULT_THUMB_STYLE, type ThumbStyle } from "@/lib/utils/thumbnail-styl
 import { GoogleReviewsTool } from "@/components/tools/google-reviews";
 import { SellerUpdateTool } from "@/components/tools/seller-update";
 import { ReviewRequestTool } from "@/components/tools/review-request";
+import { ScreenRecorderTool } from "@/components/tools/screen-recorder";
 import { articleHeadline, isPlaceholderTitle } from "@/lib/utils/article-headline";
 import { showTrialLock } from "@/lib/utils/trial-lock";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
@@ -25,7 +26,7 @@ import { BASE_AUDIENCES } from "@/lib/utils/audiences";
 import { useCustomAudiences } from "@/lib/hooks/use-custom-audiences";
 import { suggestTextColors, type BannerCustomColors } from "@/lib/utils/banner-colors";
 
-type Tab = "description" | "script" | "title" | "tags" | "channel" | "linkedin" | "thumbnail" | "image" | "banner" | "answers" | "reviews" | "seller" | "review";
+type Tab = "description" | "script" | "title" | "tags" | "channel" | "linkedin" | "thumbnail" | "image" | "banner" | "answers" | "reviews" | "seller" | "review" | "screen";
 
 interface Project {
   id: string;
@@ -149,12 +150,14 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
   { id: "seller",      label: "Seller Update",        icon: Home },
   // A short video asking past clients for a Google review (2026-10-27).
   { id: "review",      label: "Ask for Google Review Video Email", icon: Send },
+  // The simple screen recorder (2026-10-27).
+  { id: "screen",      label: "Record My Screen", icon: Video },
 ];
 
 // The tabs in four groups (2026-10-26, usability sweep #8): twelve tabs in a
 // row were too many to scan. Each group's chips are the tools inside it.
 const TOOL_GROUPS: { label: string; tabs: Tab[] }[] = [
-  { label: "For a video",        tabs: ["thumbnail", "title", "description", "tags", "script"] },
+  { label: "For a video",        tabs: ["thumbnail", "title", "description", "tags", "script", "screen"] },
   { label: "Images & banners",   tabs: ["image", "banner"] },
   { label: "Profile & reviews",  tabs: ["channel", "linkedin", "reviews", "review"] },
   { label: "Sellers & AI search", tabs: ["seller", "answers"] },
@@ -3414,6 +3417,7 @@ export default function ToolsPage() {
         {activeTab === "answers"     && <AnswerBlocksGenerator />}
         {activeTab === "reviews"     && <GoogleReviewsTool onTrialLock={(data) => showTrialLock(data as Parameters<typeof showTrialLock>[0])} onAskForReviews={() => setActiveTab("review")} />}
         {activeTab === "review"      && <ReviewRequestTool />}
+        {activeTab === "screen"      && <ScreenRecorderTool />}
         {activeTab === "seller"      && (
           <SellerUpdateTool
             initialListingId={sellerLink.listing}

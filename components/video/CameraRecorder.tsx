@@ -127,7 +127,7 @@ function formatTime(s: number) {
   return `${m}:${sec}`;
 }
 
-export function CameraRecorder({ initialScreen = false, brief, city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, initialShape, scriptLength, onScriptLengthChange, photos = [], behindClip = null, onBehindClipChange, scenesRequest = 0, onScenesBusy, onScriptWords, setupHidden = false, behindYou, brollOff = false, onPhaseChange, onSaved, micTools = true, qaMode = false }: {
+export function CameraRecorder({ initialScreen = false, brief, city, state, initialScript, initialUnbranded = false, freestyle = false, scriptSourceAbove = false, noRewrite = false, initialShape, scriptLength, onScriptLengthChange, photos = [], behindClip = null, onBehindClipChange, scenesRequest = 0, onScenesBusy, onScriptWords, setupHidden = false, behindYou, brollOff = false, onPhaseChange, onSaved, micTools = true, qaMode = false, simple = false }: {
   city?: string; state?: string; initialScript?: string;
   /** Start with Record your screen on: chosen under the Camera/Teleprompter card on Create. */
   initialScreen?: boolean;
@@ -245,6 +245,12 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
    * holding the id grants nothing on its own.
    */
   qaMode?: boolean;
+  /**
+   * Record My Screen in Spark Tools (2026-10-27, the owner: "minimum
+   * options"): screen on, no script, and only the corner-circle switch and
+   * the button. Everything else keeps its default.
+   */
+  simple?: boolean;
 }) {
   const [step, setStep] = useState<CamStep>("script");
   const [script, setScript] = useState(initialScript ?? "");
@@ -1810,7 +1816,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
         {/* Says what is missing and that it is missing on purpose. A screen
             that simply had no script box on it would read as one still
             loading, or as the choice not having taken. */}
-        {freestyle && (
+        {freestyle && !simple && (
           <div className="rounded-xl border border-spark-rule bg-white/60 px-4 py-3">
             <p className="text-sm font-semibold text-brand-text">No script — just talk</p>
             <p className="mt-0.5 text-[12.5px] leading-[1.45] text-spark-ink-muted">
@@ -2030,7 +2036,13 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
         {/* ── Record your screen ── desktop browsers only. Chosen on the page
             above now (the "Record my screen" chip); this keeps the way back
             and the corner-circle choice while it's on. */}
-        {screenSupported && screenMode && (
+        {simple && screenSupported && (
+          <label className="flex cursor-pointer select-none items-center gap-2.5 text-[15px] text-spark-ink">
+            <input type="checkbox" checked={screenBubble} onChange={(e) => setScreenBubble(e.target.checked)} className="h-4 w-4 accent-[#A3660F]" />
+            Show me in a corner circle
+          </label>
+        )}
+        {!simple && screenSupported && screenMode && (
           <div className="rounded-xl border border-spark-rule p-3.5">
             <label className="flex cursor-pointer select-none items-start gap-2.5">
               <input
@@ -2067,7 +2079,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
             Cropping a portrait take into landscape afterwards loses your head
             and your feet — the information was never captured — so the only
             way to get a good landscape video is to frame one. */}
-        {(brandedSupported || micTools) && (
+        {!simple && (brandedSupported || micTools) && (
           <div className="rounded-xl border border-spark-rule p-3.5">
             {/* Same eyebrow-and-question device as the Create screen, so the
                 two halves of one flow read as one flow. "Shape" named the
@@ -2148,6 +2160,8 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
           </div>
         )}
 
+        {/* Not in the simple screen recorder: branding stays at its default. */}
+        {!simple && (<>
         {/* Branded Look — record-time overlays baked into the file. The panel
             renders even where compositing is unsupported, because the channel
             CTA lives at the bottom of it and must never disappear. */}
@@ -2369,6 +2383,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
               : <li>End with a subscribe CTA — tap <strong>Add Channel CTA</strong> above to drop yours into the script so the teleprompter reads it for you</li>}
           </ul>
         </div>
+        </>)}
 
         {/* The shared microphone tools. Rendered only when micTools is on, so
             the Camera tab is exactly as it was. */}
@@ -2438,9 +2453,13 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
           className="w-full gap-2"
           disabled={!freestyle && !script.trim()}
         >
-          <Camera size={18} /> {screenMode ? "Share Screen" : "Open Camera"}
+          <Camera size={18} /> {simple ? "Start recording" : screenMode ? "Share Screen" : "Open Camera"}
         </Button>
-        {!freestyle && !script.trim() ? (
+        {simple ? (
+          <p className="text-xs text-slate-500 text-center -mt-3">
+            Up to 10 minutes. Showing a web page? Open it in another tab first, then pick that tab.
+          </p>
+        ) : !freestyle && !script.trim() ? (
           // A status, not a second instruction. The fixed bar at the bottom of
           // the screen is already telling you what to do for your route; this
           // line sitting under a greyed-out button was telling you something
