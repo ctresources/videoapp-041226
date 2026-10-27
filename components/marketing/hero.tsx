@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { ArrowRight, Mic, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowRight, Mic, Play, Volume2, VolumeX, X } from "lucide-react";
 import { AiQuestionsBox } from "@/components/marketing/ai-questions-box";
 import s from "./hero.module.css";
 
@@ -42,16 +42,21 @@ export function Hero() {
   const [open, setOpen] = useState(false);
   const [tilt, setTilt] = useState("");
   const [run, setRun] = useState(0);
+  /**
+   * Held on the video once someone turns its sound on (2026-10-26, the owner:
+   * "the video cuts short"): the card stops moving on until a step is pressed.
+   */
+  const [hold, setHold] = useState(false);
   const vid = useRef<HTMLVideoElement>(null);
 
   const go = useCallback((n: number) => { setStep(n); setRun((r) => r + 1); }, []);
 
   // Advance by itself; the Share step stays longer so the video is seen.
   useEffect(() => {
-    if (open) return;
+    if (open || hold) return;
     const t = setTimeout(() => go((step + 1) % 3), step === 2 ? SHARE_MS : STEP_MS);
     return () => clearTimeout(t);
-  }, [step, run, open, go]);
+  }, [step, run, open, hold, go]);
 
   // What each step animates.
   useEffect(() => {
@@ -90,11 +95,11 @@ export function Hero() {
       <div className={`${s.glow} ${s.glowB}`} />
       <div className="relative max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start lg:items-stretch">
         <div data-hero-left>
-          <p className="text-xl sm:text-2xl font-black text-blue-900 tracking-wide">Speak, Spark, Share</p>
+          <p className="text-xl sm:text-2xl font-black text-slate-900 tracking-wide">Speak, Spark, Share</p>
           <p className="text-lg sm:text-xl font-bold text-slate-400 mb-4 sm:whitespace-nowrap">No filming, no editing, no glam required.</p>
           <h1 className="text-4xl sm:text-6xl font-black leading-[1.05] mb-5 text-slate-900">
             Hit the Mic. Be <span key={word} className={s.rotor}>{ROTOR[word]}</span>
-            <span className="block text-blue-900 mt-1">Become the go-to local expert in your town.</span>
+            <span className="block text-slate-900 mt-1">Become the go-to local expert in your town.</span>
           </h1>
           {/* The owner's copy (2026-10-26), under the headline. */}
           <p className="text-2xl sm:text-3xl font-black text-slate-900 mb-2">Turn One Idea Into Everywhere You Show Up</p>
@@ -111,14 +116,14 @@ export function Hero() {
               <br className="hidden sm:inline" />{" "}
               <span className="sm:whitespace-nowrap">
                 yet only <span className="font-black text-slate-900">8%</span> do it consistently.{" "}
-                <a href="#pain" className="font-black text-blue-900 underline decoration-2 underline-offset-2 hover:text-blue-700">Why?</a>
+                <a href="#pain" className="font-black text-[#A3660F] underline decoration-2 underline-offset-2 hover:text-[#8a560c]">Why?</a>
               </span>
             </p>
           </div>
           {/* Three buttons in one row on wide screens: sign up, the demo, and
               the AI answer block form (2026-10-26, the owner's ask). */}
           <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2.5 items-stretch sm:items-center">
-            <a href="/beta" className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-900 text-white text-base font-semibold px-4 py-3 shadow-[0_10px_24px_-10px_rgba(30,58,138,0.7)] hover:-translate-y-0.5 hover:bg-blue-800 transition">
+            <a href="/beta" className="inline-flex items-center justify-center gap-2 rounded-xl bg-spark-amber text-white text-base font-semibold px-4 py-3 shadow-[0_10px_24px_-10px_rgba(186,117,23,0.7)] hover:-translate-y-0.5 hover:bg-[#A3660F] transition">
               Create Your First Spark <ArrowRight size={17} />
             </a>
             <a href="#how-it-works" className="inline-flex items-center justify-center gap-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-base font-semibold px-4 py-3 hover:border-slate-400 hover:bg-slate-50 transition-colors">
@@ -133,12 +138,12 @@ export function Hero() {
                 // Straight into the first box, once it has scrolled into view.
                 setTimeout(() => box?.querySelector("input")?.focus({ preventScroll: true }), 500);
               }}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-blue-900 bg-white text-blue-900 text-base font-semibold px-4 py-2.5 hover:bg-blue-50 transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-spark-amber bg-white text-[#A3660F] text-base font-semibold px-4 py-2.5 hover:bg-amber-50 transition-colors"
             >
               Try AI Answer Blocks <ArrowRight size={17} />
             </a>
           </div>
-          <a href="/beta" className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-base font-bold px-4 py-2 rounded-full mt-5 hover:bg-emerald-100 transition-colors">
+          <a href="/beta" className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-[#8a560c] text-base font-bold px-4 py-2 rounded-full mt-5 hover:bg-amber-100 transition-colors">
             <span className={s.badgeDot} />
             First 100 agents get 1 free AI video — no credit card
           </a>
@@ -162,12 +167,12 @@ export function Hero() {
           }}
           onMouseLeave={() => setTilt("")}
         >
-          <div className={`${s.float} ${s.f1}`}>🎤 <b className="text-blue-900">“Make a market update”</b></div>
-          <div className={`${s.float} ${s.f2}`}>✓ <b className="text-blue-900">Posted</b> to 4 accounts</div>
+          <div className={`${s.float} ${s.f1}`}>🎤 <b className="text-slate-900">“Make a market update”</b></div>
+          <div className={`${s.float} ${s.f2}`}>✓ <b className="text-slate-900">Posted</b> to 4 accounts</div>
           <div className={s.card} style={{ transform: tilt, "--step": `${step === 2 ? SHARE_MS : STEP_MS}ms` } as CSSProperties}>
             <div className="grid grid-cols-3 gap-2">
               {["Speak", "Spark", "Share"].map((label, i) => (
-                <button key={label} type="button" onClick={() => go(i)} className={`${s.tab} ${step === i ? s.tabOn : ""}`}>
+                <button key={label} type="button" onClick={() => { setHold(false); go(i); }} className={`${s.tab} ${step === i ? s.tabOn : ""}`}>
                   <small>Step {i + 1}</small>{label}
                   <span key={step === i ? run : -1} className={s.bar} />
                 </button>
@@ -177,7 +182,7 @@ export function Hero() {
             <div className={s.screen}>
               {/* Speak */}
               <div className={`${s.scene} ${step === 0 ? s.sceneOn : ""}`}>
-                <button type="button" className={s.mic} onClick={() => go(0)} aria-label="Play the demo again">
+                <button type="button" className={s.mic} onClick={() => { setHold(false); go(0); }} aria-label="Play the demo again">
                   <span className={s.ring} /><span className={`${s.ring} ${s.ring2}`} /><span className={`${s.ring} ${s.ring3}`} />
                   <Mic size={42} color="#fff" />
                 </button>
@@ -215,15 +220,24 @@ export function Hero() {
                     loop
                     playsInline
                     preload="metadata"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full cursor-pointer object-cover"
+                    onClick={() => { vid.current?.pause(); setOpen(true); }}
                   />
+                  {/* The whole video, with sound and controls (2026-10-26). */}
+                  <button
+                    type="button"
+                    onClick={() => { vid.current?.pause(); setOpen(true); }}
+                    className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white"
+                  >
+                    <Play size={12} /> Full video
+                  </button>
                   {/* What it is, said on it (2026-10-26, the owner's wording). */}
                   <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white">
                     Made with SparkReels · Digital Twin
                   </span>
                   <button
                     type="button"
-                    onClick={() => setMuted((m) => !m)}
+                    onClick={() => { setMuted((m) => !m); setHold(true); }}
                     className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white"
                   >
                     {muted ? <><VolumeX size={13} /> Sound</> : <><Volume2 size={13} /> Mute</>}

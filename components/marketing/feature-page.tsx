@@ -57,25 +57,25 @@ export function FeaturePageView({ slug }: { slug: string }) {
           </p>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-              <p className="mb-4 flex flex-wrap items-center gap-3 text-lg sm:text-xl font-black text-blue-900">
+              <p className="mb-4 flex flex-wrap items-center gap-3 text-lg sm:text-xl font-black text-slate-900">
                 {p.eyebrow}
                 {p.paid && <span className="rounded-full bg-[#BA7517] px-2.5 py-0.5 text-sm font-semibold text-white">Paid plans</span>}
               </p>
               <h1 className="text-4xl sm:text-6xl font-black leading-[1.08] mb-5 text-slate-900">
                 {p.h1}
-                <span className="block text-blue-900 mt-1">{p.h1Accent}</span>
+                <span className="block text-slate-900 mt-1">{p.h1Accent}</span>
               </h1>
               <p className="text-xl text-slate-500 mb-7 leading-relaxed max-w-xl">{p.lead}</p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/beta" className="inline-flex items-center justify-center gap-2 bg-blue-900 text-white text-xl font-semibold px-7 py-4 hover:bg-blue-800 transition-colors">
+                <Link href="/beta" className="inline-flex items-center justify-center gap-2 bg-spark-amber text-white text-xl font-semibold px-7 py-4 hover:bg-[#A3660F] transition-colors">
                   Sign up for free <ArrowRight size={18} />
                 </Link>
                 <Link href="/pricing" className="inline-flex items-center justify-center gap-2 border border-slate-300 text-slate-700 text-xl font-semibold px-7 py-4 hover:border-slate-400 hover:bg-slate-50 transition-colors">
                   See pricing
                 </Link>
               </div>
-              <p className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-base font-bold px-4 py-2 rounded-full mt-5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <p className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-[#8a560c] text-base font-bold px-4 py-2 rounded-full mt-5">
+                <span className="w-2 h-2 rounded-full bg-[#C98A1B]" />
                 First 100 agents get 1 free AI video — no credit card
               </p>
             </div>
@@ -123,7 +123,7 @@ export function FeaturePageView({ slug }: { slug: string }) {
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-6">Questions agents ask</h2>
           <FaqList items={p.faqs} />
           <p className="mt-5 text-lg">
-            <Link href="/faq" className="font-semibold text-blue-900 hover:underline">All questions →</Link>
+            <Link href="/faq" className="font-semibold text-[#A3660F] hover:underline">All questions →</Link>
           </p>
         </div>
       </section>
@@ -133,12 +133,12 @@ export function FeaturePageView({ slug }: { slug: string }) {
           <h2 className="text-3xl font-black text-slate-900 mb-6">More from SparkReels</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {others.map((f) => (
-              <Link key={f.slug} href={`/${f.slug}`} className="block border border-slate-200 bg-white p-5 hover:border-blue-900 transition-colors">
+              <Link key={f.slug} href={`/${f.slug}`} className="block border border-slate-200 bg-white p-5 hover:border-spark-amber transition-colors">
                 <span className="block text-lg font-bold text-slate-900">{f.navLabel}</span>
                 <span className="block text-base text-slate-500">{f.blurb}</span>
               </Link>
             ))}
-            <Link href="/pricing" className="block border border-slate-200 bg-white p-5 hover:border-blue-900 transition-colors">
+            <Link href="/pricing" className="block border border-slate-200 bg-white p-5 hover:border-spark-amber transition-colors">
               <span className="block text-lg font-bold text-slate-900">Pricing</span>
               <span className="block text-base text-slate-500">Plans from $99 a month</span>
             </Link>

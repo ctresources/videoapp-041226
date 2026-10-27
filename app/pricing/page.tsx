@@ -53,7 +53,7 @@ export default function PricingPage() {
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-6">Pricing questions</h2>
           <FaqList items={PRICING_FAQS} />
           <p className="mt-5 text-lg">
-            <Link href="/faq" className="font-semibold text-blue-900 hover:underline">All questions →</Link>
+            <Link href="/faq" className="font-semibold text-[#A3660F] hover:underline">All questions →</Link>
           </p>
         </div>
       </section>

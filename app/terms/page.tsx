@@ -14,7 +14,7 @@ export default function TermsPage() {
       <div className="max-w-3xl mx-auto px-6 py-16">
         {/* Header */}
         <div className="mb-12">
-          <Link href="/" className="text-blue-400 hover:text-blue-300 text-sm mb-8 inline-block">
+          <Link href="/" className="text-amber-400 hover:text-amber-300 text-sm mb-8 inline-block">
             ← Back to SparkReels
           </Link>
           <h1 className="text-4xl font-bold text-white mb-3">Terms of Service</h1>
@@ -127,7 +127,7 @@ export default function TermsPage() {
             <p>
               We reserve the right to suspend or terminate your account at any time for violations of these
               Terms. You may delete your account at any time by contacting{" "}
-              <a href="mailto:support@sparkreels.ai" className="text-blue-400 hover:text-blue-300">
+              <a href="mailto:support@sparkreels.ai" className="text-amber-400 hover:text-amber-300">
                 support@sparkreels.ai
               </a>
               . Upon termination, your data will be deleted in accordance with our Privacy Policy.
@@ -159,7 +159,7 @@ export default function TermsPage() {
               <p className="font-semibold text-white">SparkReels</p>
               <p>
                 Email:{" "}
-                <a href="mailto:support@sparkreels.ai" className="text-blue-400 hover:text-blue-300">
+                <a href="mailto:support@sparkreels.ai" className="text-amber-400 hover:text-amber-300">
                   support@sparkreels.ai
                 </a>
               </p>

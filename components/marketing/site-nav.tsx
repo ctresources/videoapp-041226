@@ -55,7 +55,7 @@ export function SiteNav({ active }: { active?: "features" | "pricing" | "blog" |
                     <span className="block text-sm text-slate-500">{f.blurb}</span>
                   </Link>
                 ))}
-                <Link href="/#features" onClick={() => setOpen(false)} className="mt-1 block border-t border-slate-100 px-4 pt-2.5 pb-1 text-sm font-semibold text-blue-900 hover:underline">
+                <Link href="/#features" onClick={() => setOpen(false)} className="mt-1 block border-t border-slate-100 px-4 pt-2.5 pb-1 text-sm font-semibold text-[#A3660F] hover:underline">
                   Everything included →
                 </Link>
               </div>
@@ -70,7 +70,7 @@ export function SiteNav({ active }: { active?: "features" | "pricing" | "blog" |
           <Link href="/login" className="whitespace-nowrap text-base font-medium text-slate-600 hover:text-slate-900 transition-colors px-2 sm:px-3 py-2">
             Log In
           </Link>
-          <Link href="/beta" className="whitespace-nowrap text-base font-semibold bg-blue-900 text-white px-3.5 sm:px-5 py-2.5 hover:bg-blue-800 transition-colors flex items-center gap-1.5">
+          <Link href="/beta" className="whitespace-nowrap text-base font-semibold bg-spark-amber text-white px-3.5 sm:px-5 py-2.5 hover:bg-[#A3660F] transition-colors flex items-center gap-1.5">
             Start Free
           </Link>
         </div>

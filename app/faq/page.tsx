@@ -28,14 +28,14 @@ export default function FaqPage() {
       <FaqSchema items={FAQ_GROUPS.flatMap((g) => g.items)} />
       <section className="pt-28 pb-14 px-4 sm:px-6">
         <div className="max-w-[1000px] mx-auto">
-          <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">FAQ</p>
+          <p className="text-lg font-bold text-[#A3660F] uppercase tracking-widest mb-3">FAQ</p>
           <h1 className="text-4xl sm:text-5xl font-black text-slate-900 mb-4">Questions agents ask</h1>
           <p className="text-xl text-slate-500 mb-8">
-            Can&apos;t find yours? Email <a href="mailto:support@sparkreels.ai" className="font-semibold text-blue-900 hover:underline">support@sparkreels.ai</a>.
+            Can&apos;t find yours? Email <a href="mailto:support@sparkreels.ai" className="font-semibold text-[#A3660F] hover:underline">support@sparkreels.ai</a>.
           </p>
           <nav aria-label="Topics" className="mb-10 flex flex-wrap gap-2">
             {FAQ_GROUPS.map((g, i) => (
-              <a key={g.title} href={`#faq-${i}`} className="rounded-full border border-slate-200 px-4 py-1.5 text-base font-semibold text-slate-700 hover:border-blue-900 hover:text-blue-900">
+              <a key={g.title} href={`#faq-${i}`} className="rounded-full border border-slate-200 px-4 py-1.5 text-base font-semibold text-slate-700 hover:border-spark-amber hover:text-[#A3660F]">
                 {g.title}
               </a>
             ))}

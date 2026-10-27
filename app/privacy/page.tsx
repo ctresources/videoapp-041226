@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       <div className="max-w-3xl mx-auto px-6 py-16">
         {/* Header */}
         <div className="mb-12">
-          <Link href="/" className="text-blue-400 hover:text-blue-300 text-sm mb-8 inline-block">
+          <Link href="/" className="text-amber-400 hover:text-amber-300 text-sm mb-8 inline-block">
             ← Back to SparkReels
           </Link>
           <h1 className="text-4xl font-bold text-white mb-3">Privacy Policy</h1>
@@ -162,7 +162,7 @@ export default function PrivacyPage() {
                   href="https://myaccount.google.com/permissions"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300"
+                  className="text-amber-400 hover:text-amber-300"
                 >
                   myaccount.google.com/permissions
                 </a>{" "}
@@ -170,7 +170,7 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong className="text-white">Delete your account</strong> — email{" "}
-                <a href="mailto:support@sparkreels.ai" className="text-blue-400 hover:text-blue-300">
+                <a href="mailto:support@sparkreels.ai" className="text-amber-400 hover:text-amber-300">
                   support@sparkreels.ai
                 </a>
                 . We delete all Google user data associated with your account within 30 days.
@@ -190,7 +190,7 @@ export default function PrivacyPage() {
                 href="https://www.youtube.com/t/terms"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300"
+                className="text-amber-400 hover:text-amber-300"
               >
                 YouTube Terms of Service
               </a>
@@ -199,7 +199,7 @@ export default function PrivacyPage() {
                 href="https://policies.google.com/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300"
+                className="text-amber-400 hover:text-amber-300"
               >
                 Google Privacy Policy
               </a>
@@ -208,7 +208,7 @@ export default function PrivacyPage() {
                 href="https://developers.google.com/terms/api-services-user-data-policy"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300"
+                className="text-amber-400 hover:text-amber-300"
               >
                 Google API Services User Data Policy
               </a>
@@ -271,7 +271,7 @@ export default function PrivacyPage() {
               Your account data, voice recordings, and generated videos are retained while your account is
               active. You may delete individual videos at any time from the platform. To delete your entire
               account and associated data, contact us at{" "}
-              <a href="mailto:support@sparkreels.ai" className="text-blue-400 hover:text-blue-300">
+              <a href="mailto:support@sparkreels.ai" className="text-amber-400 hover:text-amber-300">
                 support@sparkreels.ai
               </a>
               ; we complete deletion within 30 days. Retention and deletion of Google user data is described
@@ -290,7 +290,7 @@ export default function PrivacyPage() {
             </ul>
             <p className="mt-3">
               To exercise any of these rights, email{" "}
-              <a href="mailto:support@sparkreels.ai" className="text-blue-400 hover:text-blue-300">
+              <a href="mailto:support@sparkreels.ai" className="text-amber-400 hover:text-amber-300">
                 support@sparkreels.ai
               </a>
               .
@@ -334,7 +334,7 @@ export default function PrivacyPage() {
               <p className="font-semibold text-white">SparkReels</p>
               <p>
                 Email:{" "}
-                <a href="mailto:support@sparkreels.ai" className="text-blue-400 hover:text-blue-300">
+                <a href="mailto:support@sparkreels.ai" className="text-amber-400 hover:text-amber-300">
                   support@sparkreels.ai
                 </a>
               </p>

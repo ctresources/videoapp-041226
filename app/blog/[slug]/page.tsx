@@ -117,7 +117,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
               </div>
             )}
             <p className="mt-8 text-base text-slate-500">
-              Made with <Link href="/real-estate-blog-writer" className="font-semibold text-blue-900 hover:underline">the SparkReels AI blog writer</Link>.
+              Made with <Link href="/real-estate-blog-writer" className="font-semibold text-[#A3660F] hover:underline">the SparkReels AI blog writer</Link>.
             </p>
           </article>
 
@@ -172,7 +172,7 @@ function TryItFree() {
     <div className="border border-amber-200 bg-amber-50 p-6">
       <p className="text-xl font-bold text-slate-900 mb-1">Want videos like this for your market?</p>
       <p className="text-lg text-slate-600 mb-4">SparkReels turns one minute of talking into a finished video and a blog post.</p>
-      <Link href="/beta" className="inline-flex items-center gap-2 bg-blue-900 text-white text-lg font-semibold px-5 py-3 hover:bg-blue-800 transition-colors">
+      <Link href="/beta" className="inline-flex items-center gap-2 bg-spark-amber text-white text-lg font-semibold px-5 py-3 hover:bg-[#A3660F] transition-colors">
         Try it free <ArrowRight size={16} />
       </Link>
     </div>
@@ -186,7 +186,7 @@ function KeepReading({ posts }: { posts: { id: string; slug: string; title: stri
       <ul className="space-y-3">
         {posts.map((p) => (
           <li key={p.id}>
-            <Link href={`/blog/${p.slug}`} className="text-lg font-semibold leading-snug text-blue-900 hover:underline">{p.title}</Link>
+            <Link href={`/blog/${p.slug}`} className="text-lg font-semibold leading-snug text-[#A3660F] hover:underline">{p.title}</Link>
           </li>
         ))}
       </ul>

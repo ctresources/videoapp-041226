@@ -52,7 +52,7 @@ function WaitlistForm() {
           We&apos;ll email you the moment a spot opens. In the meantime you can still
           subscribe to any plan and start today.
         </p>
-        <Link href="/#pricing" className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:underline mt-3">
+        <Link href="/#pricing" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#A3660F] hover:underline mt-3">
           See plans <ArrowRight size={14} />
         </Link>
       </div>
@@ -69,16 +69,16 @@ function WaitlistForm() {
         <input
           type="text" value={name} onChange={(e) => setName(e.target.value)}
           placeholder="Your name (optional)"
-          className="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
         />
         <input
           type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
-          className="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
         />
         <button
           type="submit" disabled={busy}
-          className="inline-flex items-center justify-center gap-2 bg-blue-900 text-white text-sm font-semibold px-6 py-3 rounded-xl hover:bg-blue-800 disabled:opacity-50 transition-colors"
+          className="inline-flex items-center justify-center gap-2 bg-spark-amber text-white text-sm font-semibold px-6 py-3 rounded-xl hover:bg-[#A3660F] disabled:opacity-50 transition-colors"
         >
           {busy ? <Loader2 size={15} className="animate-spin" /> : <Mail size={15} />}
           {busy ? "Adding you…" : "Join the waitlist"}
@@ -86,7 +86,7 @@ function WaitlistForm() {
       </div>
       <p className="text-xs text-slate-400 mt-4 text-center">
         Don&apos;t want to wait?{" "}
-        <Link href="/#pricing" className="text-blue-700 font-semibold hover:underline">
+        <Link href="/#pricing" className="text-[#A3660F] font-semibold hover:underline">
           Start on a paid plan
         </Link>{" "}
         — those aren&apos;t capped.
@@ -141,7 +141,7 @@ export default function BetaPage() {
 
       {/* Nav */}
       <nav className="border-b border-slate-200 px-6 h-14 flex items-center justify-between max-w-5xl mx-auto w-full">
-        <Link href="/" className="text-sm font-bold text-blue-900">SparkReels</Link>
+        <Link href="/" className="text-sm font-bold text-slate-900">SparkReels</Link>
         <Link href="/login" className="text-sm text-slate-500 hover:text-slate-700">Already have an account? Sign in</Link>
       </nav>
 
@@ -152,7 +152,7 @@ export default function BetaPage() {
 
         <h1 className="text-4xl sm:text-5xl font-black text-slate-900 leading-tight mb-4 max-w-2xl">
           Be one of the first 100 agents<br />
-          <span className="text-blue-900">to get free access.</span>
+          <span className="text-slate-900">to get free access.</span>
         </h1>
 
         {!isFull && (
@@ -175,7 +175,7 @@ export default function BetaPage() {
             <div className="mt-5 flex flex-col items-center gap-2 max-w-md w-full">
               <Link
                 href="/register"
-                className="w-full inline-flex items-center justify-center gap-2 bg-blue-900 text-white text-sm font-semibold px-8 py-3.5 rounded-xl hover:bg-blue-800 transition-colors"
+                className="w-full inline-flex items-center justify-center gap-2 bg-spark-amber text-white text-sm font-semibold px-8 py-3.5 rounded-xl hover:bg-[#A3660F] transition-colors"
               >
                 <Mail size={16} /> Create an account and pick a plan
               </Link>
@@ -249,7 +249,7 @@ export default function BetaPage() {
 
         <p className="mt-10 text-xs text-slate-400 max-w-sm">
           Questions? Email{" "}
-          <a href="mailto:support@sparkreels.ai" className="text-blue-600 hover:underline">
+          <a href="mailto:support@sparkreels.ai" className="text-[#A3660F] hover:underline">
             support@sparkreels.ai
           </a>
         </p>

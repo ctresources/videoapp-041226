@@ -5,7 +5,7 @@ import { DemoVideo } from "@/components/landing/demo-video";
 import {
   CheckCircle, ArrowRight,
   Clock,
-  X, Camera, Users, UserPlus, ChevronRight,
+  Camera, Users, UserPlus, ChevronRight,
   Tv2, Palette, Film, MousePointerClick, Search, Upload, Zap,
   Bot, EyeOff, TrendingDown, PenLine, MessageSquare,
 } from "lucide-react";
@@ -302,33 +302,6 @@ const channelSteps = [
   { icon: Upload, step: "Publish it", tool: "One-Click YouTube Publishing", description: "Connect your channel once. Every video after that publishes in one click — title, description and tags already filled in." },
 ];
 
-const comparison = [
-  { feature: "Unlimited camera recordings (no monthly cap)", us: true, a: false, b: false, c: false },
-  { feature: "Built-in teleprompter + camera recorder", us: true, a: false, b: false, c: false },
-  { feature: "No filming or on-camera requirement",  us: true,  a: false, b: false, c: false },
-  { feature: "AI Avatar + Voice Cloning",             us: true,  a: true,  b: true,  c: false },
-  { feature: "Long-form video (up to 8 minutes)",     us: true,  a: false, b: true,  c: false },
-  { feature: "Channel branding kit (name, banner, thumbnails)", us: true, a: false, b: false, c: false },
-  { feature: "AI answer-engine content (get cited by ChatGPT)", us: true, a: false, b: false, c: false },
-  // The video tools compete on video. None of them hand you a page, which is
-  // the only thing on this list an AI assistant can actually quote.
-  { feature: "Blog post written with every script", us: true, a: false, b: false, c: false },
-  { feature: "Hyperlocal market intelligence",        us: true,  a: false, b: true,  c: true  },
-  { feature: "YouTube SEO optimized metadata",        us: true,  a: false, b: false, c: false },
-  { feature: "One-button — no tech skills needed",    us: true,  a: false, b: false, c: false },
-  { feature: "Listing Auto-Video (URL → Video)",      us: true,  a: false, b: true,  c: true  },
-  { feature: "AI-generated social captions (LinkedIn, Instagram, email)", us: true, a: false, b: false, c: false },
-  { feature: "Fair Housing Guardrails Built-in",      us: true,  a: false, b: false, c: false },
-  { feature: "Purpose-built for Real Estate",         us: true,  a: false, b: true,  c: true  },
-  // Posting to the other platforms went live 2026-10-11, so this row is a
-  // win now; it was listed below as one we didn't win.
-  { feature: "Publishes to Instagram, TikTok & Facebook", us: true, a: true, b: true, c: false },
-  // Rows we don't win. A table where one product sweeps every line reads as
-  // marketing; this is a real gap and it makes the wins above believable.
-  { feature: "Scheduled posting calendar",            us: true,  a: true,  b: true,  c: true  },
-  { feature: "Team seats & multi-agent brand controls", us: false, a: false, b: true,  c: false },
-];
-
 const steps = [
   {
     step: "01",
@@ -436,7 +409,7 @@ export default function LandingPage() {
       <section id="pain" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-50 border-b border-slate-200">
         <div className="max-w-[1600px] mx-auto">
           <div className="mb-8">
-            <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">Sound Familiar?</p>
+            <p className="text-lg font-bold text-[#A3660F] uppercase tracking-widest mb-3">Sound Familiar?</p>
             <h2 className="text-4xl font-black text-slate-900 mb-3 max-w-4xl">
               You already know video works. That was never the problem.
             </h2>
@@ -454,7 +427,7 @@ export default function LandingPage() {
                   <p className="text-xl font-bold text-slate-900 leading-snug">{pain}</p>
                 </div>
                 <div className="flex items-start gap-2 pl-[26px]">
-                  <CheckCircle size={13} className="text-blue-900 shrink-0 mt-[3px]" />
+                  <CheckCircle size={13} className="text-[#A3660F] shrink-0 mt-[3px]" />
                   <p className="text-lg text-slate-500 leading-relaxed">{fix}</p>
                 </div>
               </div>
@@ -468,7 +441,7 @@ export default function LandingPage() {
         <div className="max-w-[1600px] mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
             <div>
-              <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">Get Found On AI</p>
+              <p className="text-lg font-bold text-[#A3660F] uppercase tracking-widest mb-3">Get Found On AI</p>
               {/* Was "asking ChatGPT, not Google" — which dismissed a channel
                   this product also serves. Every video ships with SEO title
                   and description copy written to rank on Google and YouTube;
@@ -524,7 +497,7 @@ export default function LandingPage() {
                 <span className="font-semibold text-slate-700">never use one of your videos</span> —
                 you can write one without making a video at all.
               </p>
-              <a href="/beta" className="inline-flex items-center gap-2 bg-blue-900 text-white text-xl font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
+              <a href="/beta" className="inline-flex items-center gap-2 bg-spark-amber text-white text-xl font-semibold px-6 py-3 hover:bg-[#A3660F] transition-colors">
                 Show Me What My Buyers Are Asking <ArrowRight size={15} />
               </a>
             </div>
@@ -536,14 +509,14 @@ export default function LandingPage() {
                 <p className="text-lg font-bold text-slate-400 uppercase tracking-wide">What it produces</p>
               </div>
               <div className="bg-white border border-slate-200 p-4 mb-3">
-                <p className="text-base font-bold text-blue-900 uppercase tracking-wide mb-1.5">The question they ask AI</p>
+                <p className="text-base font-bold text-[#A3660F] uppercase tracking-wide mb-1.5">The question they ask AI</p>
                 <p className="text-xl font-semibold text-slate-800 leading-snug">
                   &ldquo;What neighborhoods should I look at in Charlotte as a first-time buyer with
                   around $450,000?&rdquo;
                 </p>
               </div>
               <div className="bg-white border border-slate-200 p-4 mb-3">
-                <p className="text-base font-bold text-blue-900 uppercase tracking-wide mb-1.5">① The video you record</p>
+                <p className="text-base font-bold text-[#A3660F] uppercase tracking-wide mb-1.5">① The video you record</p>
                 <p className="text-xl font-semibold text-slate-800 leading-snug mb-1">
                   Charlotte neighborhoods for first-time buyers around $450k
                 </p>
@@ -557,7 +530,7 @@ export default function LandingPage() {
                   pair the copy beside it describes: a question, the video that
                   answers it, and the page an assistant can quote. */}
               <div className="bg-white border border-slate-200 p-4 mb-3">
-                <p className="text-base font-bold text-blue-900 uppercase tracking-wide mb-1.5">② The blog post that goes with it</p>
+                <p className="text-base font-bold text-[#A3660F] uppercase tracking-wide mb-1.5">② The blog post that goes with it</p>
                 <p className="text-lg text-slate-600 leading-relaxed">
                   <span className="font-semibold text-slate-700">H2: What can $450,000 buy in Charlotte right now?</span>{" "}
                   At this budget you are mostly looking at townhomes near the light-rail corridor and
@@ -566,7 +539,7 @@ export default function LandingPage() {
                 </p>
               </div>
               <div className="bg-white border border-slate-200 p-4">
-                <p className="text-base font-bold text-blue-900 uppercase tracking-wide mb-1.5">③ The rest of your Share Kit</p>
+                <p className="text-base font-bold text-[#A3660F] uppercase tracking-wide mb-1.5">③ The rest of your Share Kit</p>
                 <p className="text-lg text-slate-600 leading-relaxed">
                   Title, description and hashtags for YouTube. An Instagram caption, a LinkedIn post
                   and an email blurb, already written.
@@ -580,13 +553,13 @@ export default function LandingPage() {
           </div>
 
           {/* The connective tissue: both discovery channels are fed by the same video. */}
-          <div className="mt-8 border border-blue-900/20 border-l-4 border-l-blue-900 bg-blue-50/50 p-5">
+          <div className="mt-8 border border-slate-900/15 border-l-4 border-l-spark-amber bg-amber-50/50 p-5">
             <p className="text-xl font-black text-slate-900 mb-2">
               One video. Two places to get found.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex items-start gap-2.5">
-                <Search size={15} className="text-blue-900 shrink-0 mt-0.5" />
+                <Search size={15} className="text-[#A3660F] shrink-0 mt-0.5" />
                 <p className="text-xl text-slate-600 leading-relaxed">
                   <span className="font-semibold text-slate-800">YouTube search.</span> Every video
                   ships with an SEO title, description and tags built to rank for your neighborhood —
@@ -594,7 +567,7 @@ export default function LandingPage() {
                 </p>
               </div>
               <div className="flex items-start gap-2.5">
-                <Bot size={15} className="text-blue-900 shrink-0 mt-0.5" />
+                <Bot size={15} className="text-[#A3660F] shrink-0 mt-0.5" />
                 <p className="text-xl text-slate-600 leading-relaxed">
                   <span className="font-semibold text-slate-800">AI assistants.</span> ChatGPT and
                   Google&apos;s AI read YouTube titles, descriptions and transcripts when they answer.
@@ -610,7 +583,7 @@ export default function LandingPage() {
       <section id="demo" className="py-12 sm:py-14 px-4 sm:px-6 bg-white border-b border-slate-200">
         <div className="max-w-[1600px] mx-auto">
           <div className="mb-2">
-            <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">See It For Yourself</p>
+            <p className="text-lg font-bold text-[#A3660F] uppercase tracking-widest mb-3">See It For Yourself</p>
             <h2 className="text-4xl font-black text-slate-900 mb-3 max-w-4xl">
               Watch it work. Then judge what it makes.
             </h2>
@@ -663,7 +636,7 @@ export default function LandingPage() {
           )}
 
           <div className="mt-10 text-center">
-            <a href="/beta" className="inline-flex items-center gap-2 bg-blue-900 text-white text-xl font-semibold px-6 py-3 hover:bg-blue-800 transition-colors">
+            <a href="/beta" className="inline-flex items-center gap-2 bg-spark-amber text-white text-xl font-semibold px-6 py-3 hover:bg-[#A3660F] transition-colors">
               Make My First Video Free <ArrowRight size={15} />
             </a>
             <p className="text-lg text-slate-400 mt-3">No credit card · Takes about 5 minutes</p>
@@ -681,7 +654,7 @@ export default function LandingPage() {
       <section id="who" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-50 border-y border-slate-200">
         <div className="max-w-[1600px] mx-auto">
           <div className="mb-8">
-            <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">Who It&apos;s For</p>
+            <p className="text-lg font-bold text-[#A3660F] uppercase tracking-widest mb-3">Who It&apos;s For</p>
             <h2 className="text-4xl font-black text-slate-900 leading-tight mb-3 max-w-4xl">
               Two-thirds of agents know video grows their business. Most just don&apos;t have a system to do it.
             </h2>
@@ -697,9 +670,9 @@ export default function LandingPage() {
                 <img src={photo} alt={segment} className="w-full h-44 object-cover" />
                 <div className="p-5">
                   <div className="flex items-center gap-2 mb-2">
-                    <Icon size={16} className="text-blue-900 shrink-0" />
+                    <Icon size={16} className="text-[#A3660F] shrink-0" />
                     <p className="font-bold text-slate-900 text-xl">{segment}</p>
-                    <span className="text-base font-semibold text-blue-900 bg-blue-50 border border-blue-100 px-2 py-0.5 ml-auto">{driver}</span>
+                    <span className="text-base font-semibold text-slate-900 bg-amber-50 border border-amber-100 px-2 py-0.5 ml-auto">{driver}</span>
                   </div>
                   <p className="text-slate-500 text-xl leading-relaxed">{desire}</p>
                 </div>
@@ -707,10 +680,10 @@ export default function LandingPage() {
             ))}
           </div>
 
-          <div className="mt-6 p-4 bg-white border border-blue-900/20 border-l-4 border-l-blue-900">
+          <div className="mt-6 p-4 bg-white border border-slate-900/15 border-l-4 border-l-spark-amber">
             <p className="text-xl text-slate-700">
               Agents who post consistent video content grow revenue{" "}
-              <span className="font-bold text-blue-900">49% faster</span>{" "}
+              <span className="font-bold text-slate-900">49% faster</span>{" "}
               — yet two-thirds of the market still isn&apos;t doing it consistently. SparkReels.ai removes every barrier that&apos;s stopping them.
             </p>
           </div>
@@ -721,7 +694,7 @@ export default function LandingPage() {
       <section id="how-it-works" className="py-12 sm:py-14 px-4 sm:px-6 bg-white border-b border-slate-200">
         <div className="max-w-[1600px] mx-auto">
           <div className="text-center mb-10">
-            <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">How It Works</p>
+            <p className="text-lg font-bold text-[#A3660F] uppercase tracking-widest mb-3">How It Works</p>
             {/* "and Video Generated" named one of the three outputs. A blog
                 post is a first-class one now, and the teleprompter route makes
                 a video without generating anything. */}
@@ -731,12 +704,12 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
             {/* Connector line desktop */}
-            <div className="hidden md:block absolute top-[88px] left-[calc(33%+16px)] right-[calc(33%+16px)] h-px bg-blue-100 z-0" />
+            <div className="hidden md:block absolute top-[88px] left-[calc(33%+16px)] right-[calc(33%+16px)] h-px bg-amber-100 z-0" />
 
             {[
               {
                 num: "1",
-                color: "bg-blue-900",
+                color: "bg-slate-900",
                 title: "Pick what you're making",
                 description: "Your avatar, your own camera, or a blog post on its own. Then hit the mic — or tap one of twenty-five topics with your city already filled in. Choose your length: a 60-second reel, or a full market update up to 8 minutes.",
                 photo: "https://images.unsplash.com/photo-1598978996253-dcfb7f324f89?auto=format&fit=crop&w=600&q=80",
@@ -744,7 +717,7 @@ export default function LandingPage() {
               },
               {
                 num: "2",
-                color: "bg-blue-700",
+                color: "bg-[#A3660F]",
                 title: "AI builds it",
                 description: "Script written. Avatar rendered in your cloned voice. Captions added. B-roll included. Vertical for Reels and Shorts, horizontal for YouTube. Fully produced, zero editing — or film it yourself on the free teleprompter.",
                 photo: "https://images.unsplash.com/photo-1614963326505-843868e1d83a?auto=format&fit=crop&w=600&q=80",
@@ -752,7 +725,7 @@ export default function LandingPage() {
               },
               {
                 num: "3",
-                color: "bg-blue-500",
+                color: "bg-spark-amber",
                 title: "Publish and share",
                 // Updated 2026-10-15: every platform, and email through
                 // BoldTrail or the agent's own email tool.
@@ -779,7 +752,7 @@ export default function LandingPage() {
 
           {/* Bottom CTA */}
           <div className="mt-12 text-center">
-            <p className="text-xl text-slate-400">Script generated instantly. Video ready — <span className="font-semibold text-blue-900">while you&apos;re creating another video or out to see a client.</span></p>
+            <p className="text-xl text-slate-400">Script generated instantly. Video ready — <span className="font-semibold text-slate-900">while you&apos;re creating another video or out to see a client.</span></p>
           </div>
         </div>
       </section>
@@ -788,7 +761,7 @@ export default function LandingPage() {
       <section id="features" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-50 border-b border-slate-200">
         <div className="max-w-[1600px] mx-auto">
           <div className="mb-8">
-            <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">Everything Included</p>
+            <p className="text-lg font-bold text-[#A3660F] uppercase tracking-widest mb-3">Everything Included</p>
             <h2 className="text-4xl font-black text-slate-900 mb-3">Built to make you Visible and the digital local expert in your market.</h2>
             <p className="text-slate-500">Hyperlocal intelligence. SEO domination. Zero camera required.</p>
           </div>
@@ -806,7 +779,7 @@ export default function LandingPage() {
                   <h3 className="text-xl font-bold text-slate-900 mb-1.5 leading-snug">{title}</h3>
                   <p className="text-slate-500 text-lg leading-relaxed">{description}</p>
                   {LEARN_MORE[title] && (
-                    <Link href={LEARN_MORE[title]} className="mt-2 inline-block text-lg font-semibold text-blue-900 hover:underline">
+                    <Link href={LEARN_MORE[title]} className="mt-2 inline-block text-lg font-semibold text-[#A3660F] hover:underline">
                       Learn more →
                     </Link>
                   )}
@@ -818,7 +791,7 @@ export default function LandingPage() {
           {/* The top bar's Features menu, listed here too (2026-10-25, the owner's
               ask): the same feature pages, with the same names and descriptions. */}
           <div className="mt-8">
-            <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-4">Features, page by page</p>
+            <p className="text-lg font-bold text-[#A3660F] uppercase tracking-widest mb-4">Features, page by page</p>
             <div className="grid grid-cols-1 gap-px bg-slate-200 border border-slate-200 sm:grid-cols-2 lg:grid-cols-3">
               {FEATURE_PAGES.map((f) => (
                 <Link key={f.slug} href={`/${f.slug}`} className="block bg-white p-5 hover:bg-slate-50 transition-colors">
@@ -831,7 +804,7 @@ export default function LandingPage() {
 
           {/* Everything included, one line each (2026-10-25). */}
           <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
-            <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-4">Everything included, one line each</p>
+            <p className="text-lg font-bold text-[#A3660F] uppercase tracking-widest mb-4">Everything included, one line each</p>
             <ul className="grid grid-cols-1 gap-x-8 gap-y-2 text-lg text-slate-700 sm:grid-cols-2 lg:grid-cols-3">
               {everythingIncluded.map((item) => (
                 <li key={item} className="flex gap-2 leading-snug">
@@ -848,7 +821,7 @@ export default function LandingPage() {
       <section id="channel" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-900 border-b border-slate-800">
         <div className="max-w-[1600px] mx-auto">
           <div className="mb-8">
-            <p className="text-lg font-bold text-blue-300 uppercase tracking-widest mb-3">Channel In A Box</p>
+            <p className="text-lg font-bold text-amber-300 uppercase tracking-widest mb-3">Channel In A Box</p>
             <h2 className="text-4xl font-black text-white mb-3 max-w-5xl">
               Don&apos;t have a YouTube channel yet? Start one today.
             </h2>
@@ -863,21 +836,21 @@ export default function LandingPage() {
             {channelSteps.map(({ icon: Icon, step, tool, description }, i) => (
               <div key={step} className="bg-slate-900 p-6 hover:bg-slate-800/60 transition-colors">
                 <div className="flex items-center gap-2.5 mb-3">
-                  <div className="w-9 h-9 bg-blue-900/40 border border-blue-800 flex items-center justify-center shrink-0">
-                    <Icon size={17} className="text-blue-300" />
+                  <div className="w-9 h-9 bg-amber-500/10 border border-amber-700/40 flex items-center justify-center shrink-0">
+                    <Icon size={17} className="text-amber-300" />
                   </div>
                   <div>
                     <p className="text-base font-bold text-slate-500 uppercase tracking-wide">Step {i + 1}</p>
                     <p className="text-xl font-black text-white leading-tight">{step}</p>
                   </div>
                 </div>
-                <p className="text-lg font-semibold text-blue-300 mb-1.5">{tool}</p>
+                <p className="text-lg font-semibold text-amber-300 mb-1.5">{tool}</p>
                 <p className="text-slate-400 text-lg leading-relaxed">{description}</p>
               </div>
             ))}
           </div>
 
-          <div className="mt-6 p-4 bg-slate-800/60 border border-slate-700 border-l-4 border-l-blue-500">
+          <div className="mt-6 p-4 bg-slate-800/60 border border-slate-700 border-l-4 border-l-spark-amber">
             <p className="text-xl text-slate-300">
               Already have a channel? Skip to step 3 — the video, thumbnail and SEO tools work just
               as well on a channel you&apos;ve been running for years.
@@ -885,57 +858,13 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-8 flex flex-col sm:flex-row gap-4 items-start">
-            <a href="/beta" className="inline-flex items-center gap-2 bg-white text-blue-900 text-xl font-semibold px-6 py-3 hover:bg-blue-50 transition-colors">
+            <a href="/beta" className="inline-flex items-center gap-2 bg-spark-amber text-white text-xl font-semibold px-6 py-3 hover:bg-[#A3660F] transition-colors">
               Start My Channel Free <ArrowRight size={15} />
             </a>
             <a href="#pricing" className="inline-flex items-center gap-2 border border-slate-700 text-slate-300 text-xl font-semibold px-6 py-3 hover:border-slate-500 hover:text-white transition-colors">
               See Plans <ChevronRight size={15} />
             </a>
           </div>
-        </div>
-      </section>
-
-      {/* ── Comparison ── */}
-      <section id="compare" className="py-12 sm:py-14 px-4 sm:px-6 bg-white border-b border-slate-200">
-        <div className="max-w-[1600px] mx-auto">
-          <div className="mb-10">
-            <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">How We Stack Up</p>
-            <h2 className="text-4xl font-black text-slate-900 mb-3">Where we win — and where we don&apos;t.</h2>
-            <p className="text-slate-500">
-              No camera. No tech skills. No manual editing. We&apos;re also honest about the three
-              things other tools still do better — those are on our roadmap, not hidden from you.
-            </p>
-          </div>
-          {/* overflow-x-auto, not hidden: the table is ~520px and would clip its
-              last columns off the side of a phone with no way to reach them. */}
-          <div className="border border-slate-200 overflow-x-auto">
-            <table className="w-full text-xl min-w-[760px]">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="text-left p-4 font-semibold text-slate-500 text-lg w-[40%]">Feature</th>
-                  <th className="p-4 text-center font-bold text-blue-900 text-lg bg-blue-50">SparkReels.ai</th>
-                  <th className="p-4 text-center font-semibold text-slate-400 text-lg">Competitor A</th>
-                  <th className="p-4 text-center font-semibold text-slate-400 text-lg">Competitor B</th>
-                  <th className="p-4 text-center font-semibold text-slate-400 text-lg">Competitor C</th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparison.map(({ feature, us, a, b, c }, idx) => (
-                  <tr key={feature} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}>
-                    <td className="p-3 pl-4 text-slate-700 font-medium text-lg">{feature}</td>
-                    {[us, a, b, c].map((val, i) => (
-                      <td key={i} className={`p-3 text-center ${i === 0 ? "bg-blue-50/50" : ""}`}>
-                        {val
-                          ? <CheckCircle size={15} className={`mx-auto ${i === 0 ? "text-blue-900" : "text-green-500"}`} />
-                          : <X size={15} className="mx-auto text-slate-200" />}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-lg text-slate-400 mt-3">Based on publicly available feature documentation. Last updated {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}.</p>
         </div>
       </section>
 
@@ -947,43 +876,43 @@ export default function LandingPage() {
           the FAQ search tags, is on /faq; these repeat some of it, so no tags here. */}
       <section id="faq" className="py-12 sm:py-14 px-4 sm:px-6 bg-white border-b border-slate-200">
         <div className="max-w-[1000px] mx-auto">
-          <p className="text-lg font-bold text-blue-900 uppercase tracking-widest mb-3">FAQ</p>
+          <p className="text-lg font-bold text-[#A3660F] uppercase tracking-widest mb-3">FAQ</p>
           <h2 className="text-4xl font-black text-slate-900 mb-6">Questions agents ask</h2>
           <FaqList items={LANDING_FAQS} schema={false} />
           <p className="mt-5 text-lg">
-            <Link href="/faq" className="font-semibold text-blue-900 hover:underline">All questions →</Link>
+            <Link href="/faq" className="font-semibold text-[#A3660F] hover:underline">All questions →</Link>
           </p>
         </div>
       </section>
 
       {/* ── Final CTA ── */}
-      <section className="py-14 sm:py-16 px-4 sm:px-6 bg-blue-900 text-white">
+      <section className="py-14 sm:py-16 px-4 sm:px-6 bg-slate-900 text-white">
         <div className="max-w-[1600px] mx-auto">
           <p className="text-lg font-bold text-white uppercase tracking-widest mb-4">Stop being invisible. Build Authority, Trust and Local Expert with SparkReels.ai</p>
           <h2 className="text-4xl sm:text-6xl font-black mb-5 leading-tight text-white">
             Hit the Mic. Speak, Spark, Share.
           </h2>
-          <p className="text-blue-200 text-2xl mb-3 max-w-3xl leading-relaxed">
+          <p className="text-slate-200 text-2xl mb-3 max-w-3xl leading-relaxed">
             The one-button video platform for real estate agents. No camera. No editing. Just Visibility.
           </p>
-          <p className="text-blue-300 text-2xl mb-8 max-w-3xl leading-relaxed">
+          <p className="text-amber-300 text-2xl mb-8 max-w-3xl leading-relaxed">
             Visibility creates credibility.<br />
             Credibility creates trust.<br />
             Trust creates opportunities.<br />
             And opportunities create business.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 items-start mb-8">
-            <a href="/beta" className="inline-flex items-center gap-2 bg-white text-blue-900 text-xl font-semibold px-6 py-3 hover:bg-blue-50 transition-colors">
+            <a href="/beta" className="inline-flex items-center gap-2 bg-spark-amber text-white text-xl font-semibold px-6 py-3 hover:bg-[#A3660F] transition-colors">
               Claim Your Free Video <ArrowRight size={15} />
             </a>
-            <a href="#pricing" className="inline-flex items-center gap-2 border border-blue-700 text-blue-200 text-xl font-semibold px-6 py-3 hover:border-blue-500 hover:text-white transition-colors">
+            <a href="#pricing" className="inline-flex items-center gap-2 border border-amber-400/60 text-amber-200 text-xl font-semibold px-6 py-3 hover:border-amber-300 hover:text-white transition-colors">
               View Pricing <ChevronRight size={15} />
             </a>
           </div>
-          <p className="text-base text-blue-200 -mt-4 mb-8">
+          <p className="text-base text-slate-200 -mt-4 mb-8">
             Your free video publishes to YouTube. Instagram, Facebook, LinkedIn and more come with a paid plan.
           </p>
-          <p className="text-blue-300 text-xl">First 100 agents · 1 free AI video · No credit card · Cancel anytime</p>
+          <p className="text-amber-300 text-xl">First 100 agents · 1 free AI video · No credit card · Cancel anytime</p>
         </div>
       </section>
 
