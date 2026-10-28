@@ -208,6 +208,17 @@ function FullGuide() {
                 backgrounds a month. <strong>Avatar video</strong> with your twin is made by our video
                 agent, which sets its own scenes, so it doesn&apos;t use these.
               </span>
+              {/* Twin outfits (2026-10-28, the owner's ask). */}
+              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="twin-outfits">Outfits for your twin</span>
+              <span className="block mt-1">
+                Want your twin in something else? In <strong>Settings → 4 · Digital Twin</strong>, under{" "}
+                <strong>Outfits</strong>, describe it (like <em>navy blazer over a white shirt</em>) and press{" "}
+                <strong>New outfit</strong>. It takes a minute or two, and it moves like your twin. Each outfit
+                then shows up as a look in video setup and works everywhere your twin does, approval and
+                backgrounds included. Your first new look each month is free; after that each one uses one
+                short video. Tap the bin on an outfit to remove it. The <strong>New look</strong> under your
+                photo avatar changes only the photo avatar, not your twin.
+              </span>
             </Step>
             <Step n={5} title="Set Your Default Video CTA" icon={Megaphone}>
               In <Link href="/settings#cta" className="text-primary-600 font-medium hover:underline">Settings → Profile → 5 · Default Video CTA</Link>, add your years in real estate and review the

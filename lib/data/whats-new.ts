@@ -30,6 +30,19 @@ export type WhatsNewItem = {
 
 const ITEMS: WhatsNewItem[] = [
   {
+    id: "twin-outfits",
+    title: "Outfits for Your Digital Twin",
+    description:
+      "Describe a new outfit and your Digital Twin wears it, moving just like you, in every video.",
+    releaseDate: "2026-10-28",
+    featureKey: "free_video",
+    howItWorksAnchor: "twin-outfits",
+    badge: "NEW",
+    paidOnlyDetails: false,
+    freeHref: "/settings#twin",
+    freeLabel: "Open Digital Twin",
+  },
+  {
     id: "google-review-video",
     title: "Ask for a Google Review by Video",
     description:
