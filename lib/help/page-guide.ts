@@ -41,11 +41,20 @@ function stepText(s: GuideStep): string {
   return `Step ${s.n}: ${s.title}\n${s.text}`;
 }
 
-/** Sparklee's instructions for one conversation. */
-export function sparkleeInstructions(path: string, firstName: string | null): string {
+/**
+ * Steps a free account's Sparklee does not know (2026-10-28): the paid
+ * workflows, whose guides free accounts don't get on How It Works either.
+ * 8 CRM, 16 AutoSparks/Halo/seller updates, 22 social publishing, 23-25 Spark
+ * Tools, 27 Insights, 28 Calendar.
+ */
+const PAID_ONLY_STEPS = [8, 16, 22, 23, 24, 25, 27, 28];
+
+/** Sparklee's instructions for one conversation. `fullGuide` is false for a free account. */
+export function sparkleeInstructions(path: string, firstName: string | null, fullGuide = true): string {
   const page = pageFor(path);
-  const own = STEPS.filter((s) => page.steps.includes(s.n));
-  const rest = STEPS.filter((s) => !page.steps.includes(s.n));
+  const known = fullGuide ? STEPS : STEPS.filter((s) => !PAID_ONLY_STEPS.includes(s.n));
+  const own = known.filter((s) => page.steps.includes(s.n));
+  const rest = known.filter((s) => !page.steps.includes(s.n));
   const partText = PARTS.filter((p) => p.text).map((p) => `${p.title}\n${p.text}`).join("\n\n");
 
   return [
@@ -59,6 +68,9 @@ export function sparkleeInstructions(path: string, firstName: string | null): st
     "- Do not quote prices or plan details beyond what the guide says, do not promise features that are not in it, and never name the companies or services behind SparkReels.",
     "- If they ask about anything other than using SparkReels, say kindly that you can only help with SparkReels.",
     "- If they need a person, tell them to email support at sparkreels dot ai.",
+    fullGuide
+      ? ""
+      : "- They are on the free plan. If they ask how to set up AutoSparks, Halo sites, CRM or BoldTrail, social auto-posting, Spark Tools, Spark Insights or Spark Calendar, say it comes with a SparkReels plan and that Settings, then Billing, shows the plans. Don't explain how those work.",
     "- Speak English unless they speak to you in another language; then answer in theirs.",
     "- Start by answering. No greeting speech and no recap of the question.",
     "",

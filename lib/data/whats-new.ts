@@ -1,0 +1,123 @@
+import type { FeatureKey } from "@/lib/access";
+
+/**
+ * What's New (2026-10-28). One object per update; the page sorts newest first.
+ *
+ * To add an update: add an object here, with a howItWorksAnchor that exists
+ * on the How It Works page (an id="..." there). The menu's NEW dot comes back
+ * for everyone on its own, because the newest id changes.
+ *
+ * Only features that are built and on the site. Marketing-level wording:
+ * free accounts read the title and description, never the setup.
+ */
+export type WhatsNewItem = {
+  id: string;
+  title: string;
+  description: string;
+  /** YYYY-MM-DD */
+  releaseDate: string;
+  featureKey?: FeatureKey;
+  howItWorksAnchor?: string;
+  badge?: "NEW" | "IMPROVED";
+  /** The feature needs a paid plan: free accounts get Unlock This Feature. */
+  paidOnlyDetails?: boolean;
+  /** For an update a free account can use: where its button goes. */
+  freeHref?: string;
+  freeLabel?: string;
+  /** false hides it without deleting it. */
+  published?: boolean;
+};
+
+const ITEMS: WhatsNewItem[] = [
+  {
+    id: "google-review-video",
+    title: "Ask for a Google Review by Video",
+    description:
+      "Send past clients a short, personal video asking for a Google review, with your review link one tap away.",
+    releaseDate: "2026-10-27",
+    featureKey: "spark_tools",
+    howItWorksAnchor: "google-review-video",
+    badge: "NEW",
+    paidOnlyDetails: true,
+  },
+  {
+    id: "boldtrail-video-email",
+    title: "BoldTrail Video Email",
+    description:
+      "Turn a finished Spark into a personal video follow-up for your contacts, sent from your BoldTrail address.",
+    releaseDate: "2026-10-27",
+    featureKey: "boldtrail",
+    howItWorksAnchor: "email-it",
+    badge: "NEW",
+    paidOnlyDetails: true,
+  },
+  {
+    id: "record-my-screen",
+    title: "Record My Screen",
+    description:
+      "Walk through a listing, a market chart or a website with you in a corner circle, saved straight to My Sparks.",
+    releaseDate: "2026-10-27",
+    featureKey: "spark_tools",
+    howItWorksAnchor: "record-my-screen",
+    badge: "NEW",
+    paidOnlyDetails: true,
+  },
+  {
+    id: "seller-updates",
+    title: "Seller Updates on AutoSparks",
+    description:
+      "A weekly video update for each listing's sellers, made from your numbers and sent on the day you choose.",
+    releaseDate: "2026-10-26",
+    featureKey: "autosparks",
+    howItWorksAnchor: "seller-updates",
+    badge: "NEW",
+    paidOnlyDetails: true,
+  },
+  {
+    id: "halo-sites",
+    title: "Website / Halo Content Workflow",
+    description:
+      "Bring your existing authority content into SparkReels, make the video, publish it, and put the finished video back on the page that started it.",
+    releaseDate: "2026-10-24",
+    featureKey: "halo_sites",
+    howItWorksAnchor: "halo-sites",
+    badge: "NEW",
+    paidOnlyDetails: true,
+  },
+  {
+    id: "digital-twin-backgrounds",
+    title: "Digital Twin Backgrounds",
+    description:
+      "Stand full size in front of a new background in your Agent Intro: a colour, a town photo, or a place you describe.",
+    releaseDate: "2026-10-24",
+    featureKey: "free_video",
+    howItWorksAnchor: "digital-twin-backgrounds",
+    badge: "NEW",
+    paidOnlyDetails: false,
+    freeHref: "/settings#twin",
+    freeLabel: "Open Digital Twin",
+  },
+  {
+    id: "auto-publish",
+    title: "Auto-Publish",
+    description: "Create once and publish across your connected social channels.",
+    releaseDate: "2026-10-12",
+    featureKey: "social_autopublishing",
+    howItWorksAnchor: "auto-publish",
+    badge: "NEW",
+    paidOnlyDetails: true,
+  },
+];
+
+/** Published updates, newest first (ties keep the order above). */
+export const whatsNewItems: WhatsNewItem[] = ITEMS
+  .filter((i) => i.published !== false)
+  .map((item, index) => ({ item, index }))
+  .sort((a, b) => b.item.releaseDate.localeCompare(a.item.releaseDate) || a.index - b.index)
+  .map(({ item }) => item);
+
+/** The newest update's id: what profiles.last_seen_whats_new is compared with. */
+export const LATEST_WHATS_NEW_ID: string = whatsNewItems[0]?.id ?? "";
+
+/** The event the menu listens for, so its dot clears without a reload. */
+export const WHATS_NEW_SEEN_EVENT = "spark:whats-new-seen";

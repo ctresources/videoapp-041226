@@ -1,4 +1,5 @@
 import { hasAdminPerks } from "@/lib/utils/roles";
+import { getAccessLevel } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
@@ -29,7 +30,7 @@ export async function GET() {
 
   const { data } = await supabase
     .from("profiles")
-    .select(`${ALLOWANCE_SELECT}, subscription_tier, role, first_video_generated_at`)
+    .select(`${ALLOWANCE_SELECT}, subscription_tier, role, first_video_generated_at, last_seen_whats_new`)
     .eq("id", user.id)
     .single();
 
@@ -73,6 +74,10 @@ export async function GET() {
     isAdmin,
     isRealAdmin,
     isStaff: profile.role === "staff",
+    // Free vs paid for the menu (lib/access.ts); the pages check again on the server.
+    level: getAccessLevel({ subscription_tier: profile.subscription_tier as string | null, role: profile.role as string | null }),
+    // The newest What's New item this account has seen, for the menu's NEW dot.
+    whatsNewSeen: (profile.last_seen_whats_new as string | null) ?? null,
     campaignCalendar,
     // AI images made this calendar month, for the image generator's counter.
     // Two before the free video, a hundred after it — the same ceiling the

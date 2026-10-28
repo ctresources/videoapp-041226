@@ -19,6 +19,8 @@ import { HomeScreenCard } from "@/components/settings/home-screen-card";
 import { AffiliateCard } from "@/components/settings/affiliate-card";
 import { HaloSettingsCard } from "@/components/halo/halo-settings-card";
 import { useHomeScreen } from "@/lib/hooks/use-home-screen";
+import { useAccount } from "@/lib/hooks/use-account";
+import { LockedFeature } from "@/components/access/locked-feature";
 import { DEFAULT_CTA_TEMPLATE, MAX_CTA_WORDS, ctaWords, resolveCta } from "@/lib/utils/default-cta";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -30,6 +32,8 @@ import { allTimeZones, browserTimeZone, isValidTimeZone, US_TIME_ZONES } from "@
 export default function SettingsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  // Free vs paid: CRM and Halo setup are paid workflows (lib/access.ts).
+  const account = useAccount();
   const [passwords, setPasswords] = useState({ current: "", newPass: "", confirm: "" });
   const [savingPassword, setSavingPassword] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -548,13 +552,21 @@ export default function SettingsPage() {
             </p>
           </div>
         </div>
-        {/* BoldTrail by API token, above the webhooks (2026-10-15). */}
-        <BoldTrailConnect />
-        <CrmIntegrations />
+        {/* BoldTrail by API token, above the webhooks (2026-10-15). Paid
+            plans only since 2026-10-28; nothing shows until the plan is known. */}
+        {account?.paid ? (
+          <>
+            <BoldTrailConnect />
+            <CrmIntegrations />
+          </>
+        ) : account ? (
+          <LockedFeature compact feature="CRM Integration" body="Connect BoldTrail and GoHighLevel with a paid plan." />
+        ) : null}
       </Card>
 
-      {/* Halo website (2026-10-24, moved here from AutoSparks): optional, so not a numbered step. */}
-      <HaloSettingsCard />
+      {/* Halo website (2026-10-24, moved here from AutoSparks): optional, so
+          not a numbered step. Paid plans only (2026-10-28). */}
+      {account?.paid && <HaloSettingsCard />}
 
       {/* Share and earn (2026-10-17): optional, so not a numbered step. */}
       <AffiliateCard />

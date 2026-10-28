@@ -1,5 +1,8 @@
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
+import { canAccessFeature } from "@/lib/access";
+import { getServerAccess } from "@/lib/access-server";
+import { FreeOverview } from "@/components/help/free-overview";
 import {
   Mic, Sparkles, Video, MonitorPlay, Wand2, PlayCircle, FileText,
   MapPin, User, Megaphone, Camera, Upload, Rocket, Bot,
@@ -29,11 +32,15 @@ function StepNumber({ n }: { n: number }) {
   );
 }
 
-function Step({ n, title, icon: Icon, children }: {
-  n: number; title: string; icon: React.ElementType; children: React.ReactNode;
+/**
+ * One numbered step. Its id is step-N, or `anchor` when What's New links to
+ * it (lib/data/whats-new.ts howItWorksAnchor), so /help#anchor lands on it.
+ */
+function Step({ n, title, icon: Icon, anchor, children }: {
+  n: number; title: string; icon: React.ElementType; anchor?: string; children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-3">
+    <div id={anchor ?? `step-${n}`} className="flex scroll-mt-20 items-start gap-3">
       <StepNumber n={n} />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold text-brand-text flex items-center gap-1.5">
@@ -45,12 +52,21 @@ function Step({ n, title, icon: Icon, children }: {
   );
 }
 
-export default function HelpPage() {
+/**
+ * Free vs paid (2026-10-28, the owner's brief): paid plans and admins get the
+ * whole guide; a free account gets a short overview with the workflows
+ * locked. Decided on the server, so the full guide is never sent to a free
+ * account at all, not merely hidden. (Ask Sparklee is held to the same line
+ * in lib/help/page-guide.ts.)
+ */
+export default async function HelpPage() {
+  const { level } = await getServerAccess();
+  const full = canAccessFeature(level, "full_how_it_works");
   return (
     // Full width, at the owner's request (2026-10-13): held to a narrow
     // column, the guide "looked so long on the page".
     <div className="w-full">
-      {/* Hero */}
+      {/* Hero. New wording 2026-10-28, with no time promise. */}
       <div className="mb-6 p-6 rounded-2xl spark-banner-gradient text-white">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
@@ -59,13 +75,21 @@ export default function HelpPage() {
           <h1 className="text-xl font-bold text-spark-ink">How It Works</h1>
         </div>
         <p className="text-sm text-primary-100">
-          {/* "Or skip the video entirely" made the video sound like the chore
-              you get to avoid, on a page about making videos. The capability
-              is worth naming; the framing is additive now. */}
-          From blank account to published video — set up once, then every video takes about 5 minutes of your time. You can also write just the blog post, with no video at all.
+          Learn how to use SparkReels step by step—from creating your first Spark to publishing, connecting your
+          tools, and using advanced features.
+        </p>
+        <p className="mt-1.5 text-sm text-primary-100">
+          Use this section whenever you need help understanding a feature or setting up a workflow.
         </p>
       </div>
 
+      {full ? <FullGuide /> : <FreeOverview />}
+    </div>
+  );
+}
+
+function FullGuide() {
+  return (
       <div className="flex flex-col gap-5">
 
         {/* Getting around: the top menu and the Settings tabs, both new on
@@ -75,8 +99,11 @@ export default function HelpPage() {
           <h2 className="text-base font-bold text-brand-text mb-3">Getting Around</h2>
           <ul className="flex flex-col gap-2 text-sm text-slate-600 leading-relaxed list-disc pl-5">
             <li>
-              <strong>The menu runs across the top</strong> on a computer: Spark Studio, My Sparks, Spark
-              Tools, Spark Calendar, Spark Insights, Affiliate, Settings and How It Works. The page you are
+              <strong>The menu runs across the top</strong> on a computer: Spark Studio, My Sparks, AutoSparks,
+              Spark Tools, Spark Calendar, Spark Insights, Affiliate, Settings, What&apos;s New and How It
+              Works. <strong>What&apos;s New</strong> shows the latest features, with a gold dot when there is
+              one you haven&apos;t seen; each has <strong>Learn How It Works</strong>, which brings you to
+              its step here. The page you are
               on is underlined. On a smaller window the last few are under <strong>More</strong>; on a
               phone, tap <strong>☰</strong>.
             </li>
@@ -171,7 +198,7 @@ export default function HelpPage() {
               In <strong>Avatar in circle</strong>, the circle follows you as you move.
               You can delete your twin any time in Settings.
               {/* Digital Twin backgrounds (2026-10-24, the owner's mockup). */}
-              <span className="block mt-3 font-semibold text-brand-text">Backgrounds for your Agent Intro</span>
+              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="digital-twin-backgrounds">Backgrounds for your Agent Intro</span>
               <span className="block mt-1">
                 Your twin is filmed upright, so in your horizontal <strong>Agent Intro</strong> your own
                 background is taken away and you stand <strong>full size in front of a new one</strong>. In{" "}
@@ -704,7 +731,7 @@ export default function HelpPage() {
               about a minute. Nothing is made, posted or charged until you approve it, and you can
               turn AutoSparks off at the top of that page.
               {/* Halo sites, promo videos and email drafts (2026-10-24, the owner's ask). */}
-              <span className="block mt-3 font-semibold text-brand-text">Halo sites</span>
+              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="halo-sites">Halo sites</span>
               <span className="block mt-1">
                 If you have a Halo website, add it in{" "}
                 <Link href="/settings#halo" className="text-primary-600 font-medium hover:underline">Settings → Halo website</Link>,
@@ -787,7 +814,7 @@ export default function HelpPage() {
                 </li>
               </ol>
               {/* Seller Updates on AutoSparks (2026-10-26, the owner's mockup). */}
-              <span className="block mt-1.5">
+              <span className="block mt-1.5 scroll-mt-20" id="seller-updates">
                 <strong>Seller updates</strong> (on AutoSparks, paid plans) send your weekly seller update by
                 itself. In the <strong>Seller updates</strong> box, turn it <strong>On</strong> and pick the
                 day and time, the video (<strong>Avatar in circle</strong> or <strong>Email only</strong>) and
@@ -1163,7 +1190,7 @@ export default function HelpPage() {
             {/* Rewritten when posting to the other platforms went live. It said
                 to download the MP4 and post it by hand, which is still there
                 at the end for anywhere that is not connected. */}
-            <Step n={22} title="Everywhere Else — From The Same Window" icon={Upload}>
+            <Step n={22} title="Everywhere Else — From The Same Window" icon={Upload} anchor="auto-publish">
               The <strong>Publish</strong> window lists every account you connected in step 10. Tick the
               ones this video should go to and the button names them — <strong>Publish to
               Facebook</strong>, <strong>Publish to YouTube and Instagram</strong>. Nothing goes out
@@ -1239,7 +1266,7 @@ export default function HelpPage() {
                 project&apos;s Title, Description &amp; Hashtags card.
               </span>
               {/* Email it, added 2026-10-15. */}
-              <span className="block mt-1.5">
+              <span className="block mt-1.5 scroll-mt-20" id="email-it">
                 <strong>Email it.</strong> Any finished video in My Sparks can be emailed. Press{" "}
                 <strong>Email it</strong> and add up to 10 people: search your BoldTrail by name or email
                 (people you&apos;ve sent a video to before, and your sellers, are one tap), or{" "}
@@ -1267,7 +1294,7 @@ export default function HelpPage() {
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Part 4 · The AI Tools Workbench</p>
           <h2 className="text-base font-bold text-brand-text mb-3">Iterate &amp; Improve</h2>
           <div className="flex flex-col gap-4">
-            <Step n={23} title="The Everyday Tools" icon={Wand2}>
+            <Step n={23} title="The Everyday Tools" icon={Wand2} anchor="record-my-screen">
               <Link href="/tools" className="text-primary-600 font-medium hover:underline">Spark Tools</Link> is in four
               groups: <strong>For a video</strong> (Thumbnail, Title, Description, Tags, Script, Record My Screen),{" "}
               <strong>Images &amp; banners</strong>, <strong>Profile &amp; reviews</strong> (Channel Name,
@@ -1301,7 +1328,7 @@ export default function HelpPage() {
                 posting it. <strong>Ask for more reviews</strong> at the top opens the next tool.
               </span>
               {/* Ask for Google Review Video Email (2026-10-27). */}
-              <span className="block mt-1.5">
+              <span className="block mt-1.5 scroll-mt-20" id="google-review-video">
                 <strong>Ask for Google Review Video Email</strong> sends past clients a short video asking for a
                 review, with a big gold <strong>Leave me a Google review</strong> button under it. First save your
                 link in Settings under <strong>Your Google review link</strong> (in your Google Business Profile:{" "}
@@ -1562,6 +1589,5 @@ export default function HelpPage() {
         </Card>
 
       </div>
-    </div>
   );
 }

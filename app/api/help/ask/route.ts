@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sparkleeInstructions } from "@/lib/help/page-guide";
+import { canAccessFeature, getAccessLevel } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +79,9 @@ export async function POST(req: NextRequest) {
   }
 
   const firstName = (p?.full_name ?? "").trim().split(/\s+/)[0] || null;
-  const instructions = sparkleeInstructions(String(body.path || "/"), firstName);
+  // Free accounts get the guide without the paid workflows (lib/access.ts).
+  const fullGuide = canAccessFeature(getAccessLevel(p), "full_how_it_works");
+  const instructions = sparkleeInstructions(String(body.path || "/"), firstName, fullGuide);
 
   let res: Response;
   try {

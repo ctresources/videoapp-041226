@@ -8,6 +8,9 @@ import { cn } from "@/lib/utils/cn";
 import { SCHEDULE_MEET_EVENT } from "@/components/meetings/meetings";
 import { useAuth } from "@/providers/supabase-provider";
 import { SignOutGuard } from "@/components/recovery/sign-out-guard";
+import { useAccount, type Account } from "@/lib/hooks/use-account";
+import { UPGRADE_HREF } from "@/lib/access";
+import { track } from "@/lib/track";
 
 /**
  * The page names across the top bar, on computers (2026-10-14, at the owner's
@@ -17,7 +20,9 @@ import { SignOutGuard } from "@/components/recovery/sign-out-guard";
  * the current width is under More instead, so the bar never wraps.
  * "Affiliate" keeps its own place: the owner is about to promote it.
  */
-const NAV: { href: string; label: string; from: "md" | "lg" | "xl" }[] = [
+type NavItem = { href: string; label: string; from: "md" | "lg" | "xl" };
+
+const PAID_NAV: NavItem[] = [
   { href: "/create", label: "Spark Studio", from: "md" },
   { href: "/videos", label: "My Sparks", from: "md" },
   // Weekly Autopilot's review screen (2026-10-21).
@@ -27,8 +32,33 @@ const NAV: { href: string; label: string; from: "md" | "lg" | "xl" }[] = [
   { href: "/analytics", label: "Spark Insights", from: "lg" },
   { href: "/affiliate", label: "Affiliate", from: "xl" },
   { href: "/settings", label: "Settings", from: "xl" },
+  // Just before How It Works (2026-10-28, the owner's brief).
+  { href: "/whats-new", label: "What's New", from: "xl" },
   { href: "/help", label: "How It Works", from: "xl" },
 ];
+
+/**
+ * A free account's shorter menu (2026-10-28): its free video, its Sparks,
+ * the update teasers, the overview, Upgrade and Settings. The paid pages
+ * also refuse a free account on the server (components/access/feature-gate).
+ */
+const FREE_NAV: NavItem[] = [
+  { href: "/create", label: "Spark Studio", from: "md" },
+  { href: "/videos", label: "My Sparks", from: "md" },
+  { href: "/whats-new", label: "What's New", from: "md" },
+  { href: "/help", label: "How It Works", from: "lg" },
+  { href: "/settings", label: "Settings", from: "lg" },
+  { href: UPGRADE_HREF, label: "Upgrade", from: "md" },
+];
+
+/** Until the plan is known: only what both menus share, so nothing flashes. */
+const LOADING_NAV: NavItem[] = PAID_NAV.filter((i) => i.href === "/create" || i.href === "/videos");
+
+export function navItemsFor(account: Account | null): NavItem[] {
+  if (!account) return LOADING_NAV;
+  return account.paid ? PAID_NAV : FREE_NAV;
+}
+
 const SHOW: Record<string, string> = { md: "hidden md:flex", lg: "hidden lg:flex", xl: "hidden xl:flex" };
 const IN_MORE: Record<string, string> = { md: "md:hidden", lg: "lg:hidden", xl: "xl:hidden" };
 
@@ -36,19 +66,14 @@ const PLAN_LABELS: Record<string, string> = {
   free: "Free plan", beta: "Beta access", starter: "Creator plan", agent: "Producer plan", pro: "Influencer plan",
 };
 
-interface Account { isAdmin: boolean; isRealAdmin: boolean; isStaff: boolean; tier: string; campaignCalendar: boolean }
-
-function useAccount(): Account | null {
-  const { user } = useAuth();
-  const [account, setAccount] = useState<Account | null>(null);
-  useEffect(() => {
-    if (!user) return;
-    fetch("/api/profile/allowance")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((a) => a && setAccount({ isAdmin: !!a.isAdmin, isRealAdmin: !!a.isRealAdmin, isStaff: !!a.isStaff, tier: a.tier ?? "free", campaignCalendar: !!a.campaignCalendar }))
-      .catch(() => {});
-  }, [user]);
-  return account;
+/** The gold dot beside What's New while there is an update not yet seen. */
+function NewDot() {
+  return (
+    <>
+      <span aria-hidden="true" className="ml-1 inline-block h-[7px] w-[7px] shrink-0 rounded-full bg-spark-amber" />
+      <span className="sr-only"> (new)</span>
+    </>
+  );
 }
 
 /** Closes a menu on a click outside it or on Escape. */
@@ -73,9 +98,11 @@ export function TopNav({ dark }: { dark: boolean }) {
   useEffect(() => { setMoreOpen(false); }, [pathname]);
 
   // The calendar this account can open: see the note in sidebar.tsx.
+  const base = navItemsFor(account);
   const items = account?.campaignCalendar
-    ? NAV.map((i) => (i.href === "/calendar" ? { ...i, href: "/campaigns" } : i))
-    : NAV;
+    ? base.map((i) => (i.href === "/calendar" ? { ...i, href: "/campaigns" } : i))
+    : base;
+  const unread = (href: string) => href === "/whats-new" && !!account?.whatsNewUnread;
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   // The page you are on is underlined just under its name (2026-10-15). The
@@ -92,11 +119,28 @@ export function TopNav({ dark }: { dark: boolean }) {
   return (
     <nav aria-label="Main" className="hidden min-w-0 items-center md:flex">
       {items.map((i) => (
-        <Link key={i.href} href={i.href} aria-current={isActive(i.href) ? "page" : undefined} className={cn(SHOW[i.from], link(isActive(i.href)))}>
-          {i.label}
-        </Link>
+        i.href === UPGRADE_HREF ? (
+          // Upgrade, for free accounts: a small gold button, not a page name.
+          <Link
+            key={i.href}
+            href={i.href}
+            onClick={() => track("locked_feature_upgrade_clicked")}
+            className={cn(SHOW[i.from], "ml-1 items-center whitespace-nowrap rounded-full bg-spark-amber px-3 py-1 text-[13.5px] font-semibold text-white hover:opacity-90")}
+          >
+            {i.label}
+          </Link>
+        ) : (
+          <Link key={i.href} href={i.href} aria-current={isActive(i.href) ? "page" : undefined} className={cn(SHOW[i.from], link(isActive(i.href)))}>
+            {i.label}
+            {unread(i.href) && <NewDot />}
+          </Link>
+        )
       ))}
-      <div ref={moreRef} className="relative xl:hidden">
+      <div ref={moreRef} className={cn(
+        "relative",
+        // More only at the widths where something is folded into it.
+        items.some((i) => i.from === "xl") ? "xl:hidden" : items.some((i) => i.from === "lg") ? "lg:hidden" : "hidden",
+      )}>
         <button
           type="button"
           onClick={() => setMoreOpen((v) => !v)}
@@ -118,6 +162,9 @@ export function TopNav({ dark }: { dark: boolean }) {
                 )}
               >
                 {i.label}
+                {unread(i.href) && (
+                  <span className="ml-2 rounded-full bg-spark-amber px-1.5 py-px text-[10px] font-bold text-white">NEW</span>
+                )}
               </Link>
             ))}
           </div>

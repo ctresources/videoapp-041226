@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPublicMarketingPath } from "@/lib/seo/public-pages";
+import { getAccessLevel, isPaidLevel } from "@/lib/access";
 
 // "/auth/reset-password" is the route handler the reset EMAIL links to, and it
 // is not the same path as "/reset-password", the page. Only the page was
@@ -21,12 +22,54 @@ const isPublic = (pathname: string) =>
 // 60-day last-click attribution window for affiliate referrals.
 const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 60;
 
+/**
+ * Paid-workflow actions a free account may not take (2026-10-28), so the
+ * locked pages can't be got around by calling their APIs directly. Writes
+ * only: reading and DELETE stay open, so an account that has dropped to free
+ * can still see and disconnect what it set up. Not /api/halo/draft or
+ * /api/halo/approve: Sparklee's drafts on Create use them on every plan.
+ */
+const PAID_API_WRITES = [
+  "/api/integrations/boldtrail", // connect BoldTrail
+  "/api/crm/webhooks",           // GoHighLevel and other webhooks
+  "/api/support/ghl-workflow",   // ask for the GoHighLevel workflow
+  "/api/halo/sites",             // add a Halo site
+  "/api/halo/promo",             // Halo referral promo video
+  "/api/autopilot",              // AutoSparks: Ask for ideas
+  "/api/seller-auto",            // seller updates on AutoSparks
+  "/api/video-email/send",       // Email it
+];
+
+async function refusePaidApiForFree(request: NextRequest): Promise<NextResponse | null> {
+  const { pathname } = request.nextUrl;
+  const method = request.method.toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS" || method === "DELETE") return null;
+  if (!PAID_API_WRITES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return null;
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => request.cookies.getAll(), setAll: () => {} } },
+  );
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null; // the route itself answers 401
+  const { data } = await supabase.from("profiles").select("subscription_tier, role").eq("id", user.id).single();
+  const level = getAccessLevel((data as { subscription_tier: string | null; role: string | null } | null) ?? {});
+  if (isPaidLevel(level)) return null;
+  return NextResponse.json(
+    { error: "This comes with a SparkReels plan. See plans in Settings → Billing.", code: "paid_plan_required" },
+    { status: 403 },
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // API routes handle their own auth — skip session check to avoid redirect loops
   // and ensure they return proper JSON error responses instead of redirect HTML.
   if (pathname.startsWith("/api/")) {
+    const refused = await refusePaidApiForFree(request);
+    if (refused) return refused;
     return NextResponse.next();
   }
 

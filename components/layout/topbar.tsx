@@ -23,6 +23,7 @@ const pageTitles: Record<string, string> = {
   "/billing": "Billing",
   "/affiliate": "Affiliate Program",
   "/settings": "Settings",
+  "/whats-new": "What's New",
   "/help": "How It Works",
   "/admin": "Admin Panel",
 };

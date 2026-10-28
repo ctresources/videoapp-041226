@@ -1056,7 +1056,8 @@ export default function ProjectEditorPage() {
 
     if (error || !data) {
       toast.error("Project not found");
-      router.push("/dashboard");
+      // My Sparks, not /dashboard (Spark Insights): Insights is paid-only now.
+      router.push("/videos");
       return;
     }
 

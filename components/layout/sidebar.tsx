@@ -5,13 +5,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarPlus, ChevronDown, LogOut, ShieldCheck, Video } from "lucide-react";
-import { MEET_NOW_URL } from "@/components/layout/top-nav";
+import { MEET_NOW_URL, navItemsFor } from "@/components/layout/top-nav";
+import { useAccount } from "@/lib/hooks/use-account";
+import { UPGRADE_HREF } from "@/lib/access";
 import { SCHEDULE_MEET_EVENT } from "@/components/meetings/meetings";
 import { useAuth } from "@/providers/supabase-provider";
 import { useCreateProgress } from "@/components/layout/create-progress";
 import { SignOutGuard } from "@/components/recovery/sign-out-guard";
 import { ASK_SPARKLEE_EVENT } from "@/components/layout/ask-sparklee";
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useRef, useState, type ReactNode } from "react";
 
 // Icon geometry is lifted verbatim from the design handoff's assets/nav-items.json
 // rather than swapped for lucide equivalents — the set is drawn on a 24px grid at
@@ -104,19 +106,21 @@ const NAV_ICONS: Record<string, ReactNode> = {
       <path d="M12 17.2h.01" />
     </>
   ),
+  // What's New (2026-10-28): a bell.
+  "/whats-new": (
+    <>
+      <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
+      <path d="M10 20.5a2 2 0 0 0 4 0" />
+    </>
+  ),
+  // Upgrade, for free accounts: an arrow up.
+  [UPGRADE_HREF]: (
+    <>
+      <path d="M12 20V5" />
+      <path d="M6 11l6-6 6 6" />
+    </>
+  ),
 };
-
-const navItems = [
-  { href: "/create", label: "Spark Studio" },
-  { href: "/videos", label: "My Sparks" },
-  { href: "/autosparks", label: "AutoSparks" },
-  { href: "/tools", label: "Spark Tools" },
-  { href: "/calendar", label: "Spark Calendar" },
-  { href: "/analytics", label: "Spark Insights" },
-  { href: "/affiliate", label: "Affiliate" },
-  { href: "/settings", label: "Settings" },
-  { href: "/help", label: "How It Works" },
-];
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Free plan",
@@ -135,21 +139,15 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
   const [meetOpen, setMeetOpen] = useState(false);
   const pathname = usePathname();
   const { user } = useAuth();
-  // Role and plan for the sidebar: the Admin link was rendered for everyone
-  // (the /admin route bounced them straight back), and the plan label was
-  // hardcoded to "Free plan" even for Pro subscribers.
-  const [account, setAccount] = useState<{ isAdmin: boolean; isRealAdmin: boolean; isStaff: boolean; tier: string; campaignCalendar: boolean } | null>(null);
+  // Role, plan, free vs paid and the What's New dot (lib/hooks/use-account).
+  // The Admin link is shown only to admins, and the plan label is the real one.
+  const account = useAccount();
   // Submitted directly rather than by its own button, so the guard can hold
   // the sign-out open while the user retries or downloads.
   const logoutFormRef = useRef<HTMLFormElement>(null);
 
-  useEffect(() => {
-    if (!user) return;
-    fetch("/api/profile/allowance")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((a) => a && setAccount({ isAdmin: !!a.isAdmin, isRealAdmin: !!a.isRealAdmin, isStaff: !!a.isStaff, tier: a.tier ?? "free", campaignCalendar: !!a.campaignCalendar }))
-      .catch(() => {});
-  }, [user]);
+  // Free accounts get the shorter menu (2026-10-28); same lists as the top bar.
+  const navItems = navItemsFor(account);
 
   /**
    * Spark Calendar points at whichever calendar this account can actually open.
@@ -317,6 +315,9 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
                 {NAV_ICONS[href]}
               </svg>
               <span>{label}</span>
+              {href === "/whats-new" && account?.whatsNewUnread && (
+                <span className="ml-auto rounded-full bg-spark-amber px-1.5 py-px text-[10px] font-bold text-white">NEW</span>
+              )}
             </Link>
             </Fragment>
           );
