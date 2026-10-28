@@ -1,13 +1,14 @@
 import { hasAdminPerks } from "@/lib/utils/roles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { generateAvatarLook } from "@/lib/api/heygen";
+import { generateAvatarLook, getAvatarLooks } from "@/lib/api/heygen";
 import { NextRequest, NextResponse } from "next/server";
 import { ALLOWANCE_SELECT, availableFor, chargeOneVideo } from "@/lib/utils/video-allowance";
 
 /**
  * POST /api/avatar/generate-look
- * Body: { avatarId: string, prompt: string, name?: string }
+ * Body: { avatarId: string, prompt: string, name?: string }  — a photo avatar look
+ *    or { twin: true, prompt: string, name?: string }       — a Digital Twin outfit
  *
  * Billing:
  *   - First look generated in a calendar month: free
@@ -29,11 +30,12 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const avatarId = body.avatarId as string | undefined;
+  /** A new outfit for the Digital Twin (2026-10-28) rather than the photo avatar. */
+  const forTwin = body.twin === true;
   const prompt = body.prompt as string | undefined;
-  const name = (body.name as string | undefined) || `New Look ${new Date().toLocaleDateString()}`;
+  const name = (body.name as string | undefined)
+    || `${forTwin ? "Twin outfit" : "New Look"} ${new Date().toLocaleDateString()}`;
 
-  if (!avatarId) return NextResponse.json({ error: "avatarId required" }, { status: 400 });
   if (!prompt || prompt.trim().length < 10) {
     return NextResponse.json({ error: "prompt must be at least 10 characters" }, { status: 400 });
   }
@@ -41,11 +43,36 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select(`role, look_gen_count, look_gen_period, ${ALLOWANCE_SELECT}`)
+    .select(`role, look_gen_count, look_gen_period, heygen_photo_id, heygen_digital_twin_look_id, twin_outfit_look_ids, ${ALLOWANCE_SELECT}`)
     .eq("id", user.id)
     .single();
 
   if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+
+  /**
+   * Which look the new one starts from, decided here and not trusted from the
+   * browser (every customer's looks are on one HeyGen account). The twin's
+   * outfits always start from the twin itself; a photo look must be one of
+   * this account's own.
+   */
+  const p = profile as unknown as {
+    heygen_photo_id: string | null; heygen_digital_twin_look_id: string | null; twin_outfit_look_ids: string[] | null;
+  };
+  let avatarId: string | undefined;
+  if (forTwin) {
+    avatarId = p.heygen_digital_twin_look_id ?? undefined;
+    if (!avatarId) {
+      return NextResponse.json({ error: "Make your Digital Twin first, then add outfits to it." }, { status: 400 });
+    }
+  } else {
+    const asked = body.avatarId as string | undefined;
+    if (!asked) return NextResponse.json({ error: "avatarId required" }, { status: 400 });
+    const own = p.heygen_photo_id ? (await getAvatarLooks(p.heygen_photo_id).catch(() => [])).map((l) => l.id) : [];
+    if (!own.includes(asked)) {
+      return NextResponse.json({ error: "That look isn't on your account." }, { status: 403 });
+    }
+    avatarId = asked;
+  }
 
   const isAdmin = hasAdminPerks(profile.role as string | null);
   const currentPeriod = new Date().toISOString().slice(0, 7); // "YYYY-MM"
@@ -69,6 +96,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const look = await generateAvatarLook(avatarId, prompt.trim(), name);
+
+    // Recorded as the twin's, so it gets the twin's approval, plan rules and
+    // horizontal backgrounds. Service role: the column is server-only (089).
+    if (forTwin && look?.id) {
+      await admin
+        .from("profiles")
+        .update({ twin_outfit_look_ids: [...(p.twin_outfit_look_ids ?? []), look.id] })
+        .eq("id", user.id);
+    }
 
     // Update usage counters
     if (!isAdmin) {

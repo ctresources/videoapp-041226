@@ -485,7 +485,9 @@ export default function ProjectEditorPage() {
   const [looks, setLooks] = useState<AvatarLook[]>([]);
   // Which look is the Digital Twin, and whether the plan allows it in Avatar
   // video (paid plans only, 2026-10-20). Allowed until the profile says not.
-  const [twinLookId, setTwinLookId] = useState<string | null>(null);
+  // The twin and its AI outfits (2026-10-28): all of them behave as the twin.
+  const [twinLookIds, setTwinLookIds] = useState<string[]>([]);
+  const isTwinId = (id: string | null | undefined) => !!id && twinLookIds.includes(id);
   const [twinFullOk, setTwinFullOk] = useState(true);
   const [looksLoading, setLooksLoading] = useState(false);
   const [selectedLookId, setSelectedLookId] = useState<string>("");
@@ -860,7 +862,11 @@ export default function ProjectEditorPage() {
         // Show all looks including processing ones (displayed differently in the grid)
         const all: AvatarLook[] = data.looks || [];
         setLooks(all);
-        setTwinLookId(typeof data.twinLookId === "string" ? data.twinLookId : null);
+        setTwinLookIds(
+          Array.isArray(data.twinLookIds)
+            ? data.twinLookIds.filter((x: unknown): x is string => typeof x === "string")
+            : typeof data.twinLookId === "string" ? [data.twinLookId] : [],
+        );
         // Auto-select on initial (non-silent) load only. The widescreen or
         // vertical copy of the headshot first (2026-10-18): the first look in
         // the list was the original tall photo, and a wide video made from it
@@ -1736,7 +1742,7 @@ export default function ProjectEditorPage() {
     if (renderMode === "avatar_voice") {
       const look = looks.find((l) => l.id === selectedLookId);
       const lookReady = !!look && (!look.status || look.status === "completed" || look.status === "active");
-      const isTwin = !!look && look.id === twinLookId;
+      const isTwin = !!look && isTwinId(look.id);
       const otherShape = verticalVideo ? formatLooks.wide : formatLooks.tall;
       const wrongShape = !!look && !!otherShape && look.id === otherShape && !!shapeLookId;
       if (looks.length === 0 && !looksLoading) {
@@ -1911,7 +1917,7 @@ export default function ProjectEditorPage() {
           ...(uploadedPhotos.length > 0 && { extraPhotoUrls: uploadedPhotos.map((p) => p.url) }),
           // The Digital Twin's background (2026-10-24); the server uses it
           // only for a twin in a horizontal video.
-          ...(twinBg && twinLookId && selectedLookId === twinLookId && { twinBackground: twinBg }),
+          ...(twinBg && isTwinId(selectedLookId) && { twinBackground: twinBg }),
           // The agent in front of the home, first (2026-10-24).
           ...(openerOffered && openerChoice !== "off" && { opener: openerChoice }),
           // Experiment, off unless ?pip=1 is on the URL — see the note by the flag.
@@ -2189,7 +2195,7 @@ export default function ProjectEditorPage() {
         {/* The Digital Twin and the format (2026-10-22, the owner's wording):
             a twin on a horizontal video is made as Avatar in circle (see
             start-render), a vertical one stays a full Avatar video. */}
-        {!!twinLookId && selectedLookId === twinLookId && renderMode === "avatar_voice" && !circleStyle
+        {isTwinId(selectedLookId) && renderMode === "avatar_voice" && !circleStyle
           && !selfRecord && !twinFullLocked && (
           <p className="flex items-start gap-2 rounded-lg border border-[#f1d29a] bg-spark-amber-tint px-3 py-2 text-[12px] leading-[1.45] text-spark-ink">
             <Info size={14} className="mt-[1px] shrink-0 text-[#A3660F]" aria-hidden="true" />
@@ -3224,7 +3230,7 @@ export default function ProjectEditorPage() {
    * render refuses it too (start-render), so this is the explanation, not
    * the lock.
    */
-  const twinFullLocked = !twinFullOk && !!twinLookId && selectedLookId === twinLookId && renderMode === "avatar_voice";
+  const twinFullLocked = !twinFullOk && isTwinId(selectedLookId) && renderMode === "avatar_voice";
   const fullBlocked = fullTooLong || twinFullLocked;
   const circleStyle = avatarStyle === "circle" || fullBlocked;
   // The opener is offered on a listing video in the circle (2026-10-24).

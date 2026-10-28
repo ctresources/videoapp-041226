@@ -103,7 +103,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("heygen_digital_twin_group_id, heygen_digital_twin_look_id, twin_consent_needed")
+    .select("heygen_digital_twin_group_id, heygen_digital_twin_look_id, twin_consent_needed, twin_outfit_look_ids")
     .eq("id", user.id)
     .single();
 
@@ -113,7 +113,13 @@ export async function GET() {
 
   try {
     const looks = await getAvatarLooks(profile.heygen_digital_twin_group_id);
-    const look = looks[0] ?? null;
+    // The twin itself, never one of its AI outfits (2026-10-28): those live in
+    // the same group, and taking the first look could have swapped the twin
+    // for an outfit.
+    const outfits = new Set((profile as { twin_outfit_look_ids?: string[] | null }).twin_outfit_look_ids ?? []);
+    const look = looks.find((l) => l.id === profile.heygen_digital_twin_look_id)
+      ?? looks.find((l) => !outfits.has(l.id))
+      ?? null;
     // Training first; once trained, the one-time approval if it's still
     // needed (set when training starts since 2026-10-24, and by a render
     // HeyGen refused); the look itself reads "completed" either way.
@@ -158,17 +164,19 @@ export async function DELETE() {
   const admin = createAdminClient();
   const { data: row } = await admin
     .from("profiles")
-    .select("heygen_digital_twin_look_id")
+    .select("heygen_digital_twin_look_id, twin_outfit_look_ids")
     .eq("id", user.id)
     .maybeSingle();
-  const lookId = (row as { heygen_digital_twin_look_id: string | null } | null)?.heygen_digital_twin_look_id;
-  if (lookId) {
+  const r = row as { heygen_digital_twin_look_id: string | null; twin_outfit_look_ids: string[] | null } | null;
+  // The twin and its outfits (2026-10-28): every copy of the person goes.
+  for (const lookId of [r?.heygen_digital_twin_look_id, ...(r?.twin_outfit_look_ids ?? [])]) {
+    if (!lookId) continue;
     const deleted = await deleteAvatarLook(lookId);
     if (!deleted) console.warn(`[digital-twin] HeyGen delete failed for ${lookId}; unlinking anyway`);
   }
   await admin
     .from("profiles")
-    .update({ heygen_digital_twin_group_id: null, heygen_digital_twin_look_id: null })
+    .update({ heygen_digital_twin_group_id: null, heygen_digital_twin_look_id: null, twin_outfit_look_ids: [] })
     .eq("id", user.id);
 
   return NextResponse.json({ ok: true });

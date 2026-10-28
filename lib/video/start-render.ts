@@ -33,6 +33,7 @@ import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits
 import { NextResponse } from "next/server";
 import { joinLineIfBusy, joinLine } from "@/lib/video/render-queue";
 import { parseChoice, resolveTwinBackdrop } from "@/lib/twin-backgrounds";
+import { isTwinLook } from "@/lib/utils/twin-looks";
 import { friendlyRenderError } from "@/lib/utils/render-errors";
 import { addSparkleeNote } from "@/lib/sparklee-notes";
 import { parseOpenerStyle } from "@/lib/api/agent-opener";
@@ -786,7 +787,7 @@ export async function startRender(
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall, twin_wide_mode, twin_default_bg, twin_consent_needed")
+    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall, twin_wide_mode, twin_default_bg, twin_consent_needed, twin_outfit_look_ids")
     .eq("id", user.id)
     .single();
 
@@ -798,6 +799,8 @@ export async function startRender(
     heygen_look_wide: string | null;
     heygen_look_tall: string | null;
     heygen_digital_twin_look_id: string | null;
+    /** AI outfits made from the twin (2026-10-28); treated as the twin. */
+    twin_outfit_look_ids: string[] | null;
     avatar_url: string | null;
     logo_url: string | null;
     heygen_brand_kit_id: string | null;
@@ -1066,7 +1069,7 @@ export async function startRender(
     // works in Avatar in circle (2026-10-20, the owner's call). The editor
     // locks the tile; this holds for any other way a render is asked for.
     // Before anything is charged or written.
-    if (!useDirectVideo && avatarId && avatarId === profile.heygen_digital_twin_look_id
+    if (!useDirectVideo && isTwinLook(avatarId, profile)
         && !canUseTwinInFullVideo(tier, profile.role)) {
       return NextResponse.json({ error: TWIN_FULL_VIDEO_MESSAGE, code: "twin_full_paid" }, { status: 403 });
     }
@@ -1075,7 +1078,7 @@ export async function startRender(
     // anything is written or charged, instead of HeyGen refusing the render
     // and leaving a failed video. Approving clears it (Settings, the editor's
     // Approve now, or a render HeyGen accepts).
-    if (avatarId && avatarId === profile.heygen_digital_twin_look_id && profile.twin_consent_needed) {
+    if (isTwinLook(avatarId, profile) && profile.twin_consent_needed) {
       return NextResponse.json(
         {
           error: "Your Digital Twin needs your one-time approval. Approve it, then press Spark It again. Nothing was charged.",
@@ -1254,7 +1257,7 @@ export async function startRender(
 
       // A client can pass any lookId, so drop an explicitly-requested twin too
       // — checking only the profile fallback would leave the gate bypassable.
-      const requestedAvatar = !twinAllowed && avatarId && avatarId === twinLookId ? undefined : avatarId;
+      const requestedAvatar = !twinAllowed && isTwinLook(avatarId, profile) ? undefined : avatarId;
 
       let directAvatarId = requestedAvatar || (twinAllowed ? twinLookId : null) || undefined;
       if (!directAvatarId && profile.heygen_photo_id) {
@@ -1281,7 +1284,7 @@ export async function startRender(
        * behind it: the background is the picture.
        */
       const twinChoice = parseChoice(twinBackground);
-      const twinOnBackground = directAvatarId === profile.heygen_digital_twin_look_id
+      const twinOnBackground = isTwinLook(directAvatarId, profile)
         && orientation === "landscape" && !voiceOnly
         && (wantsFull || isAgentIntro || (isLongForm && !!twinChoice && twinChoice.type !== "circle"));
       const twinBackdrop = twinOnBackground
@@ -1394,7 +1397,8 @@ export async function startRender(
         throw new Error(`Failed to create video record: ${videoRowErr?.message ?? "unknown"}`);
       }
 
-      const isDigitalTwin = directAvatarId === profile.heygen_digital_twin_look_id;
+      // Its outfits too: HeyGen animates them with the twin's motion (2026-10-28).
+      const isDigitalTwin = isTwinLook(directAvatarId, profile);
 
       // Engine choice is a cost/quality trade (HeyGen bills per second):
       //   avatar_iii  digital twin $1.00/min · photo avatar $2.60/min

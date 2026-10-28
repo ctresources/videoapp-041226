@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAvatarLooks, getAllPrivateLooks, deleteAvatarLook, type AvatarLook } from "@/lib/api/heygen";
 import { NextRequest, NextResponse } from "next/server";
+import { twinLookIds } from "@/lib/utils/twin-looks";
 
 export async function GET() {
   const supabase = await createClient();
@@ -11,7 +12,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("heygen_photo_id, heygen_digital_twin_group_id, heygen_digital_twin_look_id, heygen_look_wide, heygen_look_tall")
+    .select("heygen_photo_id, heygen_digital_twin_group_id, heygen_digital_twin_look_id, heygen_look_wide, heygen_look_tall, twin_outfit_look_ids")
     .eq("id", user.id)
     .single();
   // The widescreen and vertical copies of the headshot, so the editor can
@@ -59,7 +60,8 @@ export async function GET() {
 
   // Which look is the Digital Twin. HeyGen's own avatar_type calls it a
   // photo_avatar, so the editor can't tell from the look itself (2026-10-20).
-  return NextResponse.json({ looks, formatLooks, twinLookId: dtLookId });
+  // twinLookIds adds its AI outfits (2026-10-28), which count as the twin.
+  return NextResponse.json({ looks, formatLooks, twinLookId: dtLookId, twinLookIds: twinLookIds(profile) });
 }
 
 /**
@@ -78,9 +80,18 @@ export async function DELETE(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("heygen_digital_twin_look_id")
+    .select("heygen_photo_id, heygen_digital_twin_look_id, twin_outfit_look_ids")
     .eq("id", user.id)
     .single();
+
+  // Only this account's own looks (2026-10-28): every customer's looks sit on
+  // the one HeyGen account, so an id from the browser must be checked.
+  const ownPhotoLooks = profile?.heygen_photo_id
+    ? (await getAvatarLooks(profile.heygen_photo_id).catch(() => [] as AvatarLook[])).map((l) => l.id)
+    : [];
+  if (!twinLookIds(profile).includes(lookId) && !ownPhotoLooks.includes(lookId)) {
+    return NextResponse.json({ error: "That look isn't on your account." }, { status: 403 });
+  }
 
   const ok = await deleteAvatarLook(lookId);
   if (!ok) {
@@ -90,10 +101,18 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
+  const outfits = ((profile as { twin_outfit_look_ids?: string[] | null } | null)?.twin_outfit_look_ids) ?? [];
   if (profile?.heygen_digital_twin_look_id === lookId) {
+    // The twin itself: its outfits are no use without it, so they go too.
+    for (const id of outfits) await deleteAvatarLook(id);
     await admin
       .from("profiles")
-      .update({ heygen_digital_twin_group_id: null, heygen_digital_twin_look_id: null })
+      .update({ heygen_digital_twin_group_id: null, heygen_digital_twin_look_id: null, twin_outfit_look_ids: [] })
+      .eq("id", user.id);
+  } else if (outfits.includes(lookId)) {
+    await admin
+      .from("profiles")
+      .update({ twin_outfit_look_ids: outfits.filter((id) => id !== lookId) })
       .eq("id", user.id);
   }
 

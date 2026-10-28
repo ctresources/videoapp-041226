@@ -415,7 +415,9 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
         <div className="border border-amber-200 rounded-xl p-3 bg-amber-50 flex flex-col gap-2">
           <div className="flex items-center gap-1.5">
             <Sparkles size={13} className="text-amber-500" />
-            <p className="text-xs font-medium text-amber-800">Generate a look with AI</p>
+            {/* Says which avatar it changes (2026-10-28): the owner expected it
+                to dress the Digital Twin. The twin's outfits are on its own card. */}
+            <p className="text-xs font-medium text-amber-800">New look for your photo avatar</p>
             <span className="ml-auto text-[10px] text-amber-600">1st look/month free · then 1 credit · ~2 min</span>
           </div>
           <textarea

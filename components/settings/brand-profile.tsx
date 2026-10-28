@@ -13,6 +13,7 @@ import { uploadImage, type ImageUploadKind } from "@/lib/utils/upload-image";
 import { micErrorMessage, useMicrophoneDevices, useStreamLevel } from "@/lib/hooks/use-microphone";
 import { extensionForType, pickAudioMimeType, recordedType } from "@/lib/utils/recording-format";
 import { TwinBackgrounds } from "@/components/avatar/twin-backgrounds";
+import { TwinOutfits } from "@/components/avatar/twin-outfits";
 import { takeTwinConsentDone, withTwinConsentDone } from "@/lib/utils/twin-consent-return";
 import {
   AlertCircle, Camera, Upload, Trash2, CheckCircle, Loader2, Mic, Square,
@@ -588,6 +589,10 @@ function DigitalTwinCreator({
           >
             <Trash2 size={11} /> Remove
           </button>
+        </div>
+        {/* AI outfits made from the twin (2026-10-28). */}
+        <div className="rounded-xl border border-spark-rule bg-white p-4">
+          <TwinOutfits />
         </div>
         {/* Backgrounds for wide videos (2026-10-24, the owner's mockup). */}
         <div className="rounded-xl border border-spark-rule bg-white p-4">
