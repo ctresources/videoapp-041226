@@ -99,6 +99,10 @@ const COMPARISON: { feature: string; values: [boolean | string, boolean | string
   { feature: "Publishing per video", values: ["YouTube + 3 more platforms", "YouTube + every platform", "YouTube + every platform"] },
   { feature: "Platforms: Instagram, Facebook, LinkedIn, TikTok, X, Threads and Google Business", values: [true, true, true] },
   { feature: "Seller updates, newsletters and video emails, sent through BoldTrail or your own email", values: [true, true, true] },
+  // Paid-plan features added to the table 2026-10-28, at the owner's ask.
+  { feature: "Digital Twin outfits: describe a new outfit and your twin wears it", values: [true, true, true] },
+  { feature: "Spark Insights and Spark Calendar", values: [true, true, true] },
+  { feature: "Affiliate Program: earn 20% of what each customer you refer pays, for their first 12 months", values: [true, true, true] },
   { feature: "Ask Sparklee voice help", values: [true, true, true] },
   { feature: "Buy extra videos anytime (add-ons never expire)", values: [true, true, true] },
 ];

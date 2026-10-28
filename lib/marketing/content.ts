@@ -105,6 +105,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
       "Works for market updates, listings and tips",
       "On every plan: free plans use it in the Avatar in circle video, paid plans in the full Avatar video too",
       "Your photo avatar stays available as well",
+      "New outfits for your twin: describe one and your twin wears it (paid plans)",
     ],
     forTitle: "A twin is for you if…",
     forList: [
@@ -117,6 +118,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
       { q: "How do I record the clip?", a: "Settings walks you through it: good light, a plain background, look at the camera and talk naturally. A phone video is fine." },
       { q: "Is a Digital Twin included on my plan?", a: "Yes, on every plan. On the free plan you can use it in the Avatar in circle video. The full Avatar video with your twin needs a paid plan." },
       { q: "Can someone else make a twin of me?", a: "No. Every twin goes through a consent check, so it can only be made from you, with your OK." },
+      { q: "Can my twin wear something different?", a: "Yes, on paid plans. Describe an outfit in Settings and your twin wears it in your videos, moving just like you." },
     ],
   },
   {
@@ -156,7 +158,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
     ],
     faqs: [
       { q: "Do I need a special camera or app?", a: "No. It runs in your browser on a computer or phone, using the camera you already have." },
-      { q: "Is the teleprompter really free?", a: "Camera and screen recordings don't use any of your monthly AI videos. They're unlimited on every paid plan, and the free plan includes one to try." },
+      { q: "Is the teleprompter really free?", a: "Camera and screen recordings don't use any of your monthly AI videos. They're unlimited on every paid plan. The free plan includes one camera recording to try; screen recording is on paid plans." },
       { q: "Can I post a video I already shot?", a: "Yes. On a computer, choose Post a video as is to add your branding and post a clip you already have." },
       { q: "How long can a recording be?", a: "Up to 15 minutes on camera and up to 10 minutes when recording your screen." },
     ],
@@ -309,7 +311,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       { q: "What is SparkReels?", a: "SparkReels is a video and content app for real estate agents. Talk for a minute and get a finished video with your AI avatar and cloned voice, plus a blog post, captions and posts for every platform." },
       { q: "Do I need to be on camera?", a: "No. Your AI avatar can deliver every video in your cloned voice. If you like being on camera, the built-in teleprompter lets you film yourself too." },
       { q: "How long does it take to make a video?", a: "About a minute of your time to say what it's about. Most short AI videos are ready within the hour." },
-      { q: "What can I do for free?", a: "Make your first AI video free, with no credit card. Before that you can also write one blog post and make one camera recording. After your free video, you get 14 days of unlimited blogs, camera recordings and tools." },
+      { q: "What can I do for free?", a: "Make your first AI video free, with no credit card. Before that you can also write one blog post and make one camera recording. After your free video, you get 14 days of unlimited blogs, camera recordings and tools. AutoSparks, posting beyond YouTube, screen recording, twin outfits, seller updates, video emails and the Affiliate Program are on paid plans." },
       { q: "Is there help inside the app?", a: "Yes. Ask Sparklee, the voice helper at the top of every page, how to do anything on the page you're on, or read How It Works." },
     ],
   },
