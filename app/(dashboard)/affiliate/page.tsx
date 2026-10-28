@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { HaloLinkCard } from "@/components/affiliate/halo-link-card";
+import { AFFILIATE_ELIGIBILITY_TEXT } from "@/lib/access";
 import {
   DollarSign, Copy, Check, MousePointerClick, UserCheck, Clock, Wallet, CircleCheck, Loader2,
 } from "lucide-react";
@@ -84,6 +85,8 @@ export default function AffiliatePage() {
       <div>
         <h2 className="text-2xl font-bold text-brand-text">Affiliate Program</h2>
         <p className="text-sm text-slate-500">Earn 20% recurring commission for a referral&apos;s first 12 months.</p>
+        {/* The owner's wording (2026-10-28). */}
+        <p className="text-sm text-slate-500">{AFFILIATE_ELIGIBILITY_TEXT}</p>
       </div>
     </div>
   );

@@ -37,8 +37,9 @@ const LOCKED = [
   "CRM Workflows",
   "Website / Halo Content Workflow",
   "AutoSparks",
+  "Seller Updates",
+  "Review Video Emails",
   "Advanced YouTube Tools",
-  "Spark Tools",
   "Spark Insights",
   "Integrations",
 ];

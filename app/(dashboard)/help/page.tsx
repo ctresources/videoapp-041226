@@ -1545,9 +1545,12 @@ function FullGuide() {
             {/* The affiliate program (2026-10-17), worded as the owner approved. */}
             <Step n={29} title="Earn With The Affiliate Program" icon={DollarSign}>
               Recommend SparkReels and earn <strong>20% of what each customer you refer pays, every
-              month for their first 12 months</strong>. Open <strong>Affiliate</strong> in the menu and
-              press <strong>Apply to join</strong>, or use <strong>Affiliates</strong> at the bottom of
-              the website, and tell us a little about how you&apos;d share SparkReels. When you&apos;re
+              month for their first 12 months</strong>. The SparkReels Affiliate Program is available
+              to active paid subscribers. Open <strong>Affiliate</strong> in the menu and
+              press <strong>Apply to join</strong>, or sign in and use <strong>Affiliates</strong> at the
+              bottom of the website, and tell us a little about how you&apos;d share SparkReels.
+              If your plan ends, your affiliate account is paused (your link and earnings are kept)
+              and comes back when you subscribe again. When you&apos;re
               approved, you&apos;ll get an email titled{" "}
               <strong>&ldquo;You&apos;re approved — welcome to the SparkReels affiliate program&rdquo;</strong>{" "}
               with your referral code, your referral link and two steps. First, open the link in it

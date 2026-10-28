@@ -48,10 +48,13 @@ const ITEMS: WhatsNewItem[] = [
     description:
       "Send past clients a short, personal video asking for a Google review, with your review link one tap away.",
     releaseDate: "2026-10-27",
-    featureKey: "spark_tools",
+    featureKey: "tool_workflows",
     howItWorksAnchor: "google-review-video",
     badge: "NEW",
     paidOnlyDetails: true,
+    // Hidden 2026-10-28: on the site, but not one review email has been sent
+    // yet. Set true once one has gone out and arrived.
+    published: false,
   },
   {
     id: "boldtrail-video-email",
@@ -73,7 +76,10 @@ const ITEMS: WhatsNewItem[] = [
     featureKey: "spark_tools",
     howItWorksAnchor: "record-my-screen",
     badge: "NEW",
-    paidOnlyDetails: true,
+    // On the free plan it uses the free camera recording (2026-10-28).
+    paidOnlyDetails: false,
+    freeHref: "/tools?tab=screen",
+    freeLabel: "Try it",
   },
   {
     id: "seller-updates",
@@ -85,6 +91,9 @@ const ITEMS: WhatsNewItem[] = [
     howItWorksAnchor: "seller-updates",
     badge: "NEW",
     paidOnlyDetails: true,
+    // Hidden 2026-10-28: on the site, but it has never run (no seller update
+    // drafts yet). Set true once one has been made and sent.
+    published: false,
   },
   {
     id: "halo-sites",

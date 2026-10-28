@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Lock } from "lucide-react";
 import { UPGRADE_HREF } from "@/lib/access";
 import type { TrackEvent } from "@/lib/track";
@@ -16,8 +17,11 @@ export function LockedFeature({
   cta = "View Plans",
   event = "locked_feature_upgrade_clicked",
   compact = false,
+  secondary,
   className,
 }: {
+  /** A second, quieter link, e.g. "Make my free video". */
+  secondary?: { href: string; label: string };
   /** The feature's name, shown above the title, e.g. "AutoSparks". */
   feature?: string;
   title?: string;
@@ -50,6 +54,11 @@ export function LockedFeature({
       >
         {cta}
       </TrackedLink>
+      {secondary && (
+        <Link href={secondary.href} className="mt-3 block text-[14.5px] font-semibold text-[#A3660F] hover:underline">
+          {secondary.label}
+        </Link>
+      )}
     </div>
   );
 }

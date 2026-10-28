@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveAffiliateForUser } from "@/lib/affiliate";
+import { resolveAffiliateForUser, userAffiliateEligible } from "@/lib/affiliate";
+import { AFFILIATE_ELIGIBILITY_TEXT } from "@/lib/access";
 import { haloLinkText, parseHaloLink } from "@/lib/halo/get-halo";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,10 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
+  // Paid subscribers only (2026-10-28).
+  if (!(await userAffiliateEligible(admin, user.id))) {
+    return NextResponse.json({ error: AFFILIATE_ELIGIBILITY_TEXT }, { status: 403 });
+  }
   const affiliate = await resolveAffiliateForUser(admin, user.id, user.email);
   if (!affiliate || affiliate.status !== "approved") {
     return NextResponse.json({ error: "Only approved affiliates can add a Halo link." }, { status: 403 });

@@ -45,9 +45,10 @@ function stepText(s: GuideStep): string {
  * Steps a free account's Sparklee does not know (2026-10-28): the paid
  * workflows, whose guides free accounts don't get on How It Works either.
  * 8 CRM, 16 AutoSparks/Halo/seller updates, 22 social publishing, 23-25 Spark
- * Tools, 27 Insights, 28 Calendar.
+ * Tools (they hold the seller, review-email and Google Reviews workflows),
+ * 27 Insights, 28 Calendar, 29 the Affiliate Program (paid subscribers only).
  */
-const PAID_ONLY_STEPS = [8, 16, 22, 23, 24, 25, 27, 28];
+const PAID_ONLY_STEPS = [8, 16, 22, 23, 24, 25, 27, 28, 29];
 
 /** Sparklee's instructions for one conversation. `fullGuide` is false for a free account. */
 export function sparkleeInstructions(path: string, firstName: string | null, fullGuide = true): string {
@@ -70,7 +71,7 @@ export function sparkleeInstructions(path: string, firstName: string | null, ful
     "- If they need a person, tell them to email support at sparkreels dot ai.",
     fullGuide
       ? ""
-      : "- They are on the free plan. If they ask how to set up AutoSparks, Halo sites, CRM or BoldTrail, social auto-posting, Spark Tools, Spark Insights or Spark Calendar, say it comes with a SparkReels plan and that Settings, then Billing, shows the plans. Don't explain how those work.",
+      : "- They are on the free plan. If they ask how to set up AutoSparks, Halo sites, CRM or BoldTrail, social auto-posting, Seller Updates, the Google review video email, Google Reviews, Spark Insights, Spark Calendar or the Affiliate Program, say it comes with a SparkReels plan and that Settings, then Billing, shows the plans. Don't explain how those work. Spark Tools' title, description, tag, script, thumbnail and image tools work on the free plan within its free tries.",
     "- Speak English unless they speak to you in another language; then answer in theirs.",
     "- Start by answering. No greeting speech and no recap of the question.",
     "",

@@ -13,7 +13,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { claimAffiliateByToken } from "@/lib/affiliate";
+import { claimAffiliateByToken, userAffiliateEligible } from "@/lib/affiliate";
+import { AFFILIATE_ELIGIBILITY_TEXT } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,11 @@ export async function POST(req: NextRequest) {
   if (!token) return NextResponse.json({ error: "No claim token." }, { status: 400 });
 
   const admin = createAdminClient();
+
+  // Paid subscribers only (2026-10-28).
+  if (!(await userAffiliateEligible(admin, user.id))) {
+    return NextResponse.json({ error: AFFILIATE_ELIGIBILITY_TEXT, code: "affiliate_not_eligible" }, { status: 403 });
+  }
 
   // One account, one affiliate row. Without this an admin who already has an
   // affiliate row could redeem someone else's link and end up with two.

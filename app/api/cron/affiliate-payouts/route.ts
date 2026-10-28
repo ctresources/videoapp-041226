@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe";
+import { affiliateIsActive } from "@/lib/affiliate";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -180,13 +181,21 @@ export async function GET(req: NextRequest) {
 
     const { data: affRow } = await admin
       .from("affiliates")
-      .select("stripe_connect_account_id, connect_onboarding_status")
+      .select("stripe_connect_account_id, connect_onboarding_status, status, user_id")
       .eq("id", affiliateId)
       .single();
-    const affiliate = affRow as { stripe_connect_account_id: string | null; connect_onboarding_status: string } | null;
+    const affiliate = affRow as {
+      stripe_connect_account_id: string | null; connect_onboarding_status: string; status: string; user_id: string | null;
+    } | null;
     if (!affiliate?.stripe_connect_account_id || affiliate.connect_onboarding_status !== "complete") {
       skipped++;
       continue; // not onboarded yet — balance carries to next run
+    }
+    // Paused (no longer a paid subscriber, 2026-10-28): held, not lost. The
+    // balance is paid on the first 1st after they subscribe again.
+    if (!(await affiliateIsActive(admin, affiliate))) {
+      skipped++;
+      continue;
     }
 
     const res = await payoutAffiliate(admin, affiliateId, affiliate.stripe_connect_account_id, group.ids, group.total);

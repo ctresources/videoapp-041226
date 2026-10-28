@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyReferralSignup } from "@/lib/email";
+import { affiliateIsActive } from "@/lib/affiliate";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -23,11 +24,14 @@ export async function attributeReferral(
   try {
     const { data: aff } = await admin
       .from("affiliates")
-      .select("id, email, full_name")
+      .select("id, email, full_name, status, user_id")
       .eq("ref_code", code)
       .eq("status", "approved")
       .maybeSingle();
     if (!aff) return;
+    // A paused affiliate (no longer a paid subscriber, 2026-10-28) isn't
+    // credited with new sign-ups; their account and earnings are kept.
+    if (!(await affiliateIsActive(admin, aff as { status: string; user_id: string | null }))) return;
 
     const affiliate = aff as { id: string; email: string | null; full_name: string | null };
     // Self-referral guard: an affiliate can't earn commission on their own signup.

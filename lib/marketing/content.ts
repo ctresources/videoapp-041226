@@ -328,7 +328,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       { q: "How much does SparkReels cost?", a: "Creator is $99 a month, Producer $149 and Influencer $199. Each includes a set number of AI videos, plus unlimited blog posts, camera recordings and AutoSparks." },
       { q: "Can I cancel anytime?", a: "Yes. There's no contract; plans are billed monthly." },
       { q: "What are add-on videos?", a: "Extra videos you buy when you need them: $25 for a short video, $29 for a long one. They never expire." },
-      { q: "Do you have an affiliate program?", a: "Yes. Apply on the Affiliates page and earn a commission when agents you refer subscribe." },
+      { q: "Do you have an affiliate program?", a: "Yes, for active paid subscribers. Sign in, apply on the Affiliates page, and earn a commission when agents you refer subscribe." },
     ],
   },
   {

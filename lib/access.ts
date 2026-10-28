@@ -25,6 +25,7 @@ export type FeatureKey =
   | "full_how_it_works"
   | "autosparks"
   | "spark_tools"
+  | "tool_workflows"
   | "spark_calendar"
   | "spark_insights"
   | "newsletter"
@@ -58,7 +59,14 @@ export const FEATURE_ACCESS: Record<FeatureKey, readonly AccessLevel[]> = {
   whats_new_details: PAID,
   full_how_it_works: PAID,
   autosparks: PAID,
-  spark_tools: PAID,
+  /**
+   * Free accounts keep the free plan's limited tries (lib/utils/free-trial.ts):
+   * 2 tries + 2 images before the free video, then 14 days unlimited. Once
+   * those are spent, the page shows the locked card (app/(dashboard)/tools/layout.tsx).
+   */
+  spark_tools: SIGNED_IN,
+  /** The workflow tools inside Spark Tools: Seller Update, the review video email, Google Reviews. */
+  tool_workflows: PAID,
   spark_calendar: PAID,
   spark_insights: PAID,
   newsletter: PAID,
@@ -89,6 +97,26 @@ export function isPaidLevel(level: AccessLevel): boolean {
 export function canAccessFeature(level: AccessLevel, feature: FeatureKey): boolean {
   return FEATURE_ACCESS[feature].includes(level);
 }
+
+/**
+ * Who may apply for and take part in the Affiliate Program (2026-10-28, the
+ * owner's rule): active paid subscribers and admins. A subscriber who cancels
+ * keeps it until the paid period they already bought ends
+ * (profiles.current_period_end, which the Stripe webhook keeps when the
+ * subscription ends); after that the affiliate account is paused, never
+ * deleted, and comes back when they subscribe again. The affiliate's own
+ * status (approved etc.) stays in the affiliates table.
+ */
+export function isAffiliateEligible(
+  profile: { subscription_tier?: string | null; role?: string | null; current_period_end?: string | null } | null | undefined,
+): boolean {
+  if (!profile) return false;
+  if (isPaidLevel(getAccessLevel(profile))) return true;
+  const end = profile.current_period_end ? new Date(profile.current_period_end).getTime() : NaN;
+  return Number.isFinite(end) && end > Date.now();
+}
+
+export const AFFILIATE_ELIGIBILITY_TEXT = "The SparkReels Affiliate Program is available to active paid subscribers.";
 
 /** Where every Upgrade / Unlock / View Plans button goes: the existing Billing tab. */
 export const UPGRADE_HREF = "/settings/billing";

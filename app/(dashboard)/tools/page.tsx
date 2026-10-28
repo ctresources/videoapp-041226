@@ -20,6 +20,8 @@ import { ReviewRequestTool } from "@/components/tools/review-request";
 import { ScreenRecorderTool } from "@/components/tools/screen-recorder";
 import { articleHeadline, isPlaceholderTitle } from "@/lib/utils/article-headline";
 import { showTrialLock } from "@/lib/utils/trial-lock";
+import { useAccount } from "@/lib/hooks/use-account";
+import { LockedFeature } from "@/components/access/locked-feature";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 import { LINKEDIN_LIMITS } from "@/lib/utils/linkedin-limits";
 import { BASE_AUDIENCES } from "@/lib/utils/audiences";
@@ -153,6 +155,13 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
   // The simple screen recorder (2026-10-27).
   { id: "screen",      label: "Record My Screen", icon: Video },
 ];
+
+/**
+ * Workflow tools, paid plans only (2026-10-28): they send to clients and
+ * sellers or read a connected Google Business profile. The generators are
+ * open to free accounts within the free plan's tries.
+ */
+const WORKFLOW_TABS: Tab[] = ["seller", "review", "reviews"];
 
 // The tabs in four groups (2026-10-26, usability sweep #8): twelve tabs in a
 // row were too many to scan. Each group's chips are the tools inside it.
@@ -3244,6 +3253,8 @@ export default function ToolsPage() {
   const [trialStarted, setTrialStarted] = useState(true);
   /** Free tries left before the video; null once there is nothing to count. */
   const [freeRunsLeft, setFreeRunsLeft] = useState<number | null>(null);
+  // Free vs paid, for the workflow tools (lib/access.ts).
+  const account = useAccount();
 
   useEffect(() => {
     fetch("/api/profile/allowance")
@@ -3396,7 +3407,18 @@ export default function ToolsPage() {
 
       {/* Tool panel */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6">
-        {activeTab === "tags"        && <TagGenerator projects={projects} initialProjectId={initialProjectId} />}
+        {/* Workflow tools are paid plans only (2026-10-28): free accounts see
+            the locked card, never the tool. Nothing shows until the plan is known. */}
+        {WORKFLOW_TABS.includes(activeTab) && !account?.paid ? (
+          account ? (
+            <LockedFeature
+              compact
+              feature={TABS.find((t) => t.id === activeTab)?.label}
+              body="This workflow comes with a SparkReels plan."
+            />
+          ) : null
+        ) : (<>
+        {activeTab === "tags"       && <TagGenerator projects={projects} initialProjectId={initialProjectId} />}
         {activeTab === "description" && <DescriptionGenerator projects={projects} initialProjectId={initialProjectId} />}
         {activeTab === "title"       && <TitleGenerator projects={projects} initialProjectId={initialProjectId} />}
         {activeTab === "script"      && <ScriptGenerator projects={projects} initialProjectId={initialProjectId} />}
@@ -3426,6 +3448,7 @@ export default function ToolsPage() {
             onTrialLock={(data) => showTrialLock(data as Parameters<typeof showTrialLock>[0])}
           />
         )}
+        </>)}
       </div>
     </div>
   );

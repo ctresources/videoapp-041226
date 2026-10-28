@@ -21,6 +21,8 @@ export interface Account {
   campaignCalendar: boolean;
   level: AccessLevel;
   paid: boolean;
+  /** Affiliate Program: paid, or canceled but paid through the period. */
+  affiliateEligible?: boolean;
   whatsNewUnread: boolean;
 }
 
@@ -41,6 +43,7 @@ function load(): Promise<Account | null> {
         campaignCalendar: !!a.campaignCalendar,
         level,
         paid: isPaidLevel(level),
+        affiliateEligible: !!a.affiliateEligible,
         whatsNewUnread: !!LATEST_WHATS_NEW_ID && a.whatsNewSeen !== LATEST_WHATS_NEW_ID,
       };
     })

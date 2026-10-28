@@ -45,6 +45,8 @@ const PAID_NAV: NavItem[] = [
 const FREE_NAV: NavItem[] = [
   { href: "/create", label: "Spark Studio", from: "md" },
   { href: "/videos", label: "My Sparks", from: "md" },
+  // The free plan's limited tries (2026-10-28); locked once they're spent.
+  { href: "/tools", label: "Spark Tools", from: "md" },
   { href: "/whats-new", label: "What's New", from: "md" },
   { href: "/help", label: "How It Works", from: "lg" },
   { href: "/settings", label: "Settings", from: "lg" },
@@ -56,7 +58,13 @@ const LOADING_NAV: NavItem[] = PAID_NAV.filter((i) => i.href === "/create" || i.
 
 export function navItemsFor(account: Account | null): NavItem[] {
   if (!account) return LOADING_NAV;
-  return account.paid ? PAID_NAV : FREE_NAV;
+  if (account.paid) return PAID_NAV;
+  // Canceled but paid through the period: the Affiliate page stays theirs
+  // until it ends (lib/access.ts isAffiliateEligible), so its menu item does too.
+  if (account.affiliateEligible) {
+    return [...FREE_NAV.slice(0, -1), { href: "/affiliate", label: "Affiliate", from: "lg" }, FREE_NAV[FREE_NAV.length - 1]];
+  }
+  return FREE_NAV;
 }
 
 const SHOW: Record<string, string> = { md: "hidden md:flex", lg: "hidden lg:flex", xl: "hidden xl:flex" };

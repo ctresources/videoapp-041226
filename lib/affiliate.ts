@@ -1,7 +1,36 @@
 import { randomBytes } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isAffiliateEligible } from "@/lib/access";
 
 type Admin = ReturnType<typeof createAdminClient>;
+
+const ELIGIBILITY_COLS = "subscription_tier, role, current_period_end";
+
+/**
+ * Whether this account may apply for or use the Affiliate Program right now
+ * (2026-10-28): active paid subscribers, admins, and a canceled subscriber
+ * until their paid period ends. Rule in lib/access.ts isAffiliateEligible.
+ */
+export async function userAffiliateEligible(admin: Admin, userId: string): Promise<boolean> {
+  const { data } = await admin.from("profiles").select(ELIGIBILITY_COLS).eq("id", userId).maybeSingle();
+  return isAffiliateEligible(data as never);
+}
+
+/**
+ * Whether an affiliate is active rather than paused: approved, joined to an
+ * account, and that account eligible. A paused affiliate keeps its row, link
+ * and balance; new sign-ups aren't credited to it and payouts wait until it
+ * is eligible again. An approved application never joined to an account
+ * can't be checked, so it counts as paused until it is claimed by a
+ * subscriber's account.
+ */
+export async function affiliateIsActive(
+  admin: Admin,
+  aff: { status: string; user_id: string | null } | null,
+): Promise<boolean> {
+  if (!aff || aff.status !== "approved" || !aff.user_id) return false;
+  return userAffiliateEligible(admin, aff.user_id);
+}
 
 export interface AffiliateRow {
   id: string;

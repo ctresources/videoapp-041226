@@ -32,6 +32,8 @@ export function AffiliateCard() {
   }, []);
 
   if (!data) return null;
+  // Paid subscribers only (2026-10-28): nothing about the program otherwise.
+  if ((data as { eligible?: boolean }).eligible === false) return null;
   const aff = data.affiliate;
   if (aff?.status === "rejected") return null;
 

@@ -38,6 +38,11 @@ const PAID_API_WRITES = [
   "/api/autopilot",              // AutoSparks: Ask for ideas
   "/api/seller-auto",            // seller updates on AutoSparks
   "/api/video-email/send",       // Email it
+  "/api/seller-listings",        // Seller Update (Spark Tools)
+  "/api/review-request",         // Ask for Google Review Video Email
+  "/api/tools/google-reviews",   // Google Reviews: draft and post replies
+  // The affiliate routes check isAffiliateEligible themselves: a canceled
+  // subscriber keeps access until their paid period ends.
 ];
 
 async function refusePaidApiForFree(request: NextRequest): Promise<NextResponse | null> {

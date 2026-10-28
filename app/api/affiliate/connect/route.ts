@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe";
-import { resolveAffiliateForUser } from "@/lib/affiliate";
+import { resolveAffiliateForUser, userAffiliateEligible } from "@/lib/affiliate";
 import { NextResponse } from "next/server";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -17,6 +17,10 @@ export async function GET() {
   if (!user) return NextResponse.redirect(`${APP_URL}/login`);
 
   const admin = createAdminClient();
+  // Paid subscribers only (2026-10-28); a paused affiliate can't connect a bank.
+  if (!(await userAffiliateEligible(admin, user.id))) {
+    return NextResponse.redirect(`${APP_URL}/affiliate`);
+  }
   const affiliate = await resolveAffiliateForUser(admin, user.id, user.email);
   if (!affiliate || affiliate.status !== "approved") {
     return NextResponse.redirect(`${APP_URL}/affiliate?error=not_approved`);

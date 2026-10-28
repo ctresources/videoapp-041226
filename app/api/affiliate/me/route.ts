@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveAffiliateForUser } from "@/lib/affiliate";
+import { resolveAffiliateForUser, userAffiliateEligible } from "@/lib/affiliate";
 import { NextResponse } from "next/server";
 
 /**
@@ -15,8 +15,18 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
+  // Paid subscribers only (2026-10-28). Someone not eligible learns only
+  // whether they have an affiliate account to come back to (paused).
+  const eligible = await userAffiliateEligible(admin, user.id);
   const affiliate = await resolveAffiliateForUser(admin, user.id, user.email);
-  if (!affiliate) return NextResponse.json({ affiliate: null });
+  if (!eligible) {
+    return NextResponse.json({
+      eligible: false,
+      paused: affiliate?.status === "approved",
+      affiliate: null,
+    });
+  }
+  if (!affiliate) return NextResponse.json({ eligible: true, affiliate: null });
 
   const [clicksRes, conversionsRes, commsRes] = await Promise.all([
     admin.from("affiliate_clicks").select("*", { count: "exact", head: true }).eq("affiliate_id", affiliate.id),
@@ -50,6 +60,7 @@ export async function GET() {
     comms.filter((c) => c.status === status).reduce((a, c) => a + c.commission_amount_cents, 0);
 
   return NextResponse.json({
+    eligible: true,
     affiliate: {
       status: affiliate.status,
       refCode: affiliate.ref_code,

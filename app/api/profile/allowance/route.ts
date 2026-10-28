@@ -1,5 +1,5 @@
 import { hasAdminPerks } from "@/lib/utils/roles";
-import { getAccessLevel } from "@/lib/access";
+import { getAccessLevel, isAffiliateEligible } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
@@ -30,7 +30,7 @@ export async function GET() {
 
   const { data } = await supabase
     .from("profiles")
-    .select(`${ALLOWANCE_SELECT}, subscription_tier, role, first_video_generated_at, last_seen_whats_new`)
+    .select(`${ALLOWANCE_SELECT}, subscription_tier, role, first_video_generated_at, last_seen_whats_new, current_period_end`)
     .eq("id", user.id)
     .single();
 
@@ -76,6 +76,12 @@ export async function GET() {
     isStaff: profile.role === "staff",
     // Free vs paid for the menu (lib/access.ts); the pages check again on the server.
     level: getAccessLevel({ subscription_tier: profile.subscription_tier as string | null, role: profile.role as string | null }),
+    // May use the Affiliate Program (paid, or canceled but paid through the period).
+    affiliateEligible: isAffiliateEligible({
+      subscription_tier: profile.subscription_tier as string | null,
+      role: profile.role as string | null,
+      current_period_end: profile.current_period_end as string | null,
+    }),
     // The newest What's New item this account has seen, for the menu's NEW dot.
     whatsNewSeen: (profile.last_seen_whats_new as string | null) ?? null,
     campaignCalendar,
