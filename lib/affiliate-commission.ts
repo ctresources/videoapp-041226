@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyAffiliateCommission, notifyCommissionEarned } from "@/lib/email";
+import { affiliateIsActive } from "@/lib/affiliate";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -38,6 +39,10 @@ export async function createCommissionIfEligible(
     commission_rate: number; commission_duration_months: number;
   } | null;
   if (!affiliate || affiliate.status !== "approved") return;
+  // Paused (no longer a paid subscriber, 2026-10-28, the owner's call): no
+  // commission is recorded for a payment made while paused, and it isn't made
+  // up later. Earlier commissions are kept and paid once they subscribe again.
+  if (!(await affiliateIsActive(admin, affiliate))) return;
 
   // Self-referral guard (defense in depth — also enforced at attribution time).
   if (affiliate.user_id && affiliate.user_id === userId) return;

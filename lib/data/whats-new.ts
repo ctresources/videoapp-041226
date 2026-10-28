@@ -91,9 +91,7 @@ const ITEMS: WhatsNewItem[] = [
     howItWorksAnchor: "seller-updates",
     badge: "NEW",
     paidOnlyDetails: true,
-    // Hidden 2026-10-28: on the site, but it has never run (no seller update
-    // drafts yet). Set true once one has been made and sent.
-    published: false,
+    // Confirmed working by the owner, 2026-10-28.
   },
   {
     id: "halo-sites",

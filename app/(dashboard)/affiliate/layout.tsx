@@ -28,7 +28,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
         feature="Affiliate Program"
         title={paused ? "Your affiliate account is paused" : "Available with SparkReels"}
         body={paused
-          ? `${AFFILIATE_ELIGIBILITY_TEXT} Your account, referral link and earnings are kept, and everything comes back when you subscribe again.`
+          ? `${AFFILIATE_ELIGIBILITY_TEXT} Your account, referral link and earnings so far are kept and come back when you subscribe again. While paused, your referrals' payments don't earn a commission.`
           : AFFILIATE_ELIGIBILITY_TEXT}
         cta={paused ? "Subscribe again" : "View Plans"}
       />
