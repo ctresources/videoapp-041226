@@ -34,6 +34,7 @@ import { NextResponse } from "next/server";
 import { joinLineIfBusy, joinLine } from "@/lib/video/render-queue";
 import { parseChoice, resolveTwinBackdrop } from "@/lib/twin-backgrounds";
 import { isTwinLook } from "@/lib/utils/twin-looks";
+import { canAccessFeature, getAccessLevel } from "@/lib/access";
 import { friendlyRenderError } from "@/lib/utils/render-errors";
 import { addSparkleeNote } from "@/lib/sparklee-notes";
 import { parseOpenerStyle } from "@/lib/api/agent-opener";
@@ -1072,6 +1073,16 @@ export async function startRender(
     if (!useDirectVideo && isTwinLook(avatarId, profile)
         && !canUseTwinInFullVideo(tier, profile.role)) {
       return NextResponse.json({ error: TWIN_FULL_VIDEO_MESSAGE, code: "twin_full_paid" }, { status: 403 });
+    }
+
+    // A twin outfit is paid plans only (2026-10-28, the owner's call): an
+    // account that made one and then dropped to free can't render with it.
+    if (avatarId && (profile.twin_outfit_look_ids ?? []).includes(avatarId)
+        && !canAccessFeature(getAccessLevel(profile), "twin_outfits")) {
+      return NextResponse.json(
+        { error: "Outfits for your Digital Twin come with a SparkReels plan. Choose your twin or another look, or see plans in Billing.", code: "twin_outfit_paid" },
+        { status: 403 },
+      );
     }
 
     // Not approved yet (2026-10-24, the owner's ask): asked for here, before

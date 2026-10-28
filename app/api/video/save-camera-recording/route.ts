@@ -5,6 +5,7 @@ import { cameraGateResponse, noteRecordingSaved } from "@/lib/utils/free-trial";
 import { generateSeoData } from "@/lib/api/perplexity";
 import { ensureFaststart, needsFaststart } from "@/lib/utils/faststart";
 import { SCENES_DISCLOSURE } from "@/lib/utils/ai-made";
+import { getAccessLevel, isPaidLevel } from "@/lib/access";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
       cta?: string;
       idempotencyKey?: string;
       aiScenes?: boolean;
+      screen?: boolean;
       photos?: string[];
       audience?: string;
       tone?: string;
@@ -105,6 +107,17 @@ export async function POST(req: NextRequest) {
 
     const gate = await cameraGateResponse(user.id, idempotencyKey);
     if (gate) return gate;
+
+    // Record My Screen is for paid plans (2026-10-28, the owner's call).
+    if (body.screen === true) {
+      const { data: prof } = await admin.from("profiles").select("subscription_tier, role").eq("id", user.id).single();
+      if (!isPaidLevel(getAccessLevel(prof as never))) {
+        return NextResponse.json(
+          { error: "Record My Screen comes with a SparkReels plan. See plans in Settings → Billing.", code: "paid_plan_required" },
+          { status: 403 },
+        );
+      }
+    }
   } else {
     // Before the file is read and stored. This path has no recovery id.
     const gate = await cameraGateResponse(user.id);

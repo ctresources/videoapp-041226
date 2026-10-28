@@ -66,6 +66,8 @@ export interface RecoveryRecord {
   videoType?: string;
   /** Recorded over scenes made with AI, so it is saved and published as AI-made. */
   aiScenes?: boolean;
+  /** A screen recording (Record My Screen), paid plans only (2026-10-28). */
+  screen?: boolean;
   /** The photos attached to the take, so Record again can bring them back. */
   photos?: string[];
   /** Real recorded pixels, so a retry files the same shape the take really is. */

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Shirt, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useAccount } from "@/lib/hooks/use-account";
+import { LockedFeature } from "@/components/access/locked-feature";
 
 /**
  * Outfits for the Digital Twin (2026-10-28, the owner's ask).
@@ -16,6 +18,22 @@ import toast from "react-hot-toast";
 interface Look { id: string; name: string; preview_image_url: string | null; status: string | null }
 
 export function TwinOutfits() {
+  // Paid plans only (2026-10-28, the owner's call); nothing until the plan is known.
+  const account = useAccount();
+  if (!account) return null;
+  if (!account.paid) {
+    return (
+      <LockedFeature
+        compact
+        feature="Outfits for your twin"
+        body="Dress your Digital Twin in new outfits with a SparkReels plan."
+      />
+    );
+  }
+  return <TwinOutfitsPaid />;
+}
+
+function TwinOutfitsPaid() {
   const [outfits, setOutfits] = useState<Look[]>([]);
   const [prompt, setPrompt] = useState("");
   const [making, setMaking] = useState(false);

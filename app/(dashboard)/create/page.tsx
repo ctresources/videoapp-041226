@@ -55,6 +55,7 @@ import { toStateAbbr } from "@/lib/utils/us-states";
 import { BASE_AUDIENCES, MAX_AUDIENCE_LENGTH } from "@/lib/utils/audiences";
 import { SOURCE_CHAR_LIMIT } from "@/lib/utils/source-limit";
 import { useCustomAudiences } from "@/lib/hooks/use-custom-audiences";
+import { useAccount } from "@/lib/hooks/use-account";
 import {
   RENDERED_SCRIPT_LENGTHS,
   ceilMinutesFor,
@@ -567,6 +568,8 @@ function CreatePageInner() {
    */
   const [cameraKindOpen, setCameraKindOpen] = useState(false);
   const [screenRecord, setScreenRecord] = useState(false);
+  // Free vs paid (lib/access.ts): Record my screen is paid plans only.
+  const account = useAccount();
   const [screenCapable, setScreenCapable] = useState(false);
   useEffect(() => {
     setScreenCapable(
@@ -3537,12 +3540,14 @@ function CreatePageInner() {
             canBrandClips ? (
               <div className="mt-2 flex flex-wrap gap-2">
                 {([
-                  {
+                  // Record my screen: paid plans only (2026-10-28, the owner's
+                  // call); the save route refuses it for a free account too.
+                  ...(account?.paid ? [{
                     key: "screen",
                     label: "Record my screen",
                     on: screenRecord && cameraMode !== "brand",
                     toggle: () => { setCameraMode("record"); setScreenRecord((v) => !v); },
-                  },
+                  }] : []),
                   {
                     key: "brand",
                     label: "Post a video as is",

@@ -1335,6 +1335,8 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
       videoType: videoTypeForSize(size),
       // Only when the scenes were actually in the picture.
       aiScenes: brollIsScenes && !!brollVideoUrl && brandedLook,
+      // Record My Screen is paid plans only; the save route checks (2026-10-28).
+      screen: screenMode,
       // The photos attached, for Record again in My Sparks (2026-10-21).
       photos: photos.slice(0, 20),
       width: size?.width ?? null,
@@ -1424,6 +1426,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
         script: record.script,
         videoType: record.videoType,
         aiScenes: record.aiScenes,
+        screen: record.screen,
         photos: record.photos,
         city: record.city,
         state: record.state,

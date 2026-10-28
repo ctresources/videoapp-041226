@@ -41,8 +41,19 @@ function clean(jsx) {
 
 const steps = [];
 const stepRe = /<Step n=\{(\d+)\} title="([^"]+)"[^>]*>([\s\S]*?)<\/Step>/g;
+/**
+ * A passage about a paid-only feature inside a step everyone gets is wrapped
+ * in <span data-paid-only="true">…</span> on the page (2026-10-28). It is kept
+ * apart as paidText, which Sparklee is given only for a paid account. The
+ * span must not contain another span.
+ */
+const paidRe = /<span[^>]*data-paid-only[^>]*>[\s\S]*?<\/span>/g;
 for (const m of src.matchAll(stepRe)) {
-  steps.push({ n: Number(m[1]), title: m[2], text: clean(m[3]) });
+  const body = m[3];
+  const paid = (body.match(paidRe) ?? []).map(clean).filter(Boolean).join("\n");
+  const step = { n: Number(m[1]), title: m[2], text: clean(body.replace(paidRe, " ")) };
+  if (paid) step.paidText = paid;
+  steps.push(step);
 }
 
 // Each part's heading and whatever sits under it before its first step: the

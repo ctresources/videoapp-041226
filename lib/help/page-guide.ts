@@ -1,4 +1,5 @@
 import guide from "./guide.generated.json";
+import { freePlanBriefing } from "./plan-guide";
 
 /**
  * What Ask Sparklee knows: the How It Works guide, as plain text.
@@ -11,7 +12,8 @@ import guide from "./guide.generated.json";
  * first to mind.
  */
 
-interface GuideStep { n: number; title: string; text: string }
+/** paidText: passages marked data-paid-only on the page, left out for free accounts. */
+interface GuideStep { n: number; title: string; text: string; paidText?: string }
 interface GuidePart { title: string; text: string }
 const STEPS = (guide as { steps: GuideStep[] }).steps;
 const PARTS = (guide as { parts: GuidePart[] }).parts;
@@ -37,8 +39,9 @@ export function pageFor(path: string): { name: string; steps: number[] } {
   return PAGES.find((p) => p.match(clean)) ?? { name: "SparkReels", steps: [] };
 }
 
-function stepText(s: GuideStep): string {
-  return `Step ${s.n}: ${s.title}\n${s.text}`;
+function stepText(s: GuideStep, full: boolean): string {
+  const extra = full && s.paidText ? `\n${s.paidText}` : "";
+  return `Step ${s.n}: ${s.title}\n${s.text}${extra}`;
 }
 
 /**
@@ -69,15 +72,15 @@ export function sparkleeInstructions(path: string, firstName: string | null, ful
     "- Do not quote prices or plan details beyond what the guide says, do not promise features that are not in it, and never name the companies or services behind SparkReels.",
     "- If they ask about anything other than using SparkReels, say kindly that you can only help with SparkReels.",
     "- If they need a person, tell them to email support at sparkreels dot ai.",
-    fullGuide
-      ? ""
-      : "- They are on the free plan. If they ask how to set up AutoSparks, Halo sites, CRM or BoldTrail, social auto-posting, Seller Updates, the Google review video email, Google Reviews, Spark Insights, Spark Calendar or the Affiliate Program, say it comes with a SparkReels plan and that Settings, then Billing, shows the plans. Don't explain how those work. Spark Tools' title, description, tag, script, thumbnail and image tools work on the free plan within its free tries.",
     "- Speak English unless they speak to you in another language; then answer in theirs.",
     "- Start by answering. No greeting speech and no recap of the question.",
     "",
-    own.length ? `THE STEPS ABOUT THE PAGE THEY ARE ON (${page.name}):\n\n${own.map(stepText).join("\n\n")}` : "",
+    // Free accounts: what's free and what's paid (lib/help/plan-guide.ts).
+    fullGuide ? "" : freePlanBriefing(),
     "",
-    `THE REST OF THE GUIDE:\n\n${rest.map(stepText).join("\n\n")}`,
+    own.length ? `THE STEPS ABOUT THE PAGE THEY ARE ON (${page.name}):\n\n${own.map((s) => stepText(s, fullGuide)).join("\n\n")}` : "",
+    "",
+    `THE REST OF THE GUIDE:\n\n${rest.map((s) => stepText(s, fullGuide)).join("\n\n")}`,
     "",
     partText ? `TABLES AND SUMMARIES FROM THE GUIDE:\n\n${partText}` : "",
   ].filter((line, i, all) => !(line === "" && all[i - 1] === "")).join("\n");

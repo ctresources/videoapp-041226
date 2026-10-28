@@ -209,8 +209,9 @@ function FullGuide() {
                 agent, which sets its own scenes, so it doesn&apos;t use these.
               </span>
               {/* Twin outfits (2026-10-28, the owner's ask). */}
-              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="twin-outfits">Outfits for your twin</span>
-              <span className="block mt-1">
+              {/* Paid plans only (2026-10-28): data-paid-only keeps it out of a free account's Sparklee. */}
+              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="twin-outfits" data-paid-only="true">Outfits for your twin (paid plans)</span>
+              <span className="block mt-1" data-paid-only="true">
                 Want your twin in something else? In <strong>Settings → 4 · Digital Twin</strong>, under{" "}
                 <strong>Outfits</strong>, describe it (like <em>navy blazer over a white shirt</em>) and press{" "}
                 <strong>New outfit</strong>. It takes a minute or two, and it moves like your twin. Each outfit
@@ -944,9 +945,11 @@ function FullGuide() {
               one-click button on any script or blog post. The <strong>teleprompter scrolls automatically</strong>{" "}
               while you record in up to 1080p/60fps, for up to <strong>15 minutes</strong> (8–15 min is
               YouTube&apos;s algorithm sweet spot and unlocks mid-roll ads).
-              On a computer, press <strong>Record my screen</strong> under the script choices to record a listing, a market
+              <span data-paid-only="true">
+              On paid plans, on a computer, press <strong>Record my screen</strong> under the script choices to record a listing, a market
               report or anything else on screen while you talk, with you in a corner circle or not.
               It records horizontal, up to 10 minutes, and finishes like any camera recording.
+              </span>
               {/* The teleprompter's reading and speed controls (2026-10-21). */}
               <span className="block mt-1.5">
                 <strong>Read your script first</strong> in the script box, or press{" "}

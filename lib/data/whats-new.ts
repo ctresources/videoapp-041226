@@ -35,12 +35,11 @@ const ITEMS: WhatsNewItem[] = [
     description:
       "Describe a new outfit and your Digital Twin wears it, moving just like you, in every video.",
     releaseDate: "2026-10-28",
-    featureKey: "free_video",
+    featureKey: "twin_outfits",
     howItWorksAnchor: "twin-outfits",
     badge: "NEW",
-    paidOnlyDetails: false,
-    freeHref: "/settings#twin",
-    freeLabel: "Open Digital Twin",
+    // Paid plans only (2026-10-28, the owner's call).
+    paidOnlyDetails: true,
   },
   {
     id: "google-review-video",
@@ -73,13 +72,11 @@ const ITEMS: WhatsNewItem[] = [
     description:
       "Walk through a listing, a market chart or a website with you in a corner circle, saved straight to My Sparks.",
     releaseDate: "2026-10-27",
-    featureKey: "spark_tools",
+    featureKey: "tool_workflows",
     howItWorksAnchor: "record-my-screen",
     badge: "NEW",
-    // On the free plan it uses the free camera recording (2026-10-28).
-    paidOnlyDetails: false,
-    freeHref: "/tools?tab=screen",
-    freeLabel: "Try it",
+    // Paid plans only (2026-10-28, the owner's call).
+    paidOnlyDetails: true,
   },
   {
     id: "seller-updates",

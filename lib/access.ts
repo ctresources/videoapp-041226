@@ -26,6 +26,7 @@ export type FeatureKey =
   | "autosparks"
   | "spark_tools"
   | "tool_workflows"
+  | "twin_outfits"
   | "spark_calendar"
   | "spark_insights"
   | "newsletter"
@@ -65,8 +66,10 @@ export const FEATURE_ACCESS: Record<FeatureKey, readonly AccessLevel[]> = {
    * those are spent, the page shows the locked card (app/(dashboard)/tools/layout.tsx).
    */
   spark_tools: SIGNED_IN,
-  /** The workflow tools inside Spark Tools: Seller Update, the review video email, Google Reviews. */
+  /** Paid-only tools: Seller Update, the review video email, Google Reviews, Record My Screen. */
   tool_workflows: PAID,
+  /** New outfits for the Digital Twin (2026-10-28, the owner's call). */
+  twin_outfits: PAID,
   spark_calendar: PAID,
   spark_insights: PAID,
   newsletter: PAID,

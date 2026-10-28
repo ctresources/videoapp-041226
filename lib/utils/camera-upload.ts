@@ -64,6 +64,8 @@ export async function uploadCameraRecording(
     videoType?: string;
     /** The take has generated scenes playing behind the speaker. */
     aiScenes?: boolean;
+    /** A screen recording: paid plans only, checked by the save route. */
+    screen?: boolean;
     /** The photos attached to the take, kept for Record again. */
     photos?: string[];
     /**

@@ -157,11 +157,12 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
 ];
 
 /**
- * Workflow tools, paid plans only (2026-10-28): they send to clients and
- * sellers or read a connected Google Business profile. The generators are
- * open to free accounts within the free plan's tries.
+ * Paid plans only (2026-10-28): the workflow tools, which send to clients and
+ * sellers or read a connected Google Business profile, and Record My Screen
+ * (the owner's call). The generators are open to free accounts within the
+ * free plan's tries.
  */
-const WORKFLOW_TABS: Tab[] = ["seller", "review", "reviews"];
+const WORKFLOW_TABS: Tab[] = ["seller", "review", "reviews", "screen"];
 
 // The tabs in four groups (2026-10-26, usability sweep #8): twelve tabs in a
 // row were too many to scan. Each group's chips are the tools inside it.
@@ -3414,7 +3415,7 @@ export default function ToolsPage() {
             <LockedFeature
               compact
               feature={TABS.find((t) => t.id === activeTab)?.label}
-              body="This workflow comes with a SparkReels plan."
+              body="This comes with a SparkReels plan."
             />
           ) : null
         ) : (<>

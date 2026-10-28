@@ -2,6 +2,7 @@ import { hasAdminPerks } from "@/lib/utils/roles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateAvatarLook, getAvatarLooks } from "@/lib/api/heygen";
+import { canAccessFeature, getAccessLevel } from "@/lib/access";
 import { NextRequest, NextResponse } from "next/server";
 import { ALLOWANCE_SELECT, availableFor, chargeOneVideo } from "@/lib/utils/video-allowance";
 
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select(`role, look_gen_count, look_gen_period, heygen_photo_id, heygen_digital_twin_look_id, twin_outfit_look_ids, ${ALLOWANCE_SELECT}`)
+    .select(`role, subscription_tier, look_gen_count, look_gen_period, heygen_photo_id, heygen_digital_twin_look_id, twin_outfit_look_ids, ${ALLOWANCE_SELECT}`)
     .eq("id", user.id)
     .single();
 
@@ -60,6 +61,13 @@ export async function POST(req: NextRequest) {
   };
   let avatarId: string | undefined;
   if (forTwin) {
+    // Twin outfits are paid plans only (2026-10-28, the owner's call).
+    if (!canAccessFeature(getAccessLevel(profile as never), "twin_outfits")) {
+      return NextResponse.json(
+        { error: "Outfits for your Digital Twin come with a SparkReels plan. See plans in Settings → Billing.", code: "paid_plan_required" },
+        { status: 403 },
+      );
+    }
     avatarId = p.heygen_digital_twin_look_id ?? undefined;
     if (!avatarId) {
       return NextResponse.json({ error: "Make your Digital Twin first, then add outfits to it." }, { status: 400 });
