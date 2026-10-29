@@ -2858,10 +2858,12 @@ export default function ProjectEditorPage() {
       if (!prev) return prev;
       const next = { ...((prev.ai_script ?? {}) as Record<string, unknown>) };
       if (data.headline) next.blog_headline = data.headline; else delete next.blog_headline;
+      // The header image is redrawn with it (2026-10-29).
+      if (data.headerUrl) next.blog_header_url = data.headerUrl;
       return { ...prev, ai_script: next as unknown as typeof prev.ai_script };
     });
     setHeadlineDraft(null);
-    toast.success("Headline saved.");
+    toast.success(data.headerUrl ? "Headline saved. Header image updated." : "Headline saved.");
   }
 
   async function saveEmailUrl() {

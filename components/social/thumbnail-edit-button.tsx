@@ -10,6 +10,8 @@ import { cleanThumbStyle } from "@/lib/utils/thumbnail-style";
  * Edit thumbnail, the same everywhere (2026-10-26, the owner's approved
  * mockup): the AutoSparks card, My Sparks and the video editor open the one
  * editor and save the result to the project, which is what posting uses.
+ * The editor shows both the thumbnail words and the full headline
+ * (2026-10-29), and saves the headline itself when it changes.
  */
 export function ThumbnailEditButton(props: {
   projectId: string;

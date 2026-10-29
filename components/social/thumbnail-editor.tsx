@@ -5,6 +5,7 @@ import { Loader2, Upload, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { createClient } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/utils/upload-image";
+import { articleHeadline as articleHeadlineOf } from "@/lib/utils/article-headline";
 import {
   THUMB_COLOURS,
   THUMB_FONTS,
@@ -38,6 +39,8 @@ export interface ThumbApply {
   state: string;
   noMarket: boolean;
   scene?: string;
+  /** Set only when the article headline was changed here (2026-10-29). */
+  articleHeadline?: string;
 }
 
 const PREVIEW_FONT: Record<ThumbFont, string> = {
@@ -66,6 +69,8 @@ export function ThumbnailEditor(props: {
   photoSide?: "left" | "right";
   /** What an AI picture was last asked to show. */
   scene?: string;
+  /** The project's article headline; with it, a second box to edit it (2026-10-29). */
+  articleHeadline?: string | null;
   onApply: (next: ThumbApply) => void;
   onClose: () => void;
 }) {
@@ -84,6 +89,37 @@ export function ThumbnailEditor(props: {
   const [usState, setUsState] = useState(props.badgeState ?? "");
   const [noBadge, setNoBadge] = useState(false);
   const [words, setWords] = useState(props.headline);
+  /**
+   * The long headline, the second box (2026-10-29, the owner's ask: both
+   * boxes on the thumbnail editor). Read from the project when there is one:
+   * the article's headline, else its title. Changing it saves the article
+   * headline (/api/projects/headline), which redraws the header image.
+   */
+  const [articleHeadline, setArticleHeadline] = useState<string | null>(props.articleHeadline ?? null);
+  const [headlineAtOpen, setHeadlineAtOpen] = useState<string>(props.articleHeadline ?? "");
+  useEffect(() => {
+    if (!props.projectId || props.articleHeadline != null) return;
+    let live = true;
+    void createClient()
+      .from("projects")
+      .select("title, ai_script, seo_data")
+      .eq("id", props.projectId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!live) return;
+        const p = data as { title: string | null; ai_script: Record<string, unknown> | null; seo_data: Record<string, unknown> | null } | null;
+        const h = articleHeadlineOf(
+          (p?.ai_script ?? {}) as { blog_headline?: string; title?: string },
+          p?.seo_data as { youtube_title?: string; meta_title?: string } | null,
+          p?.title ?? "",
+        );
+        const v = h === "Untitled post" ? "" : h;
+        setArticleHeadline(v);
+        setHeadlineAtOpen(v);
+      });
+    return () => { live = false; };
+  }, [props.projectId, props.articleHeadline]);
+  const [savingHeadline, setSavingHeadline] = useState(false);
   const [style, setStyle] = useState<ThumbStyle>(props.style);
   /** The agent's brand colours from Settings, offered first. */
   const [brandColors, setBrandColors] = useState<string[]>([]);
@@ -199,7 +235,26 @@ export function ThumbnailEditor(props: {
     { id: "ai", label: "AI picture", show: true },
   ];
 
-  function apply() {
+  async function apply() {
+    // The long headline first, when it changed: it redraws the header image.
+    const changedHeadline = articleHeadline !== null && articleHeadline.trim() && articleHeadline.trim() !== headlineAtOpen.trim()
+      ? articleHeadline.trim() : null;
+    if (changedHeadline && props.projectId) {
+      setSavingHeadline(true);
+      try {
+        const res = await fetch("/api/projects/headline", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId: props.projectId, headline: changedHeadline }),
+        });
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) { toast.error(d?.error || "Couldn't save the headline."); return; }
+        setHeadlineAtOpen(changedHeadline);
+        toast.success(d.headerUrl ? "Headline saved. Header image updated." : "Headline saved.");
+      } finally {
+        setSavingHeadline(false);
+      }
+    }
     props.onApply({
       backgroundUrl: ai ? "" : shown ?? "",
       headline: words.trim(),
@@ -210,6 +265,7 @@ export function ThumbnailEditor(props: {
       state: noBadge ? "" : usState.trim().toUpperCase().slice(0, 2),
       noMarket: noBadge,
       ...(ai && scene.trim() ? { scene: scene.trim() } : {}),
+      ...(changedHeadline ? { articleHeadline: changedHeadline } : {}),
     });
   }
 
@@ -423,9 +479,11 @@ export function ThumbnailEditor(props: {
             </div>
           )}
 
-          {/* Words */}
+          {/* Words: the thumbnail's own (up to 4) and, when there is an
+              article, its headline, which is also on the header image
+              (2026-10-29, the owner's ask: both boxes). */}
           <div>
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Words</p>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Thumbnail words</p>
             <input
               value={words}
               onChange={(e) => setWords(e.target.value)}
@@ -433,7 +491,21 @@ export function ThumbnailEditor(props: {
               placeholder="Three or four short words"
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold uppercase focus:outline-none focus:ring-2 focus:ring-primary-300"
             />
+            <p className="mt-1 text-[11px] text-slate-400">Up to 4 words fit on a thumbnail.</p>
           </div>
+          {articleHeadline !== null && (
+            <div>
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Headline</p>
+              <input
+                value={articleHeadline}
+                onChange={(e) => setArticleHeadline(e.target.value)}
+                maxLength={160}
+                placeholder="Your article's headline"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary-300"
+              />
+              <p className="mt-1 text-[11px] text-slate-400">The full headline: on your article and its header image.</p>
+            </div>
+          )}
 
           {/* Font */}
           <div>
@@ -520,8 +592,8 @@ export function ThumbnailEditor(props: {
           </button>
           <button
             type="button"
-            disabled={props.busy || !words.trim()}
-            onClick={apply}
+            disabled={props.busy || savingHeadline || !words.trim()}
+            onClick={() => void apply()}
             className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
           >
             {props.busy ? "Drawing…" : "Apply"}
