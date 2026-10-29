@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Check, Copy, ExternalLink, Loader2, MessageSquare, Play, RefreshCw, X } from "lucide-react";
+import { Camera, Check, Copy, ExternalLink, Loader2, MessageSquare, Play, RefreshCw, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { ListenButton } from "@/components/ui/listen-button";
@@ -351,6 +351,23 @@ function ReadyPanel({ d, halo }: { d: HaloDraft; halo: Halo }) {
 }
 
 /** On an approved card, before it posts: watch it, and fix the thumbnail or words. */
+/** Delete post (2026-10-29, the owner's ask): stops an approved one going out. */
+function DeletePost({ d, halo }: { d: HaloDraft; halo: Halo }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button size="sm" variant="outline" loading={busy}
+      className="gap-1.5 text-red-600 hover:text-red-700"
+      onClick={async () => {
+        if (!window.confirm(`Delete this post? It won't go out on ${when(d.slot_at)}. The video stays in My Sparks.`)) return;
+        setBusy(true);
+        await halo.deletePost(d);
+        setBusy(false);
+      }}>
+      <Trash2 size={13} /> Delete post
+    </Button>
+  );
+}
+
 function ApprovedActions({ d, halo }: { d: HaloDraft; halo: Halo }) {
   const [words, setWords] = useState(false);
   return (
@@ -365,6 +382,7 @@ function ApprovedActions({ d, halo }: { d: HaloDraft; halo: Halo }) {
         <Button size="sm" variant="outline" onClick={() => setWords((w) => !w)}>
           {words ? "Close title and caption" : "Edit title and caption"}
         </Button>
+        <DeletePost d={d} halo={halo} />
       </div>
       {words && <div className="mt-3"><WordsEditor d={d} halo={halo} /></div>}
     </>
@@ -560,6 +578,8 @@ export function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; hal
             {d.videoUrl && (
               <a href={d.videoUrl} target="_blank" rel="noreferrer"><Button size="sm" variant="outline" className="gap-1.5"><Play size={13} /> Watch</Button></a>
             )}
+            {/* Booked on the accounts for later: can still be stopped. */}
+            {d.status === "scheduled" && Date.parse(d.slot_at) > Date.now() && <DeletePost d={d} halo={halo} />}
             {d.source === "halo" && !d.on_halo_at && d.status === "scheduled" && Date.parse(d.slot_at) > Date.now() && (
               <span className="w-full text-[13px] text-spark-ink-muted">{haloTextNote(d)}</span>
             )}

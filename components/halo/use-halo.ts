@@ -257,6 +257,17 @@ export function useHalo(userId: string | undefined) {
     else setTimeout(() => { void loadDrafts(); if (settings) void loadPages(settings.types); }, 2000);
   }, [draftAction, loadDrafts, loadPages, settings]);
 
+  /** Delete post (2026-10-29): stop an approved one posting; the video stays in My Sparks. */
+  const deletePost = useCallback(async (d: HaloDraft): Promise<boolean> => {
+    const r = await draftAction({ draftId: d.id, action: "delete" });
+    if (r.ok) {
+      setDrafts((list) => list.filter((x) => x.id !== d.id));
+      toast.success("Post deleted. It won't go out. The video is still in My Sparks.");
+      setTimeout(() => { void loadDrafts(); }, 2000);
+    } else void loadDrafts();
+    return r.ok;
+  }, [draftAction, loadDrafts]);
+
   const useInstead = useCallback(async (pageId: string, replaceDraftId: string) => {
     const r = await draftAction({ action: "use", pageId, replaceDraftId });
     if (r.ok) {
@@ -317,7 +328,7 @@ export function useHalo(userId: string | undefined) {
 
   return {
     loaded, settings, sites, drafts, pages, looks, twinLookId, twinLookIds, connected,
-    saveSettings, addSite, removeSite, patchSetup, setWhen, setPicture, skip, useInstead, make, remake, approve, promo, markOnHalo,
+    saveSettings, addSite, removeSite, patchSetup, setWhen, setPicture, skip, deletePost, useInstead, make, remake, approve, promo, markOnHalo,
     reload: loadAll,
     reloadDrafts: loadDrafts,
   };

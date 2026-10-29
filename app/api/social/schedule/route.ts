@@ -8,9 +8,9 @@
  */
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getValidAccessToken, deleteYouTubeVideo } from "@/lib/api/youtube";
-import { SocialPublishError, cancelScheduled, publishStatus, uploadPostConfigured } from "@/lib/api/upload-post";
-import { parseRef, settleByRef } from "@/lib/api/social-settle";
+import { uploadPostConfigured } from "@/lib/api/upload-post";
+import { cancelScheduledPost } from "@/lib/social/cancel-scheduled";
+import { settleByRef } from "@/lib/api/social-settle";
 import { partnerPlatform } from "@/lib/utils/social-platforms";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -125,99 +125,8 @@ export async function DELETE(req: NextRequest) {
   const scheduleId = body.scheduleId ?? body.postId;
   if (!scheduleId) return NextResponse.json({ error: "scheduleId required" }, { status: 400 });
 
-  const admin = createAdminClient();
-  const { data: row } = await admin
-    .from("social_posts")
-    .select("id, platform, platform_post_id, post_status, scheduled_at, upload_request_id")
-    .eq("id", scheduleId)
-    .eq("user_id", user.id)
-    .single();
-
-  const post = row as {
-    id: string; platform: string; platform_post_id: string | null;
-    post_status: string; scheduled_at: string | null; upload_request_id: string | null;
-  } | null;
-  if (!post) return NextResponse.json({ error: "Scheduled post not found" }, { status: 404 });
-  if (post.post_status !== "scheduled") {
-    return NextResponse.json({ error: "That post has already gone out." }, { status: 400 });
-  }
-  /**
-   * The status check above is not enough on its own.
-   *
-   * It is only as current as the last time someone loaded the calendar, and
-   * this endpoint deletes the video from YouTube — so a stale "scheduled" row
-   * whose publish time has passed would take a live, public video with it.
-   * The clock is the authority here, not the column.
-   */
-  if (post.scheduled_at && new Date(post.scheduled_at) <= new Date()) {
-    return NextResponse.json(
-      {
-        error: post.platform === "youtube"
-          ? "That video has already gone public on YouTube. Delete it in YouTube Studio if you want it taken down."
-          : "That post's time has passed, so it has already been sent.",
-      },
-      { status: 400 },
-    );
-  }
-
-  /**
-   * Any other platform: the post is a job waiting at the publishing partner,
-   * and it goes out from there. This used to delete our row and report
-   * success, which cancelled nothing; the post still went out on time with
-   * nothing here aware of it. The job is cancelled first, and the rows go
-   * only once that is known to have worked.
-   */
-  if (post.platform !== "youtube") {
-    const jobId = post.upload_request_id ? parseRef(post.upload_request_id).jobId : undefined;
-    if (!jobId) {
-      return NextResponse.json({ error: "This post can't be cancelled from here." }, { status: 409 });
-    }
-    try {
-      const cancelled = await cancelScheduled(jobId);
-      if (!cancelled) {
-        // No such job. Either it has run, or it was cancelled already.
-        const ran = await publishStatus({ jobId });
-        if (ran && ran.length > 0) {
-          await settleByRef(admin, user.id, post.upload_request_id!);
-          return NextResponse.json({ error: "That post has already been sent, so it can't be cancelled." }, { status: 400 });
-        }
-      }
-    } catch (err) {
-      const msg = err instanceof SocialPublishError ? err.message : "The post couldn't be cancelled. Try again in a moment.";
-      console.error("[social/schedule] cancel failed:", err instanceof SocialPublishError ? err.raw ?? err.message : err);
-      // As with YouTube: not cancelled means it still goes out, so say so.
-      return NextResponse.json({ error: msg === "The post couldn't be sent. Try again in a moment." ? "The post couldn't be cancelled. Try again in a moment." : msg }, { status: 502 });
-    }
-
-    // Every platform in the job was cancelled with it.
-    const { data: gone } = await admin
-      .from("social_posts")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("upload_request_id", post.upload_request_id!)
-      .eq("post_status", "scheduled")
-      .select("id, platform");
-    const removed = (gone ?? []) as { id: string; platform: string }[];
-    return NextResponse.json({
-      success: true,
-      cancelledIds: removed.map((r) => r.id),
-      cancelled: removed.map((r) => partnerPlatform(r.platform)?.label ?? r.platform),
-    });
-  }
-
-  if (post.platform === "youtube" && post.platform_post_id) {
-    try {
-      const accessToken = await getValidAccessToken(user.id, admin);
-      await deleteYouTubeVideo(accessToken, post.platform_post_id);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Could not remove the video from YouTube";
-      console.error("[social/schedule] YouTube delete failed:", msg);
-      // Reporting success here would tell the user it is cancelled while the
-      // video still publishes on schedule.
-      return NextResponse.json({ error: msg }, { status: 502 });
-    }
-  }
-
-  await admin.from("social_posts").delete().eq("id", post.id);
-  return NextResponse.json({ success: true, cancelledIds: [post.id], cancelled: ["YouTube"] });
+  // The steps live in lib/social/cancel-scheduled (2026-10-29), shared with
+  // AutoSparks' Delete post.
+  const r = await cancelScheduledPost(createAdminClient(), user.id, String(scheduleId));
+  return NextResponse.json(r.body, { status: r.status });
 }

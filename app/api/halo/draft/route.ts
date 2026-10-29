@@ -6,6 +6,7 @@ import {
   type HaloSetup,
 } from "@/lib/halo";
 import { zoneOf } from "@/lib/autopilot";
+import { cancelScheduledPost } from "@/lib/social/cancel-scheduled";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -16,6 +17,7 @@ export const maxDuration = 120;
  * { draftId, action: "setup", setup }        this video's look, size, accounts …
  * { draftId, action: "when", slotAt }         its day and time
  * { draftId, action: "picture", picture, pictureUrl? }  rebuild the thumbnail
+ * { draftId, action: "delete" }               an approved one: stop it posting
  * { draftId, action: "skip" }                 set aside; its day is filled again
  * { action: "use", pageId, replaceDraftId? }  a page from "Also new on your
  *        sites": into the first open day, or in place of a draft not yet approved
@@ -31,11 +33,11 @@ export async function POST(req: NextRequest) {
   const draftId = typeof body.draftId === "string" ? body.draftId : "";
   const { data } = await s.admin
     .from("autopilot_drafts")
-    .select("id, status, source, setup, project_id, halo_page_id, slot_at, source_url, posted_at")
+    .select("id, status, source, setup, project_id, halo_page_id, slot_at, source_url, posted_at, video_id")
     .eq("id", draftId)
     .eq("user_id", s.user.id)
     .single();
-  const d = data as { id: string; status: string; source: string; setup: HaloSetup; project_id: string | null; halo_page_id: string | null; slot_at: string; source_url: string | null; posted_at: string | null } | null;
+  const d = data as { id: string; status: string; source: string; setup: HaloSetup; project_id: string | null; halo_page_id: string | null; slot_at: string; source_url: string | null; posted_at: string | null; video_id: string | null } | null;
   if (!d || !["halo", "halo_promo", "email", "sparklee"].includes(d.source)) return NextResponse.json({ error: "Draft not found." }, { status: 404 });
   const editable = d.status === "draft" || d.status === "failed";
 
@@ -103,6 +105,51 @@ export async function POST(req: NextRequest) {
     const setup = { ...d.setup, picture, pictureUrl: picture === "upload" ? url : null };
     await s.admin.from("autopilot_drafts").update({ setup }).eq("id", d.id);
     return NextResponse.json({ thumbnailUrl: thumb, setup });
+  }
+
+  /**
+   * Delete post (2026-10-29, the owner's ask): an approved one stops before
+   * it posts. Not yet handed to the accounts: it just won't go. Booked on the
+   * accounts for a later time: each booking is cancelled there first. The
+   * video itself stays in My Sparks. Once it's gone out it can't be undone here.
+   */
+  if (action === "delete") {
+    if (editable) return NextResponse.json({ error: "Use Skip for a draft." }, { status: 400 });
+    if (d.status === "posted") {
+      return NextResponse.json({ error: "It's already posted. Delete it on the account it went to." }, { status: 409 });
+    }
+    if (d.status === "approved" && !d.posted_at) {
+      // Only if the posting job hasn't picked it up in the meantime.
+      const { data: stopped } = await s.admin.from("autopilot_drafts")
+        .update({ status: "skipped", approved_at: null })
+        .eq("id", d.id).eq("status", "approved").is("posted_at", null)
+        .select("id");
+      if (!stopped?.length) return NextResponse.json({ error: "It's being posted right now. Try again in a minute." }, { status: 409 });
+    } else if (d.status === "scheduled" || d.status === "approved") {
+      const { data: rows } = d.video_id
+        ? await s.admin.from("social_posts")
+          .select("id, platform, upload_request_id")
+          .eq("video_id", d.video_id).eq("user_id", s.user.id).eq("post_status", "scheduled")
+        : { data: [] };
+      const seen = new Set<string>();
+      const failed: string[] = [];
+      for (const p of (rows ?? []) as { id: string; platform: string; upload_request_id: string | null }[]) {
+        // One cancel takes every platform booked in the same job.
+        const key = p.platform === "youtube" ? p.id : p.upload_request_id ?? p.id;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const r = await cancelScheduledPost(s.admin, s.user.id, p.id);
+        if (r.status >= 400) failed.push(String(r.body.error ?? `${p.platform} couldn't be cancelled.`));
+      }
+      if (failed.length) {
+        return NextResponse.json({ error: `Some of it couldn't be stopped: ${failed.join(" ")}` }, { status: 409 });
+      }
+      await s.admin.from("autopilot_drafts").update({ status: "skipped" }).eq("id", d.id);
+    } else {
+      return NextResponse.json({ error: "This one can't be deleted." }, { status: 409 });
+    }
+    if (d.halo_page_id) await s.admin.from("halo_pages").update({ status: "passed" }).eq("id", d.halo_page_id);
+    return NextResponse.json({ ok: true });
   }
 
   if (action === "skip") {
