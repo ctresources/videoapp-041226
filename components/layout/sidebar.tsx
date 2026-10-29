@@ -243,15 +243,44 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
 
       {/* Nav */}
       <nav className="flex flex-col gap-px px-2">
-        {items.map(({ href, label }) => {
+        {items.map(({ href, label }, i) => {
           const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
           return (
             <Fragment key={href}>
-            {/* Start a Google Meet, just above Settings (2026-10-20, the
-                owner's ask). meet.new starts a fresh Meet under whoever is
+            <Link
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex items-center gap-2.5 rounded-nav px-2.5 py-2 text-[12.5px] transition-colors",
+                active
+                  ? "bg-spark-amber font-medium text-white"
+                  : "font-normal text-spark-ink-soft hover:bg-spark-amber-tint"
+              )}
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={active ? "#fff" : "#8b8779"}
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="flex-none"
+                aria-hidden="true"
+              >
+                {NAV_ICONS[href]}
+              </svg>
+              <span>{label}</span>
+              {href === "/whats-new" && account?.whatsNewUnread && (
+                <span className="ml-auto rounded-full bg-spark-amber px-1.5 py-px text-[10px] font-bold text-white">NEW</span>
+              )}
+            </Link>
+            {/* Start a Google Meet, last, after Affiliate (2026-10-29, the
+                owner's ask: same order as the top bar; was above Settings). meet.new starts a fresh Meet under whoever is
                 signed in to Google, in a new tab: Google doesn't let Meet run
                 inside another site, and this needs no setup or permission. */}
-            {href === "/settings" && (
+            {i === items.length - 1 && (
               <>
               <button
                 type="button"
@@ -290,35 +319,6 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
               )}
               </>
             )}
-            <Link
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-2.5 rounded-nav px-2.5 py-2 text-[12.5px] transition-colors",
-                active
-                  ? "bg-spark-amber font-medium text-white"
-                  : "font-normal text-spark-ink-soft hover:bg-spark-amber-tint"
-              )}
-            >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={active ? "#fff" : "#8b8779"}
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="flex-none"
-                aria-hidden="true"
-              >
-                {NAV_ICONS[href]}
-              </svg>
-              <span>{label}</span>
-              {href === "/whats-new" && account?.whatsNewUnread && (
-                <span className="ml-auto rounded-full bg-spark-amber px-1.5 py-px text-[10px] font-bold text-white">NEW</span>
-              )}
-            </Link>
             </Fragment>
           );
         })}
