@@ -18,9 +18,6 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
   const [looks, setLooks] = useState<AvatarLook[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
-  const [lookName, setLookName] = useState("");
-  const [showNameInput, setShowNameInput] = useState(false);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [removeBg, setRemoveBg] = useState(false);
   const [consentLoading, setConsentLoading] = useState(false);
@@ -75,19 +72,17 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
     if (!file) return;
     if (!file.type.startsWith("image/")) { toast.error("Please select an image"); return; }
     if (file.size > 10 * 1024 * 1024) { toast.error("Image must be under 10MB"); return; }
-    setPendingFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
-    setShowNameInput(true);
-    setShowGeneratePanel(false);
     e.target.value = "";
+    // Picking a photo makes the look straight away (2026-10-29, the owner's
+    // ask): no name-and-confirm step. The name is dated; Remove background is
+    // the checkbox under the Upload photo tile, chosen before picking.
+    setPreviewUrl(URL.createObjectURL(file));
+    setShowGeneratePanel(false);
+    void handleAddLook(file);
   }
 
   function cancelAdd() {
-    setPendingFile(null);
     setPreviewUrl(null);
-    setShowNameInput(false);
-    setLookName("");
-    setRemoveBg(false);
   }
 
   async function handleRequestConsent() {
@@ -110,17 +105,15 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
     }
   }
 
-  async function handleAddLook() {
-    if (!pendingFile) return;
-    // Name is optional — fall back to a dated auto-name
-    const name = lookName.trim() || `Look ${new Date().toLocaleDateString()}`;
+  async function handleAddLook(file: File) {
+    const name = `Look ${new Date().toLocaleDateString()}`;
 
     setAdding(true);
     try {
       // Through the server (2026-10-29), like every other picture: straight
       // from the browser it was refused on an iPhone whose upload carried no
       // session ("row-level security"). Big phone photos are shrunk first.
-      const publicUrl = await uploadImage(pendingFile, "look");
+      const publicUrl = await uploadImage(file, "look");
 
       // Optionally swap the photo for a background-removed version (clean
       // white) before the look is created. Failure falls back to the original.
@@ -153,10 +146,10 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
 
       setLooks((prev) => [...prev, data.look]);
       toast.success(`"${name}" is training — check back in a few minutes.`);
-      cancelAdd();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add look");
     } finally {
+      cancelAdd();
       setAdding(false);
     }
   }
@@ -334,8 +327,19 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
             );
           })}
 
+          {/* The photo being made into a look (2026-10-29). */}
+          {adding && (
+            <div className="flex flex-col items-center gap-1" style={{ width: 72 }}>
+              <div className="relative w-[72px] h-[88px] rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                {previewUrl && <img src={previewUrl} alt="" className="w-full h-full object-cover opacity-60" />}
+                <Loader2 size={18} className="absolute inset-0 m-auto animate-spin text-primary-500" />
+              </div>
+              <p className="text-[10px] text-slate-500 text-center">Creating…</p>
+            </div>
+          )}
+
           {/* Action tiles */}
-          {!showNameInput && !showGeneratePanel && (
+          {!adding && !showGeneratePanel && (
             <>
               <div className="flex flex-col items-center gap-1" style={{ width: 72 }}>
                 <button
@@ -360,50 +364,18 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
         </div>
       )}
 
-      {/* Name input + preview after file selected */}
-      {showNameInput && (
-        <div className="border border-slate-200 rounded-xl p-3 flex gap-3 items-start bg-slate-50">
-          {previewUrl && (
-            <img src={previewUrl} alt="Preview" className="w-14 h-16 rounded-lg object-cover shrink-0" />
-          )}
-          <div className="flex-1 flex flex-col gap-2">
-            <input
-              autoFocus
-              type="text"
-              placeholder="Name this look (optional) — e.g. Blue blazer"
-              value={lookName}
-              onChange={(e) => setLookName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddLook()}
-              className="text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
-            />
-            <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={removeBg}
-                onChange={(e) => setRemoveBg(e.target.checked)}
-                className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-              />
-              🪄 Remove photo background <span className="text-slate-400">(replaced with clean white)</span>
-            </label>
-            <div className="flex gap-2">
-              <button
-                onClick={handleAddLook}
-                disabled={adding}
-                className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium spark-cta-gradient text-white rounded-lg py-2 disabled:opacity-50"
-              >
-                {adding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-                {adding ? "Creating…" : "Create look"}
-              </button>
-              <button
-                onClick={cancelAdd}
-                disabled={adding}
-                className="px-3 text-xs text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Chosen before picking a photo, which makes the look at once (2026-10-29). */}
+      {!showGeneratePanel && (
+        <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={removeBg}
+            disabled={adding}
+            onChange={(e) => setRemoveBg(e.target.checked)}
+            className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+          />
+          🪄 Remove photo background <span className="text-slate-400">(replaced with clean white)</span>
+        </label>
       )}
 
       {/* Generate with AI panel */}
