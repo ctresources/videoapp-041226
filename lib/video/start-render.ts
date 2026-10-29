@@ -444,7 +444,9 @@ Calm, premium, editorial. Photos fill the frame in true natural colour, no grade
   const matchBlock = `B-ROLL MATCHES THE WORDS (RULE #3)
 - Every cutaway shows what is being said at that moment: a room → that room; a street or neighborhood → that place; a number or price → that number on screen in the bottom band; a lifestyle benefit → show it.
 - Change the shot when the topic changes. Never show one topic while narrating another.
-- Footage must be of what is said: a named place or street → footage of that place; a price or figure → that figure on screen. No generic stock (couples, offices, staged rooms) where the narration is about a place, a number or the market.${propertyPhotos ? `
+- Footage must be of what is said: a named place or street → footage of that place; a price or figure → that figure on screen. No generic stock (couples, offices, staged rooms) where the narration is about a place, a number or the market.
+- NEVER REPEAT: every b-roll shot is a different clip. No clip or footage appears twice in the video, not even trimmed or re-cropped.
+- Not enough footage of the place itself? Use varied footage of the TOPIC (for stucco: home exteriors, stucco close-ups, an inspector at work; for a market: homes for sale, neighbourhood streets, interiors) in the region's style. A new relevant clip always beats a repeat; only a shot naming the place must be the place.${propertyPhotos ? `
 - PROPERTY: the ${totalPhotos} attached photos${params.listingAddress ? ` of ${params.listingAddress}` : ""} are the ONLY property visuals. Never stock, generated or invented rooms, yards or exteriors. Use every photo, each with the sentence that describes it.` : ""}`;
 
   const head = `You are producing a professional real estate marketing video.
