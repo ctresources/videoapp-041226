@@ -99,13 +99,15 @@ function FullGuide() {
           <h2 className="text-base font-bold text-brand-text mb-3">Getting Around</h2>
           <ul className="flex flex-col gap-2 text-sm text-slate-600 leading-relaxed list-disc pl-5">
             <li>
-              <strong>The menu runs across the top</strong> on a computer: Spark Studio, My Sparks, AutoSparks,
-              Spark Tools, Spark Calendar, Spark Insights, Affiliate, Settings, What&apos;s New and How It
-              Works. <strong>What&apos;s New</strong> shows the latest features, with a gold dot when there is
+              <strong>The menu is on the left side and across the top</strong> on a computer, the same
+              pages in both: Spark Studio, My Sparks, AutoSparks, Spark Tools, Spark Calendar, Spark
+              Insights, Affiliate, Settings, What&apos;s New and How It Works. The side menu also has{" "}
+              <strong>Google Meet</strong> and <strong>Sign Out</strong>, and stays put as you scroll.{" "}
+              <strong>What&apos;s New</strong> shows the latest features, with a gold dot when there is
               one you haven&apos;t seen; each has <strong>Learn How It Works</strong>, which brings you to
-              its step here. The page you are
-              on is underlined. On a smaller window the last few are under <strong>More</strong>; on a
-              phone, tap <strong>☰</strong>.
+              its step here. The page you are on is highlighted on the side and underlined on top. On a
+              smaller window the last few top names are under <strong>More</strong>; on a phone, tap{" "}
+              <strong>☰</strong>.
             </li>
             <li>
               <strong>Settings has three tabs.</strong> <strong>Profile</strong> holds your brand, market,
