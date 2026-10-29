@@ -79,8 +79,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Sidebar mobile />
       </div>
 
-      {/* No desktop sidebar since 2026-10-14: the page names run across the
-          top bar on computers (top-nav.tsx). The drawer above is the phone menu. */}
+      {/* The side menu on computers again (2026-10-29, the owner's ask), with
+          the page names still across the top bar too (top-nav.tsx). Pinned
+          while the page scrolls. It was off from 2026-10-14 to 10-29. */}
+      <div className="sticky top-0 hidden h-screen shrink-0 self-start overflow-y-auto md:block">
+        <Sidebar />
+      </div>
 
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">
