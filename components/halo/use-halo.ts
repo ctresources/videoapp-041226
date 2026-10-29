@@ -66,6 +66,8 @@ export function useHalo(userId: string | undefined) {
   const [pages, setPages] = useState<HaloPageItem[]>([]);
   const [looks, setLooks] = useState<Look[]>([]);
   const [twinLookId, setTwinLookId] = useState<string | null>(null);
+  /** Both twins and their outfits (2026-10-29), all marked TWIN in the picker. */
+  const [twinLookIds, setTwinLookIds] = useState<string[]>([]);
   const [connected, setConnected] = useState<string[] | null>(null);
   const [loaded, setLoaded] = useState(false);
   const checkedOnPost = useRef(false);
@@ -162,7 +164,13 @@ export function useHalo(userId: string | undefined) {
     void loadAll();
     fetch("/api/avatar/looks").then((r) => (r.ok ? r.json() : null)).then((b) => {
       if (!b) return;
-      setLooks(((b.looks ?? []) as Look[]).filter((l) => !l.status || l.status === "completed" || l.status === "active"));
+      // Twins first (both twins and their outfits, 2026-10-29): the picker
+      // used to show only the first 8 looks, and photo looks come first, so
+      // the owner's twin was cut off the end.
+      const twinIds: string[] = Array.isArray(b.twinLookIds) ? b.twinLookIds : [];
+      const ready = ((b.looks ?? []) as Look[]).filter((l) => !l.status || l.status === "completed" || l.status === "active");
+      setLooks([...ready.filter((l) => twinIds.includes(l.id)), ...ready.filter((l) => !twinIds.includes(l.id))]);
+      setTwinLookIds(twinIds);
       setTwinLookId(typeof b.twinLookId === "string" ? b.twinLookId : null);
     }).catch(() => {});
     fetch("/api/social/accounts").then((r) => (r.ok ? r.json() : null)).then((b) => {
@@ -296,7 +304,7 @@ export function useHalo(userId: string | undefined) {
   }, [loadDrafts]);
 
   return {
-    loaded, settings, sites, drafts, pages, looks, twinLookId, connected,
+    loaded, settings, sites, drafts, pages, looks, twinLookId, twinLookIds, connected,
     saveSettings, addSite, removeSite, patchSetup, setWhen, setPicture, skip, useInstead, make, approve, promo, markOnHalo,
     reload: loadAll,
     reloadDrafts: loadDrafts,

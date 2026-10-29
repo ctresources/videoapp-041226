@@ -51,22 +51,28 @@ export function Row({ label, children }: { label: string; children: React.ReactN
     </div>
   );
 }
-export function LookPicker({ looks, twinLookId, value, onChange }: {
-  looks: Halo["looks"]; twinLookId: string | null; value: string | null; onChange: (id: string | null) => void;
+/**
+ * Every ready look, twins first (2026-10-29): it showed only the first 8, and
+ * photo looks come first, so a Digital Twin listed after them never appeared.
+ * Both twins and their outfits are marked TWIN.
+ */
+export function LookPicker({ looks, twinLookId, twinLookIds = [], value, onChange }: {
+  looks: Halo["looks"]; twinLookId: string | null; twinLookIds?: string[]; value: string | null; onChange: (id: string | null) => void;
 }) {
   if (!looks.length) return <span className="text-[13px] text-spark-ink-faint">Your headshot</span>;
+  const isTwin = (id: string) => id === twinLookId || twinLookIds.includes(id);
   return (
     <>
-      {looks.slice(0, 8).map((l, i) => {
+      {looks.map((l, i) => {
         const on = value ? value === l.id : i === 0;
         return (
-          <button key={l.id} type="button" onClick={() => onChange(l.id)} title={l.id === twinLookId ? "Digital Twin" : l.name}
+          <button key={l.id} type="button" onClick={() => onChange(l.id)} title={isTwin(l.id) ? `Digital Twin · ${l.name}` : l.name}
             className={`relative h-11 w-11 overflow-hidden rounded-full border-2 border-white transition-shadow ${on ? "ring-2 ring-spark-amber" : "ring-1 ring-spark-rule"}`}>
             {l.preview_image_url
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={l.preview_image_url} alt="" className="h-full w-full object-cover" />
-              : <span className="flex h-full w-full items-center justify-center bg-spark-amber-tint text-[10px] font-bold text-[#A3660F]">{l.id === twinLookId ? "Twin" : i + 1}</span>}
-            {l.id === twinLookId && <span className="absolute bottom-0 left-0 right-0 bg-black/55 text-center text-[8px] font-bold text-white">TWIN</span>}
+              : <span className="flex h-full w-full items-center justify-center bg-spark-amber-tint text-[10px] font-bold text-[#A3660F]">{isTwin(l.id) ? "Twin" : i + 1}</span>}
+            {isTwin(l.id) && <span className="absolute bottom-0 left-0 right-0 bg-black/55 text-center text-[8px] font-bold text-white">TWIN</span>}
           </button>
         );
       })}
@@ -202,7 +208,7 @@ export function HaloSitesCard({ halo, bare = false }: { halo: Halo; bare?: boole
           ))}
         </Row>
         <Row label="Avatar">
-          <LookPicker looks={looks} twinLookId={twinLookId} value={s.lookId} onChange={(id) => void halo.saveSettings({ lookId: id })} />
+          <LookPicker looks={looks} twinLookId={twinLookId} twinLookIds={halo.twinLookIds} value={s.lookId} onChange={(id) => void halo.saveSettings({ lookId: id })} />
         </Row>
         <Row label="Size">
           <button type="button" className={tile(s.size === "vertical")} onClick={() => void halo.saveSettings({ size: "vertical" })}>Vertical 9:16</button>

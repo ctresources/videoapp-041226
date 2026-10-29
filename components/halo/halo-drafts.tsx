@@ -155,7 +155,7 @@ function Setup({ d, halo, onClose }: { d: HaloDraft; halo: Halo; onClose: () => 
           <button type="button" className={tile(d.setup.look === "full")} onClick={() => void halo.patchSetup(d, { look: "full" })}>Avatar video</button>
         </Row>
         <Row label="Avatar">
-          <LookPicker looks={halo.looks} twinLookId={halo.twinLookId} value={d.setup.lookId} onChange={(id) => void halo.patchSetup(d, { lookId: id })} />
+          <LookPicker looks={halo.looks} twinLookId={halo.twinLookId} twinLookIds={halo.twinLookIds} value={d.setup.lookId} onChange={(id) => void halo.patchSetup(d, { lookId: id })} />
         </Row>
         <Row label="Size">
           <button type="button" className={tile(d.setup.size !== "horizontal")} onClick={() => void halo.patchSetup(d, { size: "vertical" })}>Vertical 9:16</button>
