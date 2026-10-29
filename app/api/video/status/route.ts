@@ -210,8 +210,34 @@ export async function GET(req: NextRequest) {
        * so past sixteen with the row still "rendering" it is not coming back.
        */
       const builtHere = video.render_provider === "ffmpeg";
-      const timeoutMin = builtHere ? 16 : isLongRender ? 90 : 45;
-      if (ageMs > timeoutMin * 60 * 1000) {
+      const isAgent = video.render_provider === "heygen_agent";
+      // The video agent can plan for a long while before it renders: Abby
+      // Vellucci's 2026-10-29 video spent 46 minutes planning, was failed at
+      // 45 and finished at 55. 75 for it, and see the check below.
+      const timeoutMin = builtHere ? 16 : isLongRender ? 90 : isAgent ? 75 : 45;
+      let timedOut = ageMs > timeoutMin * 60 * 1000;
+      /**
+       * Ask HeyGen before giving up (2026-10-29). A video HeyGen has finished
+       * or is still making is not failed: the branch below finishes it, or it
+       * keeps waiting. That video's "done" message never came (the agent
+       * session still read "generating"), so age alone threw away a finished
+       * video and refunded it. Up to 3 hours; after that it is failed.
+       */
+      if (timedOut && !builtHere && ageMs < 180 * 60 * 1000) {
+        try {
+          const heygenVideoId = isAgent ? (await getVideoAgentSession(renderId)).videoId : renderId;
+          if (heygenVideoId) {
+            const v = await getVideoV3Status(heygenVideoId);
+            if (v.status !== "failed") {
+              timedOut = false;
+              console.log(`[status] ${video.id} past ${timeoutMin} min, but HeyGen says ${v.status}: still waiting`);
+            }
+          }
+        } catch (e) {
+          console.warn(`[status] couldn't ask HeyGen about ${video.id} at its time limit:`, e instanceof Error ? e.message : e);
+        }
+      }
+      if (timedOut) {
         status = "failed";
         errorMsg = builtHere
           ? "That reel took too long to build. Nothing was taken from your plan. Try again."
