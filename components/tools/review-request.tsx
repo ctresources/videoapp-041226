@@ -14,6 +14,7 @@ import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 import { WPM } from "@/lib/utils/video-length";
 import { showTrialLock } from "@/lib/utils/trial-lock";
+import { LookPicker } from "@/components/halo/halo-sites-card";
 
 /**
  * Ask for Google Review Video Email (2026-10-27, the owner's mockup): a short
@@ -73,6 +74,27 @@ export function ReviewRequestTool() {
   const [video, setVideo] = useState<Vid | null>(null);
   const [making, setMaking] = useState(false);
   const [avatarProject, setAvatarProject] = useState<string | null>(null);
+  /** The photo or avatar for Avatar in circle (2026-10-29). Null = the headshot. */
+  type LookItem = { id: string; name: string; preview_image_url: string | null; status: string | null };
+  const [looks, setLooks] = useState<LookItem[]>([]);
+  const [twinLookId, setTwinLookId] = useState<string | null>(null);
+  const [twinLookIds, setTwinLookIds] = useState<string[]>([]);
+  const [lookId, setLookId] = useState<string | null>(null);
+  useEffect(() => {
+    if (way !== "avatar" || looks.length) return;
+    fetch("/api/avatar/looks").then((r) => (r.ok ? r.json() : null)).then((b) => {
+      if (!b) return;
+      const ids: string[] = Array.isArray(b.twinLookIds) ? b.twinLookIds : [];
+      const ready = ((b.looks ?? []) as LookItem[]).filter((l) => !l.status || l.status === "completed" || l.status === "active");
+      setLooks([...ready.filter((l) => ids.includes(l.id)), ...ready.filter((l) => !ids.includes(l.id))]);
+      setTwinLookIds(ids);
+      setTwinLookId(typeof b.twinLookId === "string" ? b.twinLookId : null);
+      // Start on the headshot's widescreen copy (this video is horizontal),
+      // so the circle shown picked is the one that's made.
+      const wide = b.formatLooks?.wide as string | null | undefined;
+      setLookId((cur) => cur ?? (wide && ready.some((l) => l.id === wide) ? wide : ready[0]?.id ?? null));
+    }).catch(() => {});
+  }, [way, looks.length]);
 
   const [photos, setPhotos] = useState<{ url: string; name: string }[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -149,7 +171,7 @@ export function ReviewRequestTool() {
   async function makeAvatar() {
     if (wordsOf(script) > MAX_AVATAR_WORDS) { toast.error(`Keep it to about a minute: ${MAX_AVATAR_WORDS} words at most.`); return; }
     setMaking(true);
-    const r = await fetch("/api/review-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "avatar", script }) });
+    const r = await fetch("/api/review-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "avatar", script, lookId }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { setMaking(false); if (showTrialLock(d)) return; toast.error(d?.error || "Couldn't start the video."); return; }
     setAvatarProject(d.projectId);
@@ -348,6 +370,17 @@ export function ReviewRequestTool() {
             )}
             {way === "avatar" && !video && (
               <div className="mt-3">
+                {/* Which photo or avatar is in the circle (2026-10-29, the
+                    owner's ask): every look, twins first. Nothing picked =
+                    the headshot, as before. */}
+                {looks.length > 0 && (
+                  <div className="mb-3">
+                    <p className="mb-1.5 text-[12.5px] font-semibold text-spark-ink-soft">Who&apos;s in the circle</p>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <LookPicker looks={looks} twinLookId={twinLookId} twinLookIds={twinLookIds} value={lookId} onChange={setLookId} />
+                    </div>
+                  </div>
+                )}
                 <Button size="sm" onClick={() => void makeAvatar()} loading={making} disabled={words > MAX_AVATAR_WORDS}>
                   {making ? "Making your video…" : "Make my avatar video"}
                 </Button>

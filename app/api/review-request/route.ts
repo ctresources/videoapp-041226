@@ -1,3 +1,5 @@
+import { getAvatarLooks } from "@/lib/api/heygen";
+import { twinLookIds, type TwinLookFields } from "@/lib/utils/twin-looks";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -28,7 +30,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const admin = createAdminClient();
-  const body = (await req.json().catch(() => ({}))) as { action?: string; script?: string; projectId?: string; videoId?: string };
+  const body = (await req.json().catch(() => ({}))) as { action?: string; script?: string; projectId?: string; videoId?: string; lookId?: string };
 
   if (body.action === "load") {
     const [{ data: prof }, token, signature, { data: vids }] = await Promise.all([
@@ -65,10 +67,25 @@ export async function POST(req: NextRequest) {
     }).select("id").single();
     if (error || !project) return NextResponse.json({ error: "Couldn't start the video. Try again." }, { status: 500 });
     const projectId = (project as { id: string }).id;
+    /**
+     * The photo or avatar picked for the circle (2026-10-29, the owner's ask),
+     * only if it's this account's own: a photo look, a twin or its outfit.
+     * Anything else, or nothing, is the headshot as before.
+     */
+    let lookId: string | null = null;
+    const asked = typeof body.lookId === "string" ? body.lookId : "";
+    if (asked) {
+      const { data: prof } = await admin.from("profiles")
+        .select("heygen_photo_id, heygen_digital_twin_look_id, heygen_twin2_look_id, twin_outfit_look_ids")
+        .eq("id", user.id).single();
+      const p = prof as { heygen_photo_id: string | null } & TwinLookFields | null;
+      const own = p?.heygen_photo_id ? (await getAvatarLooks(p.heygen_photo_id).catch(() => [])).map((l) => l.id) : [];
+      if (own.includes(asked) || twinLookIds(p).includes(asked)) lookId = asked;
+    }
     const made = await makeDraftVideo(admin, { id: user.id, email: user.email ?? null }, {
       id: projectId,
       project_id: projectId,
-      setup: { look: "circle", lookId: null, size: "horizontal", picture: "ai", pictureUrl: null, onScreen: "stock", photos: [], platforms: [], captions: true, music: "none" },
+      setup: { look: "circle", lookId, size: "horizontal", picture: "ai", pictureUrl: null, onScreen: "stock", photos: [], platforms: [], captions: true, music: "none" },
     });
     if (made.status >= 400) return NextResponse.json(made.out, { status: made.status });
     return NextResponse.json({ projectId });
