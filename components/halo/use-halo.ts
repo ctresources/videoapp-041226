@@ -52,7 +52,7 @@ export interface HaloDraft {
   videoFailed?: boolean;
 }
 export interface HaloPageItem { id: string; url: string; kind: string; title: string | null; image_url: string | null }
-export interface Look { id: string; name: string; preview_image_url: string | null; status: string | null }
+export interface Look { id: string; name: string; preview_image_url: string | null; status: string | null; shape?: "landscape" | "portrait" | "square" | null }
 
 async function post(url: string, body: unknown, method = "POST") {
   const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });

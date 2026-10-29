@@ -10,6 +10,7 @@ interface AvatarLook {
   name: string;
   preview_image_url: string | null;
   status: string | null;
+  shape?: "landscape" | "portrait" | "square" | null;
 }
 
 export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: string; hasPhoto: boolean; hasAvatar: boolean }) {
@@ -323,6 +324,12 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
                 <p className="text-[10px] text-slate-500 text-center leading-tight truncate w-full">
                   {look.name}
                 </p>
+                {/* Its shape (2026-10-29, the owner's ask). */}
+                {look.shape && (
+                  <p className="text-[9.5px] font-semibold text-spark-ink-faint text-center leading-none">
+                    {look.shape === "landscape" ? "Wide" : look.shape === "portrait" ? "Vertical" : "Square"}
+                  </p>
+                )}
               </div>
             );
           })}

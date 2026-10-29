@@ -81,6 +81,8 @@ interface AvatarLook {
   preview_image_url: string | null;
   status: string | null;
   avatar_type?: string;
+  /** Its real shape (2026-10-29), from /api/avatar/looks. */
+  shape?: "landscape" | "portrait" | "square" | null;
 }
 
 type ProjectStatus = "draft" | "generating" | "ready" | "posted" | "error";
@@ -3855,11 +3857,24 @@ export default function ProjectEditorPage() {
                               <p className="text-white text-[8px] font-medium">Generating</p>
                             </div>
                           )}
-                          {!isProcessing && look.avatar_type === "digital_twin" && (
+                          {!isProcessing && (look.avatar_type === "digital_twin" || isTwinId(look.id)) && (
                             <div className="absolute top-1 left-1 bg-spark-amber rounded px-1 py-0.5">
                               <p className="text-white text-[7px] font-bold leading-none">DT</p>
                             </div>
                           )}
+                          {/* Its shape (2026-10-29, the owner's ask), green with a
+                              tick when it fits this video's size. */}
+                          {!isProcessing && look.shape && (() => {
+                            const want = selectedVideoType === "reel_9x16" ? "portrait" : selectedVideoType === "short_1x1" ? "square" : "landscape";
+                            const fits = look.shape === want;
+                            return (
+                              <div className={`absolute top-1 right-1 rounded px-1 py-0.5 ${fits ? "bg-green-600" : "bg-black/55"}`}>
+                                <p className="text-white text-[7.5px] font-bold leading-none">
+                                  {fits ? "✓ " : ""}{look.shape === "landscape" ? "Wide" : look.shape === "portrait" ? "Vertical" : "Square"}
+                                </p>
+                              </div>
+                            );
+                          })()}
                           {!isProcessing && selectedLookId === look.id && (
                             <div className="absolute bottom-1 right-1 bg-primary-500 rounded-full p-0.5">
                               <CheckCircle size={10} className="text-white" />

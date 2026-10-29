@@ -75,7 +75,7 @@ export function ReviewRequestTool() {
   const [making, setMaking] = useState(false);
   const [avatarProject, setAvatarProject] = useState<string | null>(null);
   /** The photo or avatar for Avatar in circle (2026-10-29). Null = the headshot. */
-  type LookItem = { id: string; name: string; preview_image_url: string | null; status: string | null };
+  type LookItem = { id: string; name: string; preview_image_url: string | null; status: string | null; shape?: "landscape" | "portrait" | "square" | null };
   const [looks, setLooks] = useState<LookItem[]>([]);
   const [twinLookId, setTwinLookId] = useState<string | null>(null);
   const [twinLookIds, setTwinLookIds] = useState<string[]>([]);
@@ -377,7 +377,7 @@ export function ReviewRequestTool() {
                   <div className="mb-3">
                     <p className="mb-1.5 text-[12.5px] font-semibold text-spark-ink-soft">Who&apos;s in the circle</p>
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <LookPicker looks={looks} twinLookId={twinLookId} twinLookIds={twinLookIds} value={lookId} onChange={setLookId} />
+                      <LookPicker looks={looks} twinLookId={twinLookId} twinLookIds={twinLookIds} fitShape="landscape" value={lookId} onChange={setLookId} />
                     </div>
                   </div>
                 )}
