@@ -320,6 +320,8 @@ export default function ProjectEditorPage() {
   // Remaining allowance, so the Generate button can say so up front.
   const [allowance, setAllowance] = useState<{ short: number; long: number; tier: string; isAdmin: boolean; isRealAdmin?: boolean } | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
+  /** The top Save on the Share Kit (2026-10-29). */
+  const [topSaving, setTopSaving] = useState(false);
   // Where the user is in the flow that began on /create. Step 1 is the brief on
   // that route; this page owns 2 through 5. Kept in state rather than the URL:
   // the URL already identifies the project, and putting the step there would
@@ -3273,7 +3275,9 @@ export default function ProjectEditorPage() {
       {/* Header — 2a's project bar. The title leads at a quieter weight than
           before, with the market and status reduced to a single sub-line, so
           the script below is the loudest thing on the page. */}
-      <div className="mb-5 flex items-center gap-3.5 border-b border-spark-rule pb-3.5">
+      {/* Pinned while scrolling, with Save on the right (2026-10-29, the
+          owner's ask: a Save on top when editing and remaking). */}
+      <div className="sticky top-0 z-20 -mx-1 mb-5 flex items-center gap-3.5 border-b border-spark-rule bg-white/95 px-1 pb-3.5 pt-2 backdrop-blur">
         <Link href="/create" aria-label="Back to Create">
           <span className="flex h-6 w-6 items-center justify-center rounded-md border border-spark-rule text-spark-ink-soft transition-colors hover:border-spark-amber hover:text-spark-amber">
             <ArrowLeft size={13} strokeWidth={1.8} />
@@ -3337,6 +3341,26 @@ export default function ProjectEditorPage() {
           </div>
         </div>
 
+        {/* Save: the script and setup as a draft on Script and Setup; the
+            article, title, description and tags on the Share Kit. */}
+        {script && (editorStep === 2 || editorStep === 3 || editorStep === 5) && (
+          <Button
+            size="sm"
+            className="flex-none gap-1.5"
+            loading={savingDraft || topSaving}
+            onClick={async () => {
+              if (editorStep === 5) {
+                setTopSaving(true);
+                try { if (await saveShareKit()) toast.success("Saved."); }
+                finally { setTopSaving(false); }
+              } else {
+                await handleSaveDraft();
+              }
+            }}
+          >
+            <Save size={14} /> Save
+          </Button>
+        )}
       </div>
 
       {script ? (
