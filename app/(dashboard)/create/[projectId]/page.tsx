@@ -342,8 +342,10 @@ export default function ProjectEditorPage() {
   // Back from approving the Digital Twin at HeyGen (2026-10-24): marked
   // approved, so Spark It works straight away.
   useEffect(() => {
-    if (!takeTwinConsentDone()) return;
-    void fetch("/api/avatar/digital-twin", { method: "PATCH" })
+    // Either twin (2026-10-29: two twins); the mark says which.
+    const slot = takeTwinConsentDone(1) ? 1 : takeTwinConsentDone(2) ? 2 : 0;
+    if (!slot) return;
+    void fetch(`/api/avatar/digital-twin${slot === 2 ? "?slot=2" : ""}`, { method: "PATCH" })
       .then(() => toast.success("Digital Twin approved. Press Spark It to make your video."))
       .catch(() => {});
   }, []);
@@ -470,6 +472,8 @@ export default function ProjectEditorPage() {
   /** For the ready check above Spark Video (2026-10-26). */
   const [hasVoice, setHasVoice] = useState(true);
   const [twinConsentNeeded, setTwinConsentNeeded] = useState(false);
+  /** Which twin needs approving (2026-10-29: two twins); the render says. */
+  const twinConsentSlot = useRef<1 | 2>(1);
   /**
    * The video's market, editable in place.
    *
@@ -1789,7 +1793,7 @@ export default function ProjectEditorPage() {
       const r = await fetch("/api/avatar/consent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ twin: true, reroute_url: withTwinConsentDone(window.location.href) }),
+        body: JSON.stringify({ twin: true, slot: twinConsentSlot.current, reroute_url: withTwinConsentDone(window.location.href, twinConsentSlot.current) }),
       });
       const d = await r.json();
       if (!r.ok || !d.url) throw new Error(d.error || "No approval link");
@@ -1973,6 +1977,7 @@ export default function ProjectEditorPage() {
         // The Digital Twin's one-time approval at HeyGen (2026-10-23): say so,
         // with the approval page one press away, instead of "couldn't render".
         if (res.status === 409 && err?.code === "twin_consent_required") {
+          twinConsentSlot.current = err?.slot === 2 ? 2 : 1;
           setEditorStep(3);
           toast((t) => (
             <span className="flex flex-col gap-2 text-sm">

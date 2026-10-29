@@ -34,8 +34,8 @@ import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits
 import { NextResponse } from "next/server";
 import { joinLineIfBusy, joinLine } from "@/lib/video/render-queue";
 import { parseChoice, resolveTwinBackdrop } from "@/lib/twin-backgrounds";
-import { isTwinLook } from "@/lib/utils/twin-looks";
-import { canAccessFeature, getAccessLevel } from "@/lib/access";
+import { isTwinLook, pickTwin } from "@/lib/utils/twin-looks";
+import { canAccessFeature, getAccessLevel, isPaidLevel } from "@/lib/access";
 import { friendlyRenderError } from "@/lib/utils/render-errors";
 import { addSparkleeNote } from "@/lib/sparklee-notes";
 import { parseOpenerStyle } from "@/lib/api/agent-opener";
@@ -805,7 +805,7 @@ export async function startRender(
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall, twin_wide_mode, twin_default_bg, twin_consent_needed, twin_outfit_look_ids, twin_upright")
+    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall, twin_wide_mode, twin_default_bg, twin_consent_needed, twin_outfit_look_ids, twin_upright, heygen_twin2_look_id, twin2_upright, twin2_consent_needed")
     .eq("id", user.id)
     .single();
 
@@ -821,6 +821,10 @@ export async function startRender(
     twin_outfit_look_ids: string[] | null;
     /** Measured from the training clip (2026-10-29); null = not known, treated as upright. */
     twin_upright: boolean | null;
+    /** The second Digital Twin, the other shape (2026-10-29, paid plans). */
+    heygen_twin2_look_id: string | null;
+    twin2_upright: boolean | null;
+    twin2_consent_needed: boolean | null;
     avatar_url: string | null;
     logo_url: string | null;
     heygen_brand_kit_id: string | null;
@@ -1043,6 +1047,8 @@ export async function startRender(
    * The cost that IS recorded is duration × the engine's rate, in store-video.
    * That one is confirmed against a real invoice: 133.8s × $0.0333 = $4.45.
    */
+  /** Which twin's approval flag this render is about (2026-10-29, two twins). */
+  let twinConsentColumn: "twin_consent_needed" | "twin2_consent_needed" = "twin_consent_needed";
   try {
     const isShortForm = videoType === "reel_9x16" || videoType === "short_1x1";
     const orientation = isShortForm ? "portrait" : "landscape";
@@ -1074,11 +1080,31 @@ export async function startRender(
     // Voice Only, where the whole point is that nobody is on screen —
     // resolving a default here would put a presenter into a video that asked
     // for none.
-    const avatarId: string | undefined = voiceOnly || !requestedLook
+    let avatarId: string | undefined = voiceOnly || !requestedLook
       ? undefined
       : pickedAFormatVariant
         ? (formatLook || requestedLook)
         : requestedLook;
+
+    /**
+     * Two Digital Twins (2026-10-29, the owner's mockup): one filmed upright,
+     * one sideways. Picking "the twin" means the one that fits this video, the
+     * same way the headshot's wide and tall copies are swapped in above. A
+     * twin's shape is measured from its training clip; unknown counts as
+     * upright. The second twin is a paid-plan feature: a free account (or one
+     * that dropped to free) always gets its first twin.
+     */
+    const twin1 = profile.heygen_digital_twin_look_id;
+    const twin2 = profile.heygen_twin2_look_id;
+    if (avatarId && (avatarId === twin1 || avatarId === twin2)) {
+      avatarId = pickTwin({
+        asked: avatarId, twin1, twin2,
+        twin1Upright: profile.twin_upright, twin2Upright: profile.twin2_upright,
+        portraitVideo: orientation === "portrait",
+        paid: isPaidLevel(getAccessLevel(profile)),
+      });
+    }
+    if (avatarId && avatarId === twin2) twinConsentColumn = "twin2_consent_needed";
 
     // A horizontal Digital Twin used to be switched to Avatar in circle here
     // (2026-10-22). Retired 2026-10-24 (the owner's call, final): "Avatar video" always
@@ -1108,11 +1134,13 @@ export async function startRender(
     // anything is written or charged, instead of HeyGen refusing the render
     // and leaving a failed video. Approving clears it (Settings, the editor's
     // Approve now, or a render HeyGen accepts).
-    if (isTwinLook(avatarId, profile) && profile.twin_consent_needed) {
+    if (isTwinLook(avatarId, profile) && profile[twinConsentColumn]) {
       return NextResponse.json(
         {
           error: "Your Digital Twin needs your one-time approval. Approve it, then press Spark It again. Nothing was charged.",
           code: "twin_consent_required",
+          // Which twin (2026-10-29: two twins), so Approve now opens the right one.
+          slot: twinConsentColumn === "twin2_consent_needed" ? 2 : 1,
         },
         { status: 409 },
       );
@@ -1142,7 +1170,9 @@ export async function startRender(
       ? null
       : avatarId === profile.heygen_digital_twin_look_id
         ? (profile.twin_upright === false ? "landscape" : "portrait")
-        : await lookOrientation(avatarId);
+        : avatarId === profile.heygen_twin2_look_id
+          ? (profile.twin2_upright === false ? "landscape" : "portrait")
+          : await lookOrientation(avatarId);
     const canvasShape = videoType === "short_1x1" ? null : orientation === "portrait" ? "portrait" : "landscape";
     const avatarMatchesCanvas = !!avatarId
       && ((!!formatLook && avatarId === formatLook) || (!!lookShape && lookShape === canvasShape));
@@ -1557,7 +1587,7 @@ export async function startRender(
 
       // Accepted with the twin: any approval it was waiting for is done.
       if (isDigitalTwin) {
-        await admin.from("profiles").update({ twin_consent_needed: false }).eq("id", user.id).eq("twin_consent_needed", true);
+        await admin.from("profiles").update({ [twinConsentColumn]: false }).eq("id", user.id).eq(twinConsentColumn, true);
       }
 
       await admin
@@ -1959,11 +1989,13 @@ export async function startRender(
      * and tell the editor, which offers Approve now.
      */
     if (/avatar_consent_required/i.test(msg)) {
-      await admin.from("profiles").update({ twin_consent_needed: true }).eq("id", user.id);
+      await admin.from("profiles").update({ [twinConsentColumn]: true }).eq("id", user.id);
       return NextResponse.json(
         {
           error: "Your Digital Twin needs your one-time approval. Approve it, then press Spark It again. Nothing was charged.",
           code: "twin_consent_required",
+          // Which twin (2026-10-29: two twins), so Approve now opens the right one.
+          slot: twinConsentColumn === "twin2_consent_needed" ? 2 : 1,
         },
         { status: 409 },
       );

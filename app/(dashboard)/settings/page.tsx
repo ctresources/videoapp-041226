@@ -63,7 +63,7 @@ export default function SettingsPage() {
     const supabase = createClient();
     supabase
       .from("profiles")
-      .select("full_name, company_name, phone, company_phone, mobile_phone, sms_consent_at, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id, default_cta, market_years, heygen_brand_kit_id, time_zone, brand_colors, youtube_channel_id")
+      .select("full_name, company_name, phone, company_phone, mobile_phone, sms_consent_at, company_address, preferred_language, location_city, location_state, avatar_url, logo_url, voice_clone_id, heygen_voice_id, heygen_photo_id, website, license_number, heygen_digital_twin_group_id, heygen_digital_twin_look_id, default_cta, market_years, heygen_brand_kit_id, time_zone, brand_colors, youtube_channel_id, photo_tall_url, photo_wide_url, heygen_twin2_group_id, twin_upright, twin2_upright")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
@@ -81,6 +81,8 @@ export default function SettingsPage() {
           time_zone: string | null;
           brand_colors: string[] | null;
           youtube_channel_id: string | null;
+          photo_tall_url: string | null; photo_wide_url: string | null;
+          heygen_twin2_group_id: string | null; twin_upright: boolean | null; twin2_upright: boolean | null;
         } | null;
         if (row) {
           setPrefs({
@@ -116,6 +118,11 @@ export default function SettingsPage() {
             heygen_digital_twin_group_id: row.heygen_digital_twin_group_id,
             heygen_digital_twin_look_id:  row.heygen_digital_twin_look_id,
             brand_colors:    row.brand_colors ?? [],
+            photo_tall_url:  row.photo_tall_url,
+            photo_wide_url:  row.photo_wide_url,
+            heygen_twin2_group_id: row.heygen_twin2_group_id,
+            twin_upright:    row.twin_upright,
+            twin2_upright:   row.twin2_upright,
           });
         }
         setLoaded(true);

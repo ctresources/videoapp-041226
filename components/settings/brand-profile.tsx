@@ -14,6 +14,9 @@ import { micErrorMessage, useMicrophoneDevices, useStreamLevel } from "@/lib/hoo
 import { extensionForType, pickAudioMimeType, recordedType } from "@/lib/utils/recording-format";
 import { TwinBackgrounds } from "@/components/avatar/twin-backgrounds";
 import { TwinOutfits } from "@/components/avatar/twin-outfits";
+import { PhotoSlots } from "@/components/settings/photo-slots";
+import { useAccount } from "@/lib/hooks/use-account";
+import { UPGRADE_HREF } from "@/lib/access";
 import { takeTwinConsentDone, withTwinConsentDone } from "@/lib/utils/twin-consent-return";
 import {
   AlertCircle, Camera, Upload, Trash2, CheckCircle, Loader2, Mic, Square,
@@ -43,6 +46,13 @@ export interface BrandProfileInitial {
   heygen_brand_kit_id: string | null;
   /** Up to three hex colours: thumbnail editor swatches and the AI image palette. */
   brand_colors?: string[] | null;
+  /** The two photo slots (2026-10-29): vertical for Reels/Shorts, horizontal for YouTube. */
+  photo_tall_url?: string | null;
+  photo_wide_url?: string | null;
+  /** The second Digital Twin and both twins' measured shapes (2026-10-29). */
+  heygen_twin2_group_id?: string | null;
+  twin_upright?: boolean | null;
+  twin2_upright?: boolean | null;
 }
 
 interface BrandProfileProps {
@@ -351,16 +361,133 @@ export function TalkingAvatarUploader({
   );
 }
 
+// ── Two Digital Twins (2026-10-29, the owner's mockup) ───────────────────────
+// One filmed upright for Reels and Shorts, one sideways for YouTube; each
+// video uses the one that fits. Paid plans get both. The free plan gets one,
+// in the shape they choose, with the second slot locked. The shape of a
+// trained twin is measured from its clip (twin_upright); before that, the
+// first slot is the vertical one and the second the horizontal one.
+function TwinSlots({ userId, initial }: { userId: string; initial: BrandProfileInitial }) {
+  const account = useAccount();
+  const t1Shape: "vertical" | "horizontal" = initial.twin_upright === false ? "horizontal" : "vertical";
+  const t2Shape: "vertical" | "horizontal" = initial.twin2_upright == null
+    ? (t1Shape === "vertical" ? "horizontal" : "vertical")
+    : initial.twin2_upright ? "vertical" : "horizontal";
+  // Free plan: the shape they mean to film (only the recording tips change).
+  const [freeShape, setFreeShape] = useState<"vertical" | "horizontal">(t1Shape);
+  if (!account) return <div className="h-40" />;
+
+  const label = (s: "vertical" | "horizontal") => s === "vertical"
+    ? { title: "Vertical twin", tag: "Phone upright · Reels & Shorts" }
+    : { title: "Horizontal twin", tag: "Phone sideways · YouTube" };
+
+  const column = (children: React.ReactNode, head: React.ReactNode) => (
+    <div className="flex h-full flex-col gap-3 rounded-xl border border-spark-rule bg-white p-4">
+      {head}
+      {children}
+    </div>
+  );
+
+  if (!account.paid) {
+    const other = freeShape === "vertical" ? "horizontal" : "vertical";
+    return (
+      <div>
+        <p className="mb-3 text-[13.5px] text-spark-ink-muted">
+          <span className="mr-2 rounded-full bg-spark-amber-tint px-2.5 py-0.5 text-[12px] font-semibold text-[#A3660F]">Free: 1 twin</span>
+          Choose the shape you post most.
+        </p>
+        <div className="grid items-stretch gap-4 lg:grid-cols-2">
+          {column(
+            <DigitalTwinCreator
+              userId={userId}
+              initialGroupId={initial.heygen_digital_twin_group_id ?? null}
+              initialLookId={initial.heygen_digital_twin_look_id ?? null}
+              slot={1}
+              shape={initial.heygen_digital_twin_group_id ? t1Shape : freeShape}
+            />,
+            <div className="flex flex-col gap-2">
+              <p className="text-[15px] font-semibold text-spark-ink">Your twin</p>
+              {!initial.heygen_digital_twin_group_id && (
+                <div className="flex gap-2">
+                  {(["vertical", "horizontal"] as const).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setFreeShape(s)}
+                      className={`rounded-full border px-3.5 py-1 text-[13.5px] font-semibold ${freeShape === s ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]" : "border-spark-rule bg-white text-spark-ink"}`}
+                    >
+                      {s === "vertical" ? "Vertical" : "Horizontal"}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>,
+          )}
+          {column(
+            <>
+              <div className="flex min-h-[160px] flex-1 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-[#e3dccf] bg-[#f7f4ee] text-[13px] text-spark-ink-faint">
+                <ShieldCheck size={16} /> Paid plans
+              </div>
+              <Link href={UPGRADE_HREF} className="self-start rounded-xl border border-spark-rule px-4 py-2 text-[14px] font-semibold text-spark-ink">
+                View Plans
+              </Link>
+            </>,
+            <div>
+              <p className="text-[15px] font-semibold text-spark-ink">Second twin</p>
+              <p className="text-[13px] text-spark-ink-muted">{label(other).title.replace(" twin", "")} · the other shape</p>
+            </div>,
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p className="mb-3 text-[13.5px] text-spark-ink-muted">One of each, and we use the one that fits the video.</p>
+      <div className="grid items-stretch gap-4 lg:grid-cols-2">
+        {column(
+          <DigitalTwinCreator
+            userId={userId}
+            initialGroupId={initial.heygen_digital_twin_group_id ?? null}
+            initialLookId={initial.heygen_digital_twin_look_id ?? null}
+            slot={1}
+            shape={t1Shape}
+          />,
+          <div><p className="text-[15px] font-semibold text-spark-ink">{label(t1Shape).title}</p><p className="text-[13px] text-spark-ink-muted">{label(t1Shape).tag}</p></div>,
+        )}
+        {column(
+          <DigitalTwinCreator
+            userId={userId}
+            initialGroupId={initial.heygen_twin2_group_id ?? null}
+            initialLookId={null}
+            slot={2}
+            shape={t2Shape}
+          />,
+          <div><p className="text-[15px] font-semibold text-spark-ink">{label(t2Shape).title}</p><p className="text-[13px] text-spark-ink-muted">{label(t2Shape).tag}</p></div>,
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Digital Twin Creator ─────────────────────────────────────────────────────
 function DigitalTwinCreator({
   userId,
   initialGroupId,
   initialLookId,
+  slot = 1,
+  shape = "vertical",
 }: {
   userId: string;
   initialGroupId: string | null;
   initialLookId: string | null;
+  /** Which of the account's two twins (2026-10-29). */
+  slot?: 1 | 2;
+  /** How to film it: phone upright, or sideways. */
+  shape?: "vertical" | "horizontal";
 }) {
+  const q = slot === 2 ? "?slot=2" : "";
   const [groupId, setGroupId] = useState(initialGroupId);
   const [dtStatus, setDtStatus] = useState<"none" | "loading" | "processing" | "pending_consent" | "active" | "failed">(
     initialGroupId ? "loading" : "none",
@@ -413,7 +540,7 @@ function DigitalTwinCreator({
   }, [userId]);
 
   const checkStatus = useCallback(async () => {
-    const res = await fetch("/api/avatar/digital-twin");
+    const res = await fetch(`/api/avatar/digital-twin${q}`);
     if (!res.ok) return;
     const d = await res.json();
     const s = d.status as string;
@@ -423,7 +550,7 @@ function DigitalTwinCreator({
     else if (s === "failed") setDtStatus("failed");
     else if (s === "none") setDtStatus("none");
     if (d.groupId) setGroupId(d.groupId);
-  }, []);
+  }, [q]);
 
   useEffect(() => {
     if (initialGroupId) checkStatus();
@@ -432,11 +559,11 @@ function DigitalTwinCreator({
   // Back from HeyGen's approval page (2026-10-24): marked approved here, so
   // nobody has to remember to press "I've approved it".
   useEffect(() => {
-    if (!takeTwinConsentDone()) return;
-    void fetch("/api/avatar/digital-twin", { method: "PATCH" })
+    if (!takeTwinConsentDone(slot)) return;
+    void fetch(`/api/avatar/digital-twin${q}`, { method: "PATCH" })
       .then(() => { toast.success("Digital Twin approved. It's ready for your videos."); void checkStatus(); })
       .catch(() => {});
-  }, [checkStatus]);
+  }, [checkStatus, q, slot]);
 
   useEffect(() => {
     if (dtStatus !== "processing" && dtStatus !== "pending_consent") return;
@@ -488,7 +615,7 @@ function DigitalTwinCreator({
       const res = await fetch("/api/avatar/digital-twin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ videoUrl: url, name: dtName }),
+        body: JSON.stringify({ videoUrl: url, name: dtName, slot }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
@@ -509,7 +636,7 @@ function DigitalTwinCreator({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // Back here marked approved (2026-10-24): ?twin_consent=done.
-        body: JSON.stringify({ group_id: groupId, reroute_url: withTwinConsentDone(window.location.href) }),
+        body: JSON.stringify({ group_id: groupId, reroute_url: withTwinConsentDone(window.location.href, slot) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -520,16 +647,16 @@ function DigitalTwinCreator({
   }
 
   async function handleDelete() {
-    if (!confirm("Delete your Digital Twin? This removes it for good. Your photo avatar keeps working.")) return;
-    await fetch("/api/avatar/digital-twin", { method: "DELETE" });
+    if (!confirm("Delete this Digital Twin? This removes it for good. Your photo avatar keeps working.")) return;
+    await fetch(`/api/avatar/digital-twin${q}`, { method: "DELETE" });
     setGroupId(null);
     setDtStatus("none");
     toast.success("Digital Twin deleted");
   }
 
   async function handleReplace() {
-    if (!confirm("Upload a new video and retrain your Digital Twin? This replaces your current twin.")) return;
-    await fetch("/api/avatar/digital-twin", { method: "DELETE" });
+    if (!confirm("Upload a new video and retrain this Digital Twin? This replaces it.")) return;
+    await fetch(`/api/avatar/digital-twin${q}`, { method: "DELETE" });
     setGroupId(null);
     setUploadedUrl(null);
     setDtStatus("none");
@@ -590,14 +717,17 @@ function DigitalTwinCreator({
             <Trash2 size={11} /> Remove
           </button>
         </div>
-        {/* AI outfits made from the twin (2026-10-28). */}
+        {/* AI outfits made from this twin (2026-10-28; per twin since 10-29). */}
         <div className="rounded-xl border border-spark-rule bg-white p-4">
-          <TwinOutfits />
+          <TwinOutfits slot={slot} groupId={groupId} />
         </div>
-        {/* Backgrounds for wide videos (2026-10-24, the owner's mockup). */}
-        <div className="rounded-xl border border-spark-rule bg-white p-4">
-          <TwinBackgrounds mode="manage" orientation="landscape" />
-        </div>
+        {/* Backgrounds for wide videos (2026-10-24, the owner's mockup): an
+            upright twin's, so only on the first slot. */}
+        {slot === 1 && shape === "vertical" && (
+          <div className="rounded-xl border border-spark-rule bg-white p-4">
+            <TwinBackgrounds mode="manage" orientation="landscape" />
+          </div>
+        )}
       </div>
     );
   }
@@ -626,7 +756,7 @@ function DigitalTwinCreator({
             (2026-10-23), and a render refused again brings it back. */}
         <button
           onClick={async () => {
-            await fetch("/api/avatar/digital-twin", { method: "PATCH" }).catch(() => {});
+            await fetch(`/api/avatar/digital-twin${q}`, { method: "PATCH" }).catch(() => {});
             void checkStatus();
           }}
           className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 self-start"
@@ -802,7 +932,7 @@ function DigitalTwinCreator({
       <div className="p-3 bg-spark-blue/10 border border-spark-blue/20 rounded-xl">
         <p className="text-xs text-spark-blue leading-relaxed flex items-start gap-1.5">
           <Sparkles size={11} className="text-spark-blue mt-0.5 shrink-0" />
-          <span><strong>Tips:</strong> 1–3 minutes, good lighting, look at the camera, speak naturally. No sunglasses or hats.</span>
+          <span><strong>Tips:</strong> {shape === "horizontal" ? "Phone sideways (landscape)" : "Phone upright (portrait)"}, 1–3 minutes, good lighting, look at the camera, speak naturally. No sunglasses or hats.</span>
         </p>
       </div>
 
@@ -1602,13 +1732,15 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">Your Avatar</p>
         <div className="flex flex-col gap-5">
 
-          {/* Talking avatar photo — uploads to avatar_url + registers heygen_photo_id */}
-          <TalkingAvatarUploader
-            userId={userId}
-            currentPhotoId={fields.heygen_photo_id || null}
-            currentAvatarUrl={fields.avatar_url || null}
-            onUpdate={(photoId, avatarUrl) => {
-              set("heygen_photo_id", photoId || "");
+          {/* The two photos (2026-10-29, the owner's mockup): vertical for
+              Reels and Shorts, horizontal for YouTube; one on the free plan.
+              Saved by /api/profile/photo, which also updates avatar_url. The
+              first-run flow still uses TalkingAvatarUploader (vertical slot). */}
+          <PhotoSlots
+            initialTall={initial.photo_tall_url ?? (initial.heygen_photo_id ? initial.avatar_url : null)}
+            initialWide={initial.photo_wide_url ?? null}
+            onUpdate={(avatarUrl, photoId) => {
+              if (photoId) set("heygen_photo_id", photoId);
               set("avatar_url", avatarUrl);
             }}
           />
@@ -1630,11 +1762,7 @@ export function BrandProfile({ userId, email, initial }: BrandProfileProps) {
         <p className="text-xs text-slate-400 mb-4">
           A lifelike video of you, made from a 2-minute recording.
         </p>
-        <DigitalTwinCreator
-          userId={userId}
-          initialGroupId={initial.heygen_digital_twin_group_id ?? null}
-          initialLookId={initial.heygen_digital_twin_look_id ?? null}
-        />
+        <TwinSlots userId={userId} initial={initial} />
       </div>
 
       <Button onClick={handleSave} loading={saving} className="self-start">

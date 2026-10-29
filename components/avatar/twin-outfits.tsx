@@ -15,9 +15,14 @@ import { LockedFeature } from "@/components/access/locked-feature";
  * Billed like a photo look: the first look each month is free, then each one
  * uses one short video (app/api/avatar/generate-look).
  */
-interface Look { id: string; name: string; preview_image_url: string | null; status: string | null }
+interface Look { id: string; name: string; preview_image_url: string | null; status: string | null; group_id?: string | null }
 
-export function TwinOutfits() {
+export function TwinOutfits({ slot = 1, groupId = null }: {
+  /** Which twin the outfits are made from (2026-10-29: two twins). */
+  slot?: 1 | 2;
+  /** That twin's own group: its outfits live there. */
+  groupId?: string | null;
+}) {
   // Paid plans only (2026-10-28, the owner's call); nothing until the plan is known.
   const account = useAccount();
   if (!account) return null;
@@ -30,10 +35,10 @@ export function TwinOutfits() {
       />
     );
   }
-  return <TwinOutfitsPaid />;
+  return <TwinOutfitsPaid slot={slot} groupId={groupId} />;
 }
 
-function TwinOutfitsPaid() {
+function TwinOutfitsPaid({ slot, groupId }: { slot: 1 | 2; groupId: string | null }) {
   const [outfits, setOutfits] = useState<Look[]>([]);
   const [prompt, setPrompt] = useState("");
   const [making, setMaking] = useState(false);
@@ -44,10 +49,11 @@ function TwinOutfitsPaid() {
     const data = res?.ok ? await res.json() : null;
     if (!data) return;
     const ids: string[] = Array.isArray(data.twinLookIds) ? data.twinLookIds : [];
-    const twin: string | null = typeof data.twinLookId === "string" ? data.twinLookId : null;
+    const twins = [data.twinLookId, data.twin2LookId].filter((x): x is string => typeof x === "string");
     const looks: Look[] = Array.isArray(data.looks) ? data.looks : [];
-    setOutfits(looks.filter((l) => l.id !== twin && ids.includes(l.id)));
-  }, []);
+    // This twin's outfits only: the ones in its own group.
+    setOutfits(looks.filter((l) => !twins.includes(l.id) && ids.includes(l.id) && (!groupId || l.group_id === groupId)));
+  }, [groupId]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -67,7 +73,7 @@ function TwinOutfitsPaid() {
       const res = await fetch("/api/avatar/generate-look", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ twin: true, prompt: text }),
+        body: JSON.stringify({ twin: true, slot, prompt: text }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { toast.error(data.error || "Couldn't make that outfit. Try again."); return; }

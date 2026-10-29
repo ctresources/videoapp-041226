@@ -34,9 +34,10 @@ export async function POST(req: NextRequest) {
 
     // Save to profile
     const admin = createAdminClient();
+    // The first-run headshot is the vertical photo (2026-10-29, two photo slots).
     await admin
       .from("profiles")
-      .update({ heygen_photo_id: photoId })
+      .update({ heygen_photo_id: photoId, photo_tall_url: image_url })
       .eq("id", user.id);
 
     // One headshot, two registered shapes. HeyGen renders the presenter at the

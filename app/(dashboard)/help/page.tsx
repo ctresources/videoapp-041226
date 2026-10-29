@@ -175,8 +175,16 @@ function FullGuide() {
             <Step n={3} title="Complete Your Brand Profile" icon={User}>
               In <Link href="/settings#brand" className="text-primary-600 font-medium hover:underline">Settings → Profile → 3 · Brand &amp; AI Profile</Link>, add
               your name, brokerage, phones, website, and license number. Upload your <strong>logo</strong> and
-              your <strong>headshot</strong> — the headshot becomes your AI Photo Avatar, and your contact card
+              your <strong>photos</strong> — they become your AI Photo Avatar, and your contact card
               and logo appear automatically in every video.
+              {/* Two photo slots (2026-10-29, the owner's ask). */}
+              <span className="block mt-1.5">
+                <strong>Add two photos for the best videos:</strong> a <strong>Vertical</strong> one (phone upright)
+                for Reels and Shorts, and a <strong>Horizontal</strong> one (phone sideways) for YouTube. Each video
+                uses the one that fits its shape; with only one photo, its sides are filled to fit. On the free
+                plan you have one photo: choose <strong>Vertical</strong> or <strong>Horizontal</strong> for the
+                shape you post most.
+              </span>
             </Step>
             {/* Back since 2026-10-20: HeyGen confirmed API twins need no
                 Enterprise plan. The owner's wording. */}
@@ -197,6 +205,14 @@ function FullGuide() {
               if you try, the video setup offers <strong>Approve now</strong> and nothing is charged.
               In <strong>Avatar in circle</strong>, the circle follows you as you move.
               You can delete your twin any time in Settings.
+              {/* Two twins (2026-10-29, the owner's ask). */}
+              <span className="block mt-1.5">
+                <strong>Two twins, one of each shape.</strong> On paid plans, make a <strong>Vertical twin</strong>{" "}
+                (phone upright) for Reels and Shorts and a <strong>Horizontal twin</strong> (phone sideways) for
+                YouTube; each video uses the one that fits, so you&apos;re full screen in both. Each is trained and
+                approved on its own. With only an upright twin, a YouTube video shows you in a corner over
+                full-screen footage. On the free plan you have one twin: choose the shape you post most.
+              </span>
               {/* Digital Twin backgrounds (2026-10-24, the owner's mockup). */}
               <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="digital-twin-backgrounds">Backgrounds for your Agent Intro</span>
               <span className="block mt-1">

@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select(`role, subscription_tier, look_gen_count, look_gen_period, heygen_photo_id, heygen_digital_twin_look_id, twin_outfit_look_ids, ${ALLOWANCE_SELECT}`)
+    .select(`role, subscription_tier, look_gen_count, look_gen_period, heygen_photo_id, heygen_digital_twin_look_id, heygen_twin2_look_id, twin_outfit_look_ids, ${ALLOWANCE_SELECT}`)
     .eq("id", user.id)
     .single();
 
@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
    * this account's own.
    */
   const p = profile as unknown as {
-    heygen_photo_id: string | null; heygen_digital_twin_look_id: string | null; twin_outfit_look_ids: string[] | null;
+    heygen_photo_id: string | null; heygen_digital_twin_look_id: string | null;
+    heygen_twin2_look_id: string | null; twin_outfit_look_ids: string[] | null;
   };
   let avatarId: string | undefined;
   if (forTwin) {
@@ -68,7 +69,8 @@ export async function POST(req: NextRequest) {
         { status: 403 },
       );
     }
-    avatarId = p.heygen_digital_twin_look_id ?? undefined;
+    // From either twin (2026-10-29): { twin: true, slot: 2 } for the second.
+    avatarId = (String(body.slot) === "2" ? p.heygen_twin2_look_id : p.heygen_digital_twin_look_id) ?? undefined;
     if (!avatarId) {
       return NextResponse.json({ error: "Make your Digital Twin first, then add outfits to it." }, { status: 400 });
     }

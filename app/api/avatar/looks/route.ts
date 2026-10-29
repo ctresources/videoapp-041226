@@ -12,9 +12,11 @@ export async function GET() {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("heygen_photo_id, heygen_digital_twin_group_id, heygen_digital_twin_look_id, heygen_look_wide, heygen_look_tall, twin_outfit_look_ids")
+    .select("heygen_photo_id, heygen_digital_twin_group_id, heygen_digital_twin_look_id, heygen_look_wide, heygen_look_tall, twin_outfit_look_ids, heygen_twin2_group_id, heygen_twin2_look_id")
     .eq("id", user.id)
     .single();
+  // The second twin's own group (2026-10-29): its look and its outfits.
+  const twin2Group = (profile as { heygen_twin2_group_id?: string | null } | null)?.heygen_twin2_group_id ?? null;
   // The widescreen and vertical copies of the headshot, so the editor can
   // start on one of them (2026-10-18); the render swaps to the right shape.
   const formatLooks = { wide: profile?.heygen_look_wide ?? null, tall: profile?.heygen_look_tall ?? null };
@@ -23,7 +25,7 @@ export async function GET() {
   const dtGroupId = profile?.heygen_digital_twin_group_id ?? null;
   const dtLookId = profile?.heygen_digital_twin_look_id ?? null;
 
-  if (!photoGroupId && !dtGroupId && !dtLookId) {
+  if (!photoGroupId && !dtGroupId && !dtLookId && !twin2Group) {
     return NextResponse.json({ looks: [] });
   }
 
@@ -48,20 +50,26 @@ export async function GET() {
     dtLookPromise = Promise.resolve([]);
   }
 
-  const [photoResult, dtResult] = await Promise.allSettled([
+  const [photoResult, dtResult, dt2Result] = await Promise.allSettled([
     photoGroupId ? getAvatarLooks(photoGroupId) : Promise.resolve([]),
     dtLookPromise,
+    twin2Group ? getAvatarLooks(twin2Group) : Promise.resolve([] as AvatarLook[]),
   ]);
 
   const looks = [
     ...(photoResult.status === "fulfilled" ? photoResult.value : []),
     ...(dtResult.status === "fulfilled" ? dtResult.value : []),
+    ...(dt2Result.status === "fulfilled" ? dt2Result.value : []),
   ];
 
   // Which look is the Digital Twin. HeyGen's own avatar_type calls it a
   // photo_avatar, so the editor can't tell from the look itself (2026-10-20).
   // twinLookIds adds its AI outfits (2026-10-28), which count as the twin.
-  return NextResponse.json({ looks, formatLooks, twinLookId: dtLookId, twinLookIds: twinLookIds(profile) });
+  return NextResponse.json({
+    looks, formatLooks, twinLookId: dtLookId, twinLookIds: twinLookIds(profile),
+    // The second twin itself (2026-10-29), so it isn't mistaken for an outfit.
+    twin2LookId: (profile as { heygen_twin2_look_id?: string | null } | null)?.heygen_twin2_look_id ?? null,
+  });
 }
 
 /**
@@ -80,7 +88,7 @@ export async function DELETE(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("heygen_photo_id, heygen_digital_twin_look_id, twin_outfit_look_ids")
+    .select("heygen_photo_id, heygen_digital_twin_look_id, heygen_twin2_look_id, twin_outfit_look_ids")
     .eq("id", user.id)
     .single();
 
@@ -108,6 +116,13 @@ export async function DELETE(req: NextRequest) {
     await admin
       .from("profiles")
       .update({ heygen_digital_twin_group_id: null, heygen_digital_twin_look_id: null, twin_outfit_look_ids: [] })
+      .eq("id", user.id);
+  } else if ((profile as { heygen_twin2_look_id?: string | null } | null)?.heygen_twin2_look_id === lookId) {
+    // The second twin (2026-10-29). Its outfits are removed from the list when
+    // it is deleted from Settings, which knows its group.
+    await admin
+      .from("profiles")
+      .update({ heygen_twin2_group_id: null, heygen_twin2_look_id: null, twin2_upright: null, twin2_consent_needed: false })
       .eq("id", user.id);
   } else if (outfits.includes(lookId)) {
     await admin

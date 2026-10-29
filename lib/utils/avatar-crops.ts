@@ -188,10 +188,20 @@ export async function registerFormatLooks(
   userId: string,
   groupId: string,
   sourceUrl: string,
+  /**
+   * The agent's own horizontal / vertical photo (2026-10-29), used for that
+   * shape instead of filling the other photo out to it. Either may be absent.
+   */
+  sources?: { wide?: string | null; tall?: string | null },
 ): Promise<{ wide: string | null; tall: string | null }> {
   const none = { wide: null, tall: null };
   try {
-    const crops = await makeFormatCrops(sourceUrl, userId);
+    const wideSrc = sources?.wide || sourceUrl;
+    const tallSrc = sources?.tall || sourceUrl;
+    const crops = wideSrc === tallSrc
+      ? await makeFormatCrops(wideSrc, userId)
+      : await Promise.all([makeFormatCrops(wideSrc, userId), makeFormatCrops(tallSrc, userId)])
+          .then(([w, t]) => (w && t ? { wideUrl: w.wideUrl, tallUrl: t.tallUrl } : null));
     if (!crops) return none;
 
     // Imported here, not at the top: this module is pulled into routes that

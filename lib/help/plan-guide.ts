@@ -11,13 +11,15 @@ export const FREE_PLAN_INCLUDES: string[] = [
   "One free video, made with your avatar or as a voice over. With a Digital Twin, the free video is Avatar in circle.",
   `Before the free video: ${FREE_BLOGS_BEFORE_VIDEO} blog, ${FREE_RECORDINGS_BEFORE_VIDEO} camera recording, ${FREE_RUNS_BEFORE_VIDEO} Spark Tools tries and ${FREE_IMAGES_BEFORE_VIDEO} AI images.`,
   `For ${FREE_TRIAL_DAYS} days after the free video: unlimited blogs, camera recordings and the Spark Tools generators (titles, descriptions, tags, scripts, thumbnails, images, banners, channel name, LinkedIn profile, AI Answer Blocks).`,
-  "Setting up in Settings: market, AI voice clone, brand profile, Digital Twin and its approval, closing line, import address, phone.",
+  "Setting up in Settings: market, AI voice clone, brand profile, closing line, import address, phone.",
+  "One photo and one Digital Twin, each in the shape they choose (Vertical or Horizontal), and the twin's approval.",
   "Publishing to YouTube, My Sparks, What's New, and the short How It Works overview.",
   "Ask Sparklee, 5 conversations a day.",
 ];
 
 export const PAID_PLANS_ONLY: string[] = [
   "Avatar video (the full video) with your Digital Twin",
+  "A second photo and a second Digital Twin, so there's one of each shape (vertical for Reels and Shorts, horizontal for YouTube)",
   "Outfits for your Digital Twin",
   "Record My Screen",
   "Spark Tools after the free tries and the free days are used",
