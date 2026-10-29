@@ -1,6 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+/** The Client story suggestion (2026-10-29): the bracket is selected for typing over. */
+const CLIENT_STORY_ASK = "A client story: how I helped [who they were and what they needed, no names], what I did for them, and why it mattered";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Camera, Check, FileText, Loader2, Sparkles, Video } from "lucide-react";
@@ -72,6 +75,7 @@ export default function AutopilotPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [loading, setLoading] = useState(true);
   const [ask, setAsk] = useState("");
+  const askRef = useRef<HTMLInputElement>(null);
   const [asking, setAsking] = useState(false);
   const monday = thisMonday();
   // Halo sites and their drafts (2026-10-24), shown on this page with their own list.
@@ -367,6 +371,7 @@ export default function AutopilotPage() {
         <p className="mb-2 text-sm font-semibold text-spark-ink">Ask for ideas</p>
         <div className="flex items-center gap-2">
           <input
+            ref={askRef}
             value={ask}
             onChange={(e) => setAsk(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") void getIdeas(); }}
@@ -378,6 +383,27 @@ export default function AutopilotPage() {
           <Button size="sm" onClick={() => void getIdeas()} loading={asking} className="gap-1.5">
             <Sparkles size={14} /> Get ideas
           </Button>
+        </div>
+        {/* A client story (2026-10-29, the owner's ask): the agent fills in the
+            brackets, since only they know the client. */}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setAsk(CLIENT_STORY_ASK);
+              requestAnimationFrame(() => {
+                const el = askRef.current;
+                if (!el) return;
+                el.focus();
+                const a = CLIENT_STORY_ASK.indexOf("["), b = CLIENT_STORY_ASK.indexOf("]") + 1;
+                if (a >= 0 && b > a) el.setSelectionRange(a, b);
+              });
+            }}
+            className="rounded-full border border-spark-rule bg-white px-3 py-1 text-[13px] font-semibold text-spark-ink hover:border-spark-amber"
+          >
+            🤝 Client story
+          </button>
+          <span className="text-[11px] text-spark-ink-faint">Fill in the brackets: who you helped and why. Leave out names.</span>
         </div>
         <p className="mt-1.5 text-[11px] text-spark-ink-faint">Up to 3 drafts each time, written in about a minute.</p>
       </div>
