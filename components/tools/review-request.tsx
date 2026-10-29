@@ -31,7 +31,16 @@ const MAX_AVATAR_WORDS = Math.floor((60 * WPM) / 60);
 const RETURN_KEY = "review-request-return";
 const DEFAULT_SCRIPT = "Hi! It was such a pleasure helping you with your move. If you have a minute, would you leave me a quick Google review? The link is right below this video. It really helps other families find me. Thank you!";
 const DEFAULT_SUBJECT = "Would you leave me a quick review?";
-const DEFAULT_NOTE = "Hi {first name},\n\nI recorded a quick video for you. It was a pleasure helping you!\n\nIf you have a minute, would you leave me a Google review? It really helps other families find me.";
+/**
+ * The email's note says what the video says (2026-10-29, the owner's ask):
+ * "Hi {first name}," and then the video's own words, with its opening hello
+ * taken off (the greeting already says it).
+ */
+function noteFromScript(script: string): string {
+  const body = script.trim().replace(/^(hi|hello|hey)\b[^.!?,]*[.!?,]\s*/i, "").trim();
+  return `Hi {first name},\n\n${body}`;
+}
+const DEFAULT_NOTE = noteFromScript(DEFAULT_SCRIPT);
 
 const eyebrow = "mb-1 text-[11.5px] font-bold uppercase tracking-[0.12em] text-spark-ink";
 const input = "w-full rounded-[10px] border border-spark-rule bg-[#fdfbf7] px-3 py-2 text-[16px] text-spark-ink outline-none focus:border-[#A3660F] sm:text-[14px]";
@@ -73,6 +82,9 @@ export function ReviewRequestTool() {
 
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   const [note, setNote] = useState(DEFAULT_NOTE);
+  /** The note follows the video's words until it's typed in here (2026-10-29). */
+  const [noteOwn, setNoteOwn] = useState(false);
+  useEffect(() => { if (!noteOwn) setNote(noteFromScript(script)); }, [script, noteOwn]);
   const [confirming, setConfirming] = useState(false);
   const [copyMe, setCopyMe] = useState(false);
   const [sending, setSending] = useState(false);
@@ -397,8 +409,13 @@ export function ReviewRequestTool() {
             <p className={eyebrow}>Subject</p>
             <input className={`${input} mb-3`} value={subject} onChange={(e) => setSubject(e.target.value)} />
             <p className={eyebrow}>Note</p>
-            <textarea rows={6} value={note} onChange={(e) => setNote(e.target.value)} className={`${input} resize-none`} />
-            <p className="mt-1 text-[12px] text-spark-ink-faint">{"{first name}"} becomes each person&apos;s first name.</p>
+            <textarea rows={6} value={note} onChange={(e) => { setNote(e.target.value); setNoteOwn(true); }} className={`${input} resize-none`} />
+            <p className="mt-1 text-[12px] text-spark-ink-faint">
+              {"{first name}"} becomes each person&apos;s first name.{" "}
+              {noteOwn
+                ? <button type="button" onClick={() => setNoteOwn(false)} className="font-semibold text-[#A3660F] underline">Match the video</button>
+                : "Matches the video's words."}
+            </p>
           </Step>
 
           <Step n={4} title="Send">
