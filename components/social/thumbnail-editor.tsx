@@ -125,7 +125,7 @@ export function ThumbnailEditor(props: {
   const [brandColors, setBrandColors] = useState<string[]>([]);
   /** The person on it: "" keeps whoever it was built with. */
   const [person, setPerson] = useState("");
-  const [people, setPeople] = useState<{ url: string; name: string }[]>([]);
+  const [people, setPeople] = useState<{ url: string; name: string; shape?: string | null }[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   /** Each picked photo's cut-out, for the preview (2026-10-27). */
@@ -168,9 +168,9 @@ export function ThumbnailEditor(props: {
     fetch("/api/avatar/looks")
       .then((r) => (r.ok ? r.json() : { looks: [] }))
       .then((d) => {
-        const looks = ((d.looks ?? []) as { name: string; preview_image_url: string | null }[])
-          .filter((l): l is { name: string; preview_image_url: string } => !!l.preview_image_url)
-          .map((l) => ({ url: l.preview_image_url, name: l.name }));
+        const looks = ((d.looks ?? []) as { name: string; preview_image_url: string | null; shape?: string | null }[])
+          .filter((l): l is { name: string; preview_image_url: string; shape?: string | null } => !!l.preview_image_url)
+          .map((l) => ({ url: l.preview_image_url, name: l.name, shape: l.shape ?? null }));
         setPeople((p) => [...p, ...looks.filter((l) => !p.some((x) => x.url === l.url))]);
       })
       .catch(() => {});
@@ -440,17 +440,23 @@ export function ThumbnailEditor(props: {
                   No photo
                 </button>
                 {people.map((p) => (
-                  <button
-                    key={p.url}
-                    type="button"
-                    onClick={() => setPerson(p.url)}
-                    title={p.name}
-                    aria-pressed={person === p.url}
-                    className={`h-14 w-14 overflow-hidden rounded-full border-2 ${person === p.url ? "border-amber-500" : "border-transparent hover:border-slate-300"}`}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
-                  </button>
+                  <div key={p.url} className="flex flex-col items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setPerson(p.url)}
+                      title={p.name}
+                      aria-pressed={person === p.url}
+                      className={`h-14 w-14 overflow-hidden rounded-full border-2 ${person === p.url ? "border-amber-500" : "border-transparent hover:border-slate-300"}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
+                    </button>
+                    {p.shape && (
+                      <span className="text-[10px] font-semibold text-slate-500">
+                        {p.shape === "landscape" ? "Wide" : p.shape === "portrait" ? "Vertical" : "Square"}
+                      </span>
+                    )}
+                  </div>
                 ))}
                 <button
                   type="button"

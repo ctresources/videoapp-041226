@@ -15,7 +15,7 @@ import { LockedFeature } from "@/components/access/locked-feature";
  * Billed like a photo look: the first look each month is free, then each one
  * uses one short video (app/api/avatar/generate-look).
  */
-interface Look { id: string; name: string; preview_image_url: string | null; status: string | null; group_id?: string | null }
+interface Look { id: string; name: string; preview_image_url: string | null; status: string | null; group_id?: string | null; shape?: string | null }
 
 export function TwinOutfits({ slot = 1, groupId = null }: {
   /** Which twin the outfits are made from (2026-10-29: two twins). */
@@ -123,6 +123,11 @@ function TwinOutfitsPaid({ slot, groupId }: { slot: 1 | 2; groupId: string | nul
                     : <Loader2 size={18} className="animate-spin text-[#A3660F]" />}
                 </div>
                 <p className="mt-1 truncate text-[12px] text-spark-ink-muted" title={o.name}>{ready ? o.name : "Being made…"}</p>
+                {ready && o.shape && (
+                  <p className="text-[11px] font-semibold text-spark-ink-faint">
+                    {o.shape === "landscape" ? "Wide" : o.shape === "portrait" ? "Vertical" : "Square"}
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={() => void remove(o.id)}

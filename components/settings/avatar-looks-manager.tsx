@@ -13,6 +13,18 @@ interface AvatarLook {
   shape?: "landscape" | "portrait" | "square" | null;
 }
 
+/** Wide, tall or square, measured from the photo before it's uploaded. */
+async function photoShape(file: File): Promise<"landscape" | "portrait" | "square" | null> {
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const r = bmp.width / bmp.height;
+    bmp.close();
+    return r > 1.1 ? "landscape" : r < 0.9 ? "portrait" : "square";
+  } catch {
+    return null;
+  }
+}
+
 export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: string; hasPhoto: boolean; hasAvatar: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -37,7 +49,11 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
       const res = await fetch("/api/avatar/looks");
       if (res.ok) {
         const data = await res.json();
-        setLooks(data.looks || []);
+        // A look still training may come back with no shape yet; keep the
+        // one measured from the uploaded photo until it has its own.
+        setLooks((prev) => ((data.looks || []) as AvatarLook[]).map((l) =>
+          l.shape ? l : { ...l, shape: prev.find((p) => p.id === l.id)?.shape ?? l.shape },
+        ));
       }
     } finally {
       if (!silent) setLoading(false);
@@ -145,7 +161,9 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create look");
 
-      setLooks((prev) => [...prev, data.look]);
+      // Labelled Wide/Vertical/Square right away, from the photo itself.
+      const shape = await photoShape(file);
+      setLooks((prev) => [...prev, { ...data.look, shape: data.look?.shape ?? shape }]);
       toast.success(`"${name}" is training — check back in a few minutes.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add look");
