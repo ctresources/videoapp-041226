@@ -31,6 +31,9 @@ const KINDS = {
   thumb:    { bucket: "avatars", prefix: "thumb-photo",  maxMb: 10 },
   thumbBg:  { bucket: "avatars", prefix: "thumb-bg",     maxMb: 10 },
   imageBg:  { bucket: "avatars", prefix: "image-bg",     maxMb: 10 },
+  // A photo for a new avatar look (2026-10-29): it went browser → storage and
+  // was refused on the owner's iPhone, where that upload carried no session.
+  look:     { bucket: "avatars", prefix: "looks/look",   maxMb: 10 },
 } as const;
 
 type Kind = keyof typeof KINDS;

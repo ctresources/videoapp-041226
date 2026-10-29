@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { uploadImage } from "@/lib/utils/upload-image";
 import { Loader2, Plus, CheckCircle, Clock, AlertCircle, User, RefreshCw, ShieldAlert, ExternalLink, Sparkles, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -117,14 +117,10 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
 
     setAdding(true);
     try {
-      const supabase = createClient();
-      const ext = pendingFile.name.split(".").pop() || "jpg";
-      const filePath = `${userId}/looks/${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, pendingFile, { upsert: false });
-      if (upErr) throw new Error(upErr.message);
-      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(filePath);
+      // Through the server (2026-10-29), like every other picture: straight
+      // from the browser it was refused on an iPhone whose upload carried no
+      // session ("row-level security"). Big phone photos are shrunk first.
+      const publicUrl = await uploadImage(pendingFile, "look");
 
       // Optionally swap the photo for a background-removed version (clean
       // white) before the look is created. Failure falls back to the original.

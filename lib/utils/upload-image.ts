@@ -15,7 +15,8 @@ export type ImageUploadKind =
   | "banner"
   | "thumb"
   | "thumbBg"
-  | "imageBg";
+  | "imageBg"
+  | "look";
 
 /**
  * What each upload is cropped to fill, said next to the button.
@@ -34,6 +35,7 @@ export const UPLOAD_TARGET: Record<Exclude<ImageUploadKind, "imageBg">, string> 
   banner: "800 × 700 or larger",
   thumb: "480 × 640 or larger · head and shoulders, plain background",
   thumbBg: "1280 × 720 or larger · landscape",
+  look: "480 × 640 or larger · head and shoulders",
 };
 
 /**
