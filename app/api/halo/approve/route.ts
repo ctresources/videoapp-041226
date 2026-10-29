@@ -26,7 +26,7 @@ export const maxDuration = 300;
 export async function POST(req: NextRequest) {
   const s = await haloSession();
   if (!s.ok) return s.response;
-  const { draftId, make } = (await req.json().catch(() => ({}))) as { draftId?: string; make?: boolean };
+  const { draftId, make, remake } = (await req.json().catch(() => ({}))) as { draftId?: string; make?: boolean; remake?: boolean };
 
   const { data } = await s.admin
     .from("autopilot_drafts")
@@ -67,6 +67,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Your video is still being made. Watch it when it's done, then approve it." }, { status: 409 });
     }
   }
+  /**
+   * Remake (2026-10-29, the owner's ask): the card's video is made but she
+   * didn't like it. A new one is made from the draft's setup as it is now and
+   * charged like any video; the card follows the newest video for its project,
+   * so Approve posts the new one. The old one stays in My Sparks. Only once
+   * the first has finished, so a double press can't make two.
+   */
+  if (make && remake && hasVideo) {
+    if (existing!.render_status !== "completed") {
+      return NextResponse.json({ error: "Your video is still being made. Watch it when it's done, then remake it if you need to." }, { status: 409 });
+    }
+    const r = await makeDraftVideo(s.admin, s.user, { id: d.id, setup: d.setup, project_id: d.project_id });
+    return NextResponse.json(r.out, { status: r.status });
+  }
+
   // Make video when one is already made or being made: nothing new, nothing charged.
   if (make && hasVideo) {
     return NextResponse.json({ ok: true, made: true, ready: existing!.render_status === "completed" });

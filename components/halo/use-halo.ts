@@ -278,6 +278,17 @@ export function useHalo(userId: string | undefined) {
     return { ...r.out, status: r.status };
   }, [loadDrafts]);
 
+  /** Remake (2026-10-29): a new video from the setup as it is now; uses one more video. */
+  const remake = useCallback(async (d: HaloDraft): Promise<Record<string, unknown> | null> => {
+    const r = await post("/api/halo/approve", { draftId: d.id, make: true, remake: true });
+    if (r.ok) {
+      toast.success("Making it again. Watch the new one here when it's done, then approve it to post.");
+      void loadDrafts();
+      return null;
+    }
+    return { ...r.out, status: r.status };
+  }, [loadDrafts]);
+
   const approve = useCallback(async (d: HaloDraft): Promise<Record<string, unknown> | null> => {
     const r = await post("/api/halo/approve", { draftId: d.id });
     if (r.ok) {
@@ -305,7 +316,7 @@ export function useHalo(userId: string | undefined) {
 
   return {
     loaded, settings, sites, drafts, pages, looks, twinLookId, twinLookIds, connected,
-    saveSettings, addSite, removeSite, patchSetup, setWhen, setPicture, skip, useInstead, make, approve, promo, markOnHalo,
+    saveSettings, addSite, removeSite, patchSetup, setWhen, setPicture, skip, useInstead, make, remake, approve, promo, markOnHalo,
     reload: loadAll,
     reloadDrafts: loadDrafts,
   };

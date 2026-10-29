@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Check, Copy, ExternalLink, Loader2, MessageSquare, Play, X } from "lucide-react";
+import { Camera, Check, Copy, ExternalLink, Loader2, MessageSquare, Play, RefreshCw, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { ListenButton } from "@/components/ui/listen-button";
@@ -378,6 +378,8 @@ export function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; hal
   const [approving, setApproving] = useState(false);
   const [rewriting, setRewriting] = useState(false);
   const [viewThumb, setViewThumb] = useState(false);
+  const [remakeOpen, setRemakeOpen] = useState(false);
+  const [remaking, setRemaking] = useState(false);
   const title = d.projects?.ai_script?.title || d.topic;
   const hook = d.projects?.ai_script?.hook;
   const tag = d.source === "halo_promo" ? "Halo · Promo" : d.source === "email" ? "Email" : d.source === "sparklee" ? "Sparklee" : `Halo · ${kindLabel(d.source_kind ?? "")}`;
@@ -445,7 +447,27 @@ export function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; hal
         </div>
       </div>
 
-      {open && d.status === "draft" && <Setup d={d} halo={halo} onClose={() => setOpen(false)} />}
+      {open && d.status === "draft" && <Setup d={d} halo={halo} onClose={() => { setOpen(false); setRemakeOpen(false); }} />}
+
+      {/* Remake (2026-10-29): after changing the setup above, a new video
+          replaces this one on the card. The old one stays in My Sparks. */}
+      {remakeOpen && d.status === "draft" && d.madeVideo?.ready && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-spark-rule bg-spark-amber-tint px-3.5 py-3">
+          <p className="mr-auto text-[13.5px] text-spark-ink">
+            Change anything above, then make it again. <span className="text-spark-ink-muted">Uses 1 more video. The old one stays in My Sparks.</span>
+          </p>
+          <Button size="sm" loading={remaking} onClick={async () => {
+            if (needsVideo) { onOutOfVideos(); return; }
+            setRemaking(true);
+            const err = await halo.remake(d);
+            setRemaking(false);
+            if (!err) { setRemakeOpen(false); setOpen(false); return; }
+            if (err.code === "out_of_videos") onOutOfVideos();
+            else toast.error(String(err.error ?? "Couldn't make it again. Try again."));
+          }}>Make it again</Button>
+          <Button size="sm" variant="ghost" onClick={() => setRemakeOpen(false)}>Cancel</Button>
+        </div>
+      )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {d.status === "writing" && (
@@ -477,6 +499,11 @@ export function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; hal
                 {/* Next to Watch, so the thumbnail is checked too (2026-10-26). */}
                 <ThumbEdit d={d} halo={halo} />
                 <Button size="sm" onClick={() => void approve("approve")} loading={approving}>Approve to post</Button>
+                {/* Not happy with it (2026-10-29, the owner's ask): change the
+                    setup, then make it again. */}
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setRemakeOpen(true); setOpen(true); }}>
+                  <RefreshCw size={13} /> Remake
+                </Button>
               </>
             )}
             <Button size="sm" variant="outline" onClick={() => setOpen((o) => !o)}>{open ? "Close setup" : "Setup"}</Button>
