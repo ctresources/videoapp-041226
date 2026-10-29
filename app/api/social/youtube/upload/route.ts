@@ -1,3 +1,4 @@
+import { isReviewRequest } from "@/lib/utils/review-request";
 import { isAiMadeVideo } from "@/lib/utils/ai-made";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -27,13 +28,17 @@ export async function POST(req: NextRequest) {
 
   const { data: videoRow } = await admin
     .from("generated_videos")
-    .select("video_url, project_id, render_provider, metadata")
+    .select("video_url, project_id, render_provider, metadata, projects(ai_script)")
     .eq("id", body.videoId)
     .eq("user_id", user.id)
     .single();
 
   if (!videoRow?.video_url) {
     return NextResponse.json({ error: "Video not ready or not found" }, { status: 404 });
+  }
+  // A Google review request is emailed to past clients, never posted (2026-10-29).
+  if (isReviewRequest((videoRow as { projects?: { ai_script?: unknown } | null }).projects?.ai_script)) {
+    return NextResponse.json({ error: "Review request videos are emailed to your clients, not posted." }, { status: 400 });
   }
 
   try {

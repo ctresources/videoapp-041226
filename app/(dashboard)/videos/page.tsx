@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PublishModal } from "@/components/social/PublishModal";
+import { isReviewRequest } from "@/lib/utils/review-request";
 import { VideoPreviewModal } from "@/components/videos/VideoPreviewModal";
 import { TranslateModal } from "@/components/videos/TranslateModal";
 import { createClient } from "@/lib/supabase/client";
@@ -65,7 +66,7 @@ interface GeneratedVideo {
   } | null;
   projects?: {
     title: string;
-    ai_script?: { hook?: string; script?: string; cta?: string; blog_body?: string } | null;
+    ai_script?: { hook?: string; script?: string; cta?: string; blog_body?: string; kind?: string } | null;
     /** A real saved PNG, when one has been made. Cheaper than a frame of video
      *  by orders of magnitude — see CardPoster. */
     thumbnail_url?: string | null;
@@ -1328,6 +1329,11 @@ function VideosContent() {
                           <Link href="/autosparks" className="flex-1">
                             <Button variant="outline" size="sm" className="w-full gap-1.5">Open on AutoSparks</Button>
                           </Link>
+                        ) : isReviewRequest(video.projects?.ai_script) ? (
+                          // A Google review request is a personal ask to past
+                          // clients, not a post (2026-10-29, the owner's call):
+                          // no Publish to social accounts. It is emailed.
+                          null
                         ) : (
                           <Button
                             variant="outline"
