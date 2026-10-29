@@ -31,6 +31,7 @@ const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 60;
  */
 const PAID_API_WRITES = [
   "/api/integrations/boldtrail", // connect BoldTrail
+  "/api/boldtrail",              // BoldTrail contacts and sends (Share Kit email, 2026-10-29)
   "/api/crm/webhooks",           // GoHighLevel and other webhooks
   "/api/support/ghl-workflow",   // ask for the GoHighLevel workflow
   "/api/halo/sites",             // add a Halo site
