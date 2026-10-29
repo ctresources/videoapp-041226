@@ -508,6 +508,10 @@ export default function ProjectEditorPage() {
   const [showAllLooks, setShowAllLooks] = useState(false);
   // The background behind a Digital Twin in a horizontal video (2026-10-24).
   const [twinBg, setTwinBg] = useState<TwinBgChoice | null>(null);
+  /** The twins themselves, not their outfits: only they can stand on a background. */
+  const [baseTwinIds, setBaseTwinIds] = useState<string[]>([]);
+  /** Wide twin videos (2026-10-29, the owner's pick): b-roll layout, or on a background. */
+  const [twinOnBg, setTwinOnBg] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     script: true, seo: true, blog: false,
   });
@@ -875,6 +879,7 @@ export default function ProjectEditorPage() {
             ? data.twinLookIds.filter((x: unknown): x is string => typeof x === "string")
             : typeof data.twinLookId === "string" ? [data.twinLookId] : [],
         );
+        setBaseTwinIds([data.twinLookId, data.twin2LookId].filter((x: unknown): x is string => typeof x === "string"));
         // Auto-select on initial (non-silent) load only. The widescreen or
         // vertical copy of the headshot first (2026-10-18): the first look in
         // the list was the original tall photo, and a wide video made from it
@@ -1934,7 +1939,7 @@ export default function ProjectEditorPage() {
           ...(uploadedPhotos.length > 0 && { extraPhotoUrls: uploadedPhotos.map((p) => p.url) }),
           // The Digital Twin's background (2026-10-24); the server uses it
           // only for a twin in a horizontal video.
-          ...(twinBg && isTwinId(selectedLookId) && { twinBackground: twinBg }),
+          ...(twinBgOffered && twinOnBg && twinBg && { twinBackground: twinBg }),
           // The agent in front of the home, first (2026-10-24).
           ...(openerOffered && openerChoice !== "off" && { opener: openerChoice }),
           // Experiment, off unless ?pip=1 is on the URL — see the note by the flag.
@@ -3266,6 +3271,15 @@ export default function ProjectEditorPage() {
   const twinFullLocked = !twinFullOk && isTwinId(selectedLookId) && renderMode === "avatar_voice";
   const fullBlocked = fullTooLong || twinFullLocked;
   const circleStyle = avatarStyle === "circle" || fullBlocked;
+  /**
+   * The Background choice (2026-10-29, the owner's pick): a wide video with
+   * an upright Digital Twin. Avatar video: in the corner over b-roll, or full
+   * height on a background. Longform: in the circle, or on a background.
+   */
+  const pickedTwin = looks.find((l) => l.id === selectedLookId);
+  const twinBgOffered = renderMode === "avatar_voice" && !selfRecord
+    && !!selectedLookId && baseTwinIds.includes(selectedLookId) && pickedTwin?.shape !== "landscape"
+    && (selectedVideoType === "youtube_long" || (selectedVideoType === "youtube_16x9" && !circleStyle));
   // The opener is offered on a listing video in the circle (2026-10-24).
   const openerOffered = circleStyle && renderMode === "avatar_voice" && !selfRecord
     && selectedVideoType !== "youtube_long" && selectedVideoType !== "short_1x1"
@@ -3918,6 +3932,35 @@ export default function ProjectEditorPage() {
                 )}
                 </>)}
               </>
+            )}
+
+            {/* Background, for a wide video with an upright twin (2026-10-29). */}
+            {twinBgOffered && (
+              <div className="mb-5">
+                <p className="text-xs font-medium text-slate-500 mb-1">Background</p>
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {([
+                    [false, selectedVideoType === "youtube_long" ? "In the circle" : "In the corner, b-roll behind"],
+                    [true, "On my background"],
+                  ] as const).map(([on, label]) => (
+                    <button key={label} type="button" onClick={() => setTwinOnBg(on)}
+                      className={`rounded-xl border px-3 py-1.5 text-[13.5px] font-semibold ${twinOnBg === on ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]" : "border-spark-rule bg-white text-spark-ink-soft"}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {twinOnBg && (
+                  <TwinBackgrounds
+                    mode="pick"
+                    value={twinBg}
+                    onChange={setTwinBg}
+                    city={project?.location_city ?? null}
+                    state={project?.location_state ?? null}
+                    projectId={project?.id}
+                    hasListing={((project as unknown as { listing_data?: { photoUrls?: unknown[] } } | null)?.listing_data?.photoUrls?.length ?? 0) > 0}
+                  />
+                )}
+              </div>
             )}
 
             {/* Between the look and the photos, which is the order the note on

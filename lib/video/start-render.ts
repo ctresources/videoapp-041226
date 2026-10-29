@@ -1115,6 +1115,23 @@ export async function startRender(
     }
     if (avatarId && avatarId === twin2) twinConsentColumn = "twin2_consent_needed";
 
+    /**
+     * "On my background" for a wide Avatar video (2026-10-29, the owner's
+     * pick). An upright twin in 16:9 is otherwise a corner inset over b-roll
+     * (the Video Agent); when the editor's Background choice asks for a
+     * background, the twin stands full height on it instead, made the way
+     * the Agent Intro is (Direct Video with the backdrop, no b-roll). Paid
+     * plans only, like any twin Avatar video.
+     */
+    const bgAsked = parseChoice(twinBackground);
+    const uprightTwinPicked = !!avatarId
+      && ((avatarId === twin1 && profile.twin_upright !== false) || (avatarId === twin2 && profile.twin2_upright !== false));
+    if (wantsFull && !useDirectVideo && orientation === "landscape" && uprightTwinPicked
+        && bgAsked && bgAsked.type !== "circle" && canUseTwinInFullVideo(tier, profile.role)) {
+      useDirectVideo = true;
+      console.log(`[create-blog] project=${projectId} wide Avatar video, twin on a ${bgAsked.type} background (asked in setup)`);
+    }
+
     // A horizontal Digital Twin used to be switched to Avatar in circle here
     // (2026-10-22). Retired 2026-10-24 (the owner's call, final): "Avatar video" always
     // uses the Video Agent, vertical or horizontal, Digital Twin included.
