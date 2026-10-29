@@ -43,7 +43,8 @@ export interface HaloDraft {
   youtubeUrl?: string | null;
   videoUrl?: string | null;
   /** A video already made (or being made) from this draft, with its file to watch. */
-  madeVideo?: { id: string; ready: boolean; url: string | null } | null;
+  /** madeAt: when the video was started (2026-10-29), shown on the card. */
+  madeVideo?: { id: string; ready: boolean; url: string | null; madeAt?: string | null } | null;
   /** Where the video has really gone, for the status line (2026-10-26). */
   posts?: { platform: string; post_status: string; scheduled_at: string | null }[];
   /** The card's video: finished and failed, for the status line. */
@@ -91,10 +92,10 @@ export function useHalo(userId: string | undefined) {
     if (open.length) {
       const { data: made } = await sb.from("generated_videos").select("id, project_id, render_status, video_url, created_at")
         .in("project_id", open).neq("render_status", "failed").order("created_at", { ascending: false });
-      const byProject = new Map<string, { id: string; ready: boolean; url: string | null }>();
-      for (const m of (made ?? []) as { id: string; project_id: string; render_status: string | null; video_url: string | null }[]) {
+      const byProject = new Map<string, { id: string; ready: boolean; url: string | null; madeAt: string | null }>();
+      for (const m of (made ?? []) as { id: string; project_id: string; render_status: string | null; video_url: string | null; created_at: string | null }[]) {
         if (!byProject.has(m.project_id)) {
-          byProject.set(m.project_id, { id: m.id, ready: m.render_status === "completed" && !!m.video_url, url: m.video_url });
+          byProject.set(m.project_id, { id: m.id, ready: m.render_status === "completed" && !!m.video_url, url: m.video_url, madeAt: m.created_at });
         }
       }
       for (const d of list) if (d.status === "draft" && d.project_id) d.madeVideo = byProject.get(d.project_id) ?? null;

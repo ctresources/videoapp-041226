@@ -496,6 +496,12 @@ export function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; hal
                     <Button size="sm" variant="outline" className="gap-1.5"><Play size={13} /> Watch</Button>
                   </a>
                 )}
+                {/* When it was made (2026-10-29, the owner's ask). */}
+                {d.madeVideo.madeAt && (
+                  <span className="text-xs text-spark-ink-muted">
+                    Made {new Date(d.madeVideo.madeAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                  </span>
+                )}
                 {/* Next to Watch, so the thumbnail is checked too (2026-10-26). */}
                 <ThumbEdit d={d} halo={halo} />
                 <Button size="sm" onClick={() => void approve("approve")} loading={approving}>Approve to post</Button>

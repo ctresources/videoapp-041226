@@ -1268,8 +1268,10 @@ function VideosContent() {
                       />
                       <Badge variant={status.variant} className="text-xs">{status.label}</Badge>
                     </div>
+                    {/* Date and time (2026-10-29, the owner's ask), so a video
+                        can be placed before or after a change. */}
                     <span className="text-xs text-slate-400">
-                      {new Date(video.created_at).toLocaleDateString()}
+                      {new Date(video.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                     </span>
                   </div>
 
