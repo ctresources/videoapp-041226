@@ -1808,12 +1808,21 @@ export default function ProjectEditorPage() {
     }
   }
 
-  async function handleGenerateVideo() {
+  async function handleGenerateVideo(opts?: { remake?: boolean }) {
     if (readyBlockers > 0) {
       toast.error("One thing above still needs you before this video can be made.");
       return;
     }
     if (!project) return;
+    /**
+     * Remake (2026-10-29, the owner's ask): a draft already made gets a new
+     * video only when asked for, so a stray press can't charge twice.
+     */
+    let remake = opts?.remake === true;
+    if (!remake && draftVideo?.ready) {
+      if (!window.confirm("You already have a video from this draft. Make a new one? It uses one more video. Your first one stays in My Sparks.")) return;
+      remake = true;
+    }
     setVideoGenerating(true);
     setScenesBuild(voiceOnlyAsScenes);
     setRenderComplete(false);
@@ -1932,6 +1941,7 @@ export default function ProjectEditorPage() {
           ...(pipLayout && { pipLayout: true }),
           ...(pdfUrl && { pdfUrl }),
           ...(pdfText && { pdfText }),
+          ...(remake && { remake: true }),
         }),
       });
 
@@ -1952,14 +1962,26 @@ export default function ProjectEditorPage() {
         // A draft's video is made once (2026-10-24): this one already is.
         if (res.status === 409 && err?.code === "already_made") {
           setEditorStep(3);
-          setDraftVideo({ id: String(err.videoId ?? ""), ready: !/being made/.test(String(err.error ?? "")) });
+          const ready = !/being made/.test(String(err.error ?? ""));
+          setDraftVideo({ id: String(err.videoId ?? ""), ready });
           toast((t) => (
             <span className="flex flex-col gap-2 text-sm">
               <span>{String(err.error)}</span>
-              <a href="/videos" onClick={() => toast.dismiss(t.id)}
-                className="self-start rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white">
-                Open My Sparks
-              </a>
+              <span className="flex flex-wrap gap-2">
+                <a href="/videos" onClick={() => toast.dismiss(t.id)}
+                  className="rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white">
+                  Open My Sparks
+                </a>
+                {ready && (
+                  <button
+                    type="button"
+                    onClick={() => { toast.dismiss(t.id); void handleGenerateVideo({ remake: true }); }}
+                    className="rounded-lg border border-spark-amber px-3 py-1.5 text-xs font-semibold text-spark-amber"
+                  >
+                    Make a new one (uses 1 video)
+                  </button>
+                )}
+              </span>
             </span>
           ), { duration: 12000 });
           return;
@@ -5418,7 +5440,7 @@ export default function ProjectEditorPage() {
               </Button>
             )}
             {editorStep === 3 && !selfRecord && (
-              <Button onClick={handleGenerateVideo} loading={videoGenerating} disabled={readyBlockers > 0} size="lg" className="gap-2">
+              <Button onClick={() => void handleGenerateVideo()} loading={videoGenerating} disabled={readyBlockers > 0} size="lg" className="gap-2">
                 {/* Deliberately not naming the platform — the same render will
                     publish to other channels, so "Generate YouTube" would age
                     badly and read as generating the platform itself. */}

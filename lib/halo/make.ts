@@ -19,6 +19,8 @@ export async function makeDraftVideo(
   admin: Admin,
   user: { id: string; email: string | null },
   d: { id: string; setup: HaloSetup; project_id: string },
+  /** The Remake button: lets a second video past the one-per-draft rule. */
+  opts: { remake?: boolean } = {},
 ): Promise<{ status: number; out: Record<string, unknown> }> {
   const { data: proj } = await admin.from("projects").select("ai_script").eq("id", d.project_id).single();
   const ai = ((proj as { ai_script: Record<string, unknown> | null } | null)?.ai_script) ?? {};
@@ -62,6 +64,7 @@ export async function makeDraftVideo(
     renderMode: "avatar_voice",
     ...(lookId && { lookId }),
     ...(setup.onScreen === "post" && setup.photos?.length && { extraPhotoUrls: setup.photos }),
+    ...(opts.remake && { remake: true }),
   });
 
   const out = await res.json().catch(() => ({})) as Record<string, unknown>;

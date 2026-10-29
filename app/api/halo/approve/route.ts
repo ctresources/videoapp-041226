@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     if (existing!.render_status !== "completed") {
       return NextResponse.json({ error: "Your video is still being made. Watch it when it's done, then remake it if you need to." }, { status: 409 });
     }
-    const r = await makeDraftVideo(s.admin, s.user, { id: d.id, setup: d.setup, project_id: d.project_id });
+    const r = await makeDraftVideo(s.admin, s.user, { id: d.id, setup: d.setup, project_id: d.project_id }, { remake: true });
     return NextResponse.json(r.out, { status: r.status });
   }
 

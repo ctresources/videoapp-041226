@@ -690,8 +690,15 @@ export async function startRender(
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (madeRow) {
-      const made = madeRow as { id: string; render_status: string | null };
+    const made = madeRow as { id: string; render_status: string | null } | null;
+    /**
+     * A remake the user asked for (2026-10-29, the owner's ask): once the
+     * first video has finished, a deliberate remake (the editor's confirm, or
+     * the AutoSparks Remake button) makes a new one, charged like any video.
+     * One still being made is always refused, so a double press can't charge twice.
+     */
+    const remakeAllowed = body.remake === true && made?.render_status === "completed";
+    if (made && !remakeAllowed) {
       return NextResponse.json({
         error: made.render_status === "completed"
           ? "This video is already made. Find it in My Sparks. Nothing was charged."
