@@ -5,7 +5,7 @@ import {
   ArrowDownToLine, HardHat, Shield, UserCheck,
   CalendarDays, Utensils, Trees,
   Store, GraduationCap, ShoppingBag,
-  Sun, Star, ListOrdered, Scale, Map, DoorOpen, HelpCircle,
+  Sun, Star, ListOrdered, Scale, Map, DoorOpen, HelpCircle, Heart,
 } from "lucide-react";
 
 export type TemplateCategory = "general" | "format" | "location" | "community" | "decision";
@@ -25,6 +25,18 @@ export interface ContentTemplate {
 
 export const CONTENT_TEMPLATES: ContentTemplate[] = [
   // ── General real estate ───────────────────────────────────────────────────
+  // A client story (2026-10-29, the owner's ask): the agent fills in the
+  // brackets in the topic box; the blog's FAQs come with it as always.
+  {
+    id: "client_story",
+    label: "Client Story",
+    emoji: "🤝",
+    icon: Heart,
+    topic: "A client story: how I helped a client [who they were and what they needed, no names] in {city}, {state}, what I did for them, and why it mattered",
+    description: "A real client you helped and why · fill in the brackets, leave out names",
+    color: "bg-rose-50", iconColor: "text-rose-500",
+    category: "general",
+  },
   {
     id: "homebuyer_tips",
     label: "Homebuyer Tips",
