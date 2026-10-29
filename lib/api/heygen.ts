@@ -424,6 +424,33 @@ export async function getLookInfo(
 }
 
 /**
+ * A look's shape as HeyGen reports it (2026-10-29): "portrait" or
+ * "landscape" from preferred_orientation, else from image_width/height.
+ *
+ * Right for photo looks, including a Digital Twin's AI outfits (the owner's
+ * outfit came back 2752x1536, landscape). NOT for the twin itself: HeyGen
+ * reports every digital_twin as 1280x720 landscape whatever it was filmed in,
+ * so for those this returns null and the caller uses profiles.twin_upright.
+ */
+export async function lookOrientation(lookId: string): Promise<"portrait" | "landscape" | null> {
+  try {
+    const res = await fetch(`${HEYGEN_API}/v3/avatars/looks/${lookId}`, {
+      headers: { "x-api-key": getApiKey() },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    const d = (await res.json())?.data;
+    if (!d || d.avatar_type === "digital_twin") return null;
+    if (d.preferred_orientation === "portrait" || d.preferred_orientation === "landscape") return d.preferred_orientation;
+    const w = Number(d.image_width), h = Number(d.image_height);
+    if (w > 0 && h > 0) return h > w ? "portrait" : "landscape";
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * A spend in dollars, given what the account reports in.
  *
  * Returns the figure untouched when the API says "usd" — the mistake worth

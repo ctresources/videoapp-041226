@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createDigitalTwin, deleteAvatarLook, getAvatarLooks } from "@/lib/api/heygen";
 import { notifyTwinRefused } from "@/lib/email";
-import { toTwinVideo } from "@/lib/utils/twin-video";
+import { toTwinVideo, videoIsUpright } from "@/lib/utils/twin-video";
 import { canUseDigitalTwin, DIGITAL_TWIN_UPGRADE_MESSAGE } from "@/lib/utils/plan-features";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -46,8 +46,15 @@ export async function POST(req: NextRequest) {
   if (!videoUrl) return NextResponse.json({ error: "videoUrl required" }, { status: 400 });
 
   try {
-    // An iPhone's MOV/HEVC recording is converted to MP4 first (2026-10-20).
-    const result = await createDigitalTwin(videoUrl, name, toTwinVideo);
+    // An iPhone's MOV/HEVC recording is converted to MP4 first (2026-10-20),
+    // and measured on the way (2026-10-29): HeyGen reports every twin as
+    // 1280x720, so whether it was filmed upright is only known here.
+    let upright: boolean | null = null;
+    const result = await createDigitalTwin(videoUrl, name, async (buf, type) => {
+      const out = await toTwinVideo(buf, type);
+      upright = await videoIsUpright(out.buffer);
+      return out;
+    });
 
     const admin = createAdminClient();
     console.log(`[digital-twin] saving groupId=${result.groupId} lookId=${result.lookId} for user=${user.id}`);
@@ -60,6 +67,9 @@ export async function POST(req: NextRequest) {
         // owner's ask): asked for as soon as training ends, not found out
         // when a video fails.
         twin_consent_needed: true,
+        twin_upright: upright,
+        // A new twin starts with no outfits; the old twin's went with it.
+        twin_outfit_look_ids: [],
       })
       .eq("id", user.id);
     if (updateErr) console.error("[digital-twin] profile update error:", updateErr);

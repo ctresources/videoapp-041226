@@ -12,6 +12,7 @@ import {
   isCapacityError,
   preflightRenderBalance,
   capacityRetryAfterSeconds,
+  lookOrientation,
   DIMENSIONS,
   type VideoType,
   type VideoAgentFile,
@@ -256,6 +257,8 @@ export function buildVideoAgentPrompt(params: {
    * twelve.
    */
   pipLayout?: boolean;
+  /** An upright Digital Twin in a widescreen video: corner inset over full-screen b-roll (2026-10-29). */
+  uprightTwinInset?: boolean;
   pdfContent?: string;
   /**
    * Whether an avatar is actually being placed on screen.
@@ -371,6 +374,9 @@ Fill the frame edge-to-edge — no black bars. ${fillRule} Never crop the head t
    */
   const pipMode = !!params.pipLayout && params.hasAvatar && totalPhotos > 0;
 
+  /** Upright twin, widescreen canvas: inset over b-roll, never a split screen. */
+  const twinInset = !!params.uprightTwinInset && params.hasAvatar && !pipMode && !params.isShortForm && !params.isSquare;
+
   /**
    * The photo rules, at the front of the tail. Rewritten shorter on 2026-10-22,
    * most important first: on a listing render the prompt hit its 9,800-character
@@ -455,7 +461,14 @@ ${pipMode ? `PHOTO-LED LAYOUT — THE PROPERTY FILLS THE FRAME (RULE #1)
 - Because the presenter is small and low, overlays may use the upper two thirds freely. Keep captions in the bottom band and clear of the inset's corner.
 - All ${totalPhotos} photos appear. With the photos on screen the whole time there is room for every one of them.
 
-` : ""}${params.hasAvatar && !pipMode ? `TEXT SAFE ZONE — NOTHING MAY COVER THE PRESENTER'S FACE (RULE #1)
+` : ""}${twinInset ? `UPRIGHT PRESENTER LAYOUT — B-ROLL FILLS THE FRAME (RULE #1)
+- The presenter's footage is portrait (filmed upright). NEVER a split screen, and never the presenter side by side with footage or a panel.
+- Full-screen LANDSCAPE b-roll fills the whole 16:9 canvas edge to edge for the entire runtime. Every clip is landscape; no portrait or square clips anywhere.
+- The presenter is a PICTURE-IN-PICTURE inset in the BOTTOM-RIGHT corner: a rounded rectangle taller than it is wide, about 22% of the frame width, head to chest. Animated and lip-synced from first frame to last; never a static image, never full screen, never cropped at the head.
+- The inset stays in the same corner for the whole video and holds ONLY the presenter. Never put b-roll, a photo or a graphic inside it.
+- Overlays may use the upper two thirds freely. Keep captions in the bottom band, clear of the inset.
+
+` : ""}${params.hasAvatar && !pipMode && !twinInset ? `TEXT SAFE ZONE — NOTHING MAY COVER THE PRESENTER'S FACE (RULE #1)
 - EVERY text and graphic element — headlines, hooks, stats, charts, logos, badges, arrows — sits ENTIRELY inside the band from 12% to 25% up from the bottom of the canvas, on a full-width semi-transparent dark bar. The bottom 12% is kept empty for SparkReels' captions. The top 75% is a NO-OVERLAY ZONE: the presenter's head is there, and that holds even when they are only partly visible.
 - A graphic too large for the band is SHRUNK to fit, or given a b-roll-only scene with the presenter off camera. Never enlarged into the face zone.
 - The top 80% is NEVER empty. Behind every band of stats, charts or checklists, full-frame b-roll footage fills the canvas, not the presenter, and never a blank or plain-colour background.
@@ -493,6 +506,8 @@ FAIR HOUSING + NAR COMPLIANCE (OVERRIDES EVERY OTHER INSTRUCTION)
 SCENE 1 — TITLE CARD (this frame is also the thumbnail)
 ${pipMode
   ? `- The best exterior shot among the attached photos, full-screen, with the presenter already in their corner inset. The HOUSE is the thumbnail, not the presenter.`
+  : twinInset
+  ? `- A strong full-screen landscape establishing shot of ${locationOr}, with the presenter already in their bottom-right inset.`
   : params.hasAvatar
   ? `- The talking presenter alone on a filled ${canvasLabel} canvas, framed per RULE #2 — the avatar IS the thumbnail; no separate background photo.`
   : `- The strongest available visual, full-screen and filling the entire ${canvasLabel} canvas. No presenter, no person, no talking head.`}
@@ -506,6 +521,8 @@ FINAL SCENE — CTA CONTACT CARD${params.logoUrl ? `
 - Bold CTA headline: "${ctaText}"
 ${pipMode
   ? "- A photo of the property fills the frame behind the card, presenter still in their corner inset. Never black bars."
+  : twinInset
+  ? "- Landscape b-roll fills the frame behind the card, presenter still in their bottom-right inset. Never black bars."
   : params.hasAvatar
   ? "- Presenter framed per RULE #2, or beside the card; fill the canvas with a background (blurred footage or b-roll) — never black bars."
   : "- Fill the whole canvas behind the card with imagery already used in this video — never black bars, and still no presenter."}
@@ -788,7 +805,7 @@ export async function startRender(
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall, twin_wide_mode, twin_default_bg, twin_consent_needed, twin_outfit_look_ids")
+    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall, twin_wide_mode, twin_default_bg, twin_consent_needed, twin_outfit_look_ids, twin_upright")
     .eq("id", user.id)
     .single();
 
@@ -802,6 +819,8 @@ export async function startRender(
     heygen_digital_twin_look_id: string | null;
     /** AI outfits made from the twin (2026-10-28); treated as the twin. */
     twin_outfit_look_ids: string[] | null;
+    /** Measured from the training clip (2026-10-29); null = not known, treated as upright. */
+    twin_upright: boolean | null;
     avatar_url: string | null;
     logo_url: string | null;
     heygen_brand_kit_id: string | null;
@@ -1109,7 +1128,38 @@ export async function startRender(
      * HeyGen, an account from before any of this existed. So the prompt follows
      * what happened rather than what was intended.
      */
-    const avatarMatchesCanvas = !!avatarId && !!formatLook && avatarId === formatLook;
+    /**
+     * The presenter's real shape (2026-10-29), for the Video Agent only.
+     *
+     * The twin itself: profiles.twin_upright, measured from its training clip
+     * (HeyGen reports every twin as 1280x720); unknown means upright, which is
+     * how twins are filmed. Any other look, a twin's AI outfit included: the
+     * shape HeyGen reports. The owner's video that morning used a WIDE outfit
+     * and was still sent the "presenter doesn't fit" rules, because only the
+     * headshot's own wide/tall copies counted as fitting.
+     */
+    const lookShape: "portrait" | "landscape" | null = !avatarId || useDirectVideo
+      ? null
+      : avatarId === profile.heygen_digital_twin_look_id
+        ? (profile.twin_upright === false ? "landscape" : "portrait")
+        : await lookOrientation(avatarId);
+    const canvasShape = videoType === "short_1x1" ? null : orientation === "portrait" ? "portrait" : "landscape";
+    const avatarMatchesCanvas = !!avatarId
+      && ((!!formatLook && avatarId === formatLook) || (!!lookShape && lookShape === canvasShape));
+
+    /**
+     * An upright twin (or upright outfit) in a widescreen video (2026-10-29).
+     *
+     * Given portrait presenter footage for a 16:9 canvas, the Video Agent built
+     * a split screen — the presenter on one side, b-roll squeezed into the
+     * other in mixed shapes. HeyGen confirmed the cause and said to state the
+     * layout, so it is told: full-screen landscape b-roll with the twin as a
+     * corner inset. A twin filmed sideways, or a wide outfit, fits the frame
+     * and stays full screen.
+     */
+    const uprightTwinInset = !useDirectVideo && canvasShape === "landscape"
+      && isTwinLook(avatarId, profile) && lookShape !== "landscape";
+    if (uprightTwinInset) console.log(`[create-blog] project=${projectId} upright Digital Twin in 16:9 → corner inset over full-screen b-roll`);
     if (avatarId && !avatarMatchesCanvas) {
       console.warn(
         `[create-blog] presenter may not match the canvas (${orientation}, look=${avatarId}, ` +
@@ -1206,6 +1256,7 @@ export async function startRender(
       // The project itself, not a count that the editor's own photo grid zeroes.
       isListing: project.project_type === "listing_video" || !!listingData?.address,
       pipLayout: pipLayout === true,
+      uprightTwinInset,
     };
 
     const fullPdf = pdfText ? String(pdfText) : undefined;

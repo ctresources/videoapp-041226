@@ -8,6 +8,28 @@ import { randomUUID } from "crypto";
 ffmpeg.setFfmpegPath(ffmpegPath.path);
 
 /**
+ * Whether a video is taller than wide, rotation included (2026-10-29). Null
+ * when it can't be read. Used to record a Digital Twin's real shape, which
+ * HeyGen does not report.
+ */
+export async function videoIsUpright(buffer: Buffer): Promise<boolean | null> {
+  const dir = join(tmpdir(), `twin-probe-${randomUUID()}`);
+  try {
+    await fs.mkdir(dir, { recursive: true });
+    const file = join(dir, "in");
+    await fs.writeFile(file, buffer);
+    const { probeVideoSize } = await import("@/lib/utils/fit-frame");
+    const { width, height } = await probeVideoSize(file);
+    if (!width || !height) return null;
+    return height > width;
+  } catch {
+    return null;
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/**
  * A Digital Twin's training video, made into something HeyGen takes.
  *
  * HeyGen trains twins from "mp4 or webm" only (its Video to Avatar guide). An
