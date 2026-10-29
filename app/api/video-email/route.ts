@@ -76,7 +76,8 @@ export async function POST(req: NextRequest) {
     loadAgentSignature(admin, user.id),
     loadBoldTrailToken(admin, user.id),
     loadQuickPicks(admin, user.id),
-    admin.from("video_email_sends").select("video_id, sent_to, sent_at").eq("user_id", user.id).eq("kind", "video").order("sent_at", { ascending: false }).limit(30),
+    // Every send of this video, Email it and review asks alike (2026-10-29).
+    admin.from("video_email_sends").select("video_id, sent_to, sent_at, subject").eq("user_id", user.id).eq("video_id", videoId).order("sent_at", { ascending: false }).limit(50),
     admin.from("profiles").select("google_review_url").eq("id", user.id).single(),
   ]);
 
@@ -91,5 +92,6 @@ export async function POST(req: NextRequest) {
     boldtrail: !!token,
     picks,
     lastSent: last ? { at: last.sent_at, to: last.sent_to } : null,
+    history: (sends ?? []).map((s) => ({ at: s.sent_at, subject: s.subject, to: s.sent_to })),
   });
 }

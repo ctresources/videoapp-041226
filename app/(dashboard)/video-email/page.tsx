@@ -31,6 +31,10 @@ export default function VideoEmailPage() {
   const [boldtrail, setBoldtrail] = useState(false);
   const [picks, setPicks] = useState<Contact[]>([]);
   const [lastSent, setLastSent] = useState<{ at: string; to: { name: string; sent: boolean }[] } | null>(null);
+  /** Every send of this video, newest first (2026-10-29). */
+  const [history, setHistory] = useState<{ at: string; subject: string | null; to: { name: string; email?: string; sent: boolean }[] }[]>([]);
+  /** Just sent: the panel with Done and Send to more people (2026-10-29). */
+  const [justSent, setJustSent] = useState<{ name: string; sent: boolean }[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [to, setTo] = useState<Contact[]>([]);
@@ -88,6 +92,7 @@ export default function VideoEmailPage() {
         setBoldtrail(!!d.boldtrail);
         setPicks(d.picks ?? []);
         setLastSent(d.lastSent ?? null);
+        setHistory(Array.isArray(d.history) ? d.history : []);
         setReviewUrl(typeof d.reviewUrl === "string" && d.reviewUrl.startsWith("https://") ? d.reviewUrl : null);
         // Ticked to begin with for a video made to ask for a review.
         setAddReview(!!d.isReview);
@@ -127,6 +132,8 @@ export default function VideoEmailPage() {
       if (!res.ok) throw new Error(d?.error || "Couldn't send it.");
       const results = (d.results ?? []) as { name: string; sent: boolean }[];
       setLastSent({ at: d.sentAt, to: results });
+      setHistory((h) => [{ at: d.sentAt, subject, to: results }, ...h]);
+      if (results.some((r) => r.sent)) setJustSent(results);
       const failed = results.filter((r) => !r.sent);
       if (failed.length) toast.error(`Not sent to ${failed.map((r) => r.name).join(", ")}.`);
       else toast.success(`Sent to ${results.length} ${results.length === 1 ? "person" : "people"}.`);
@@ -158,6 +165,23 @@ export default function VideoEmailPage() {
       </Link>
       <h1 className="mb-1 font-display text-[28px] font-bold leading-[1.15] text-[#A3660F] sm:text-[32px]">Email this video</h1>
       {video && <p className="mb-4 text-[14px] text-spark-ink-muted">{video.title}</p>}
+
+      {/* Sent (2026-10-29, the owner's ask): a clear end, with the way back. */}
+      {justSent && (
+        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-4">
+          <div className="mr-auto">
+            <p className="text-[16px] font-bold text-green-800">✓ Sent</p>
+            <p className="text-[14px] text-green-800">
+              To {justSent.filter((r) => r.sent).map((r) => r.name).join(", ")}
+              {justSent.some((r) => !r.sent) && <span className="text-red-700"> · not sent to {justSent.filter((r) => !r.sent).map((r) => r.name).join(", ")}</span>}
+            </p>
+          </div>
+          <button type="button" onClick={() => setJustSent(null)} className="rounded-[10px] border border-green-300 bg-white px-4 py-2 text-[14px] font-semibold text-green-800">
+            Send to more people
+          </button>
+          <Link href="/videos" className="rounded-[10px] bg-green-700 px-5 py-2 text-[14px] font-bold text-white">Done</Link>
+        </div>
+      )}
 
       {error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[14px] text-red-700">{error}</div>
@@ -275,7 +299,20 @@ export default function VideoEmailPage() {
                     <Send size={13} /> Send email{to.length ? ` to ${to.length}` : ""}
                   </button>
                 )}
-                footer={lastSent ? (
+                footer={history.length ? (
+                  // Every send of this video (2026-10-29), not just the last.
+                  <div className="mt-2">
+                    <p className="text-[12.5px] font-semibold text-green-700">✉ Sent {history.length} {history.length === 1 ? "time" : "times"}</p>
+                    <ul className="mt-1 max-h-40 space-y-0.5 overflow-y-auto text-[12.5px] text-spark-ink-muted">
+                      {history.map((h, i) => (
+                        <li key={i}>
+                          {when(h.at)} · {h.to.filter((r) => r.sent).map((r) => r.name || r.email).join(", ") || "nobody"}
+                          {h.subject ? <span className="text-spark-ink-faint"> · &ldquo;{h.subject}&rdquo;</span> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : lastSent ? (
                   <p className="mt-2 text-[12.5px] font-semibold text-green-700">
                     ✓ Last sent {when(lastSent.at)} to {lastSent.to.filter((r) => r.sent).map((r) => r.name).join(", ")}
                   </p>

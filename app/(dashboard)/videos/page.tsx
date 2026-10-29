@@ -490,6 +490,13 @@ function VideosContent() {
   /** Where each video has gone, and the AutoSparks cards that will post them (2026-10-26). */
   const [postsByVideo, setPostsByVideo] = useState<Record<string, PostRow[]>>({});
   const [autoByProject, setAutoByProject] = useState<Record<string, { slotAt: string; platforms: string[] }>>({});
+  /** Per video: how many people it was emailed to, and when last (2026-10-29). */
+  const [emailed, setEmailed] = useState<Record<string, { people: number; last: string }>>({});
+  useEffect(() => {
+    fetch("/api/video-email/history").then((r) => (r.ok ? r.json() : null)).then((d) => {
+      if (d?.history) setEmailed(d.history);
+    }).catch(() => {});
+  }, []);
   const [drafts, setDrafts] = useState<DraftProject[]>([]);
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1321,6 +1328,12 @@ function VideosContent() {
                           onDone={() => void loadVideos()}
                           className="w-full"
                         />
+                      )}
+                      {/* Emailed (2026-10-29, the owner's ask). */}
+                      {emailed[video.id] && (
+                        <p className="text-[12px] font-medium text-spark-ink-muted">
+                          ✉ Emailed to {emailed[video.id].people} · {new Date(emailed[video.id].last).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </p>
                       )}
                       <div className="flex gap-2">
                         {/* A video an approved AutoSparks card will post is changed
