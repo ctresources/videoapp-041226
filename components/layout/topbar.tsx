@@ -121,7 +121,9 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           {/* The owner's new logo (2026-10-15). It is drawn on black, so the
               white bar gets its own copy: background taken out, "Spark" in
               ink and the gold a shade deeper. */}
-          <Link href="/create" className="shrink-0">
+          {/* Phones only since 2026-10-29: on computers the side menu shows
+              the logo, and two side by side read as a mistake. */}
+          <Link href="/create" className="shrink-0 md:hidden">
             <Image
               src={onCreate ? "/sparkreels-logo-dark-bar.webp" : "/sparkreels-logo-light-bar.webp"}
               alt="SparkReels.ai"

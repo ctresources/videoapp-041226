@@ -68,8 +68,13 @@ export function navItemsFor(account: Account | null): NavItem[] {
   return FREE_NAV;
 }
 
-const SHOW: Record<string, string> = { md: "hidden md:flex", lg: "hidden lg:flex", xl: "hidden xl:flex" };
-const IN_MORE: Record<string, string> = { md: "md:hidden", lg: "lg:hidden", xl: "xl:hidden" };
+/**
+ * Wider than Tailwind's lg/xl (2026-10-29): the side menu is back on
+ * computers and takes 184px, so the names ran into Meet at 1280 wide (a
+ * 1920 screen at 150%). "lg" names now show from 1180, "xl" from 1440.
+ */
+const SHOW: Record<string, string> = { md: "hidden md:flex", lg: "hidden min-[1180px]:flex", xl: "hidden min-[1440px]:flex" };
+const IN_MORE: Record<string, string> = { md: "md:hidden", lg: "min-[1180px]:hidden", xl: "min-[1440px]:hidden" };
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Free plan", beta: "Beta access", starter: "Creator plan", agent: "Producer plan", pro: "Influencer plan",
@@ -148,7 +153,7 @@ export function TopNav({ dark }: { dark: boolean }) {
       <div ref={moreRef} className={cn(
         "relative",
         // More only at the widths where something is folded into it.
-        items.some((i) => i.from === "xl") ? "xl:hidden" : items.some((i) => i.from === "lg") ? "lg:hidden" : "hidden",
+        items.some((i) => i.from === "xl") ? "min-[1440px]:hidden" : items.some((i) => i.from === "lg") ? "min-[1180px]:hidden" : "hidden",
       )}>
         <button
           type="button"
