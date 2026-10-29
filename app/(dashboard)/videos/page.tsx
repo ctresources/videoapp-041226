@@ -27,6 +27,8 @@ import { AutopilotBanner } from "@/components/autopilot/autopilot-banner";
 import { videoStatus, type PostRow } from "@/lib/utils/video-status";
 import { VideoStatusLine } from "@/components/ui/video-status-line";
 import { ThumbnailEditButton } from "@/components/social/thumbnail-edit-button";
+import { OlderList, splitRecent, type OlderItem } from "@/components/videos/older-list";
+import { partnerPlatform } from "@/lib/utils/social-platforms";
 
 interface DraftProject {
   id: string;
@@ -91,8 +93,11 @@ interface RenderProgress {
  * thumbnail brings a media element with it, and a hundred of those hung the
  * tab outright (Chrome's RESULT_CODE_HUNG). Sixty is still a year of steady
  * work on one screen, and the poster below caps what any of it costs.
+ *
+ * 120 since 2026-10-29: only the last 10 days are big cards now; older ones
+ * are one line with a small image (components/videos/older-list), no player.
  */
-const VIDEO_PAGE_SIZE = 60;
+const VIDEO_PAGE_SIZE = 120;
 
 const statusConfig: Record<string, { label: string; variant: "default" | "warning" | "success" | "error"; icon: React.ElementType }> = {
   pending:   { label: "In queue",     variant: "default",  icon: Clock },
@@ -679,7 +684,7 @@ function VideosContent() {
       .select("id, title, status, created_at, ai_script")
       .eq("status", "draft")
       .order("created_at", { ascending: false })
-      .limit(24);
+      .limit(60);
     const videoProjectIds = new Set(videos.map((v) => v.project_id));
     setDrafts(((draftData as DraftProject[]) || []).filter((d) => !videoProjectIds.has(d.id)));
 
@@ -736,6 +741,66 @@ function VideosContent() {
     (v) => v.render_status === "rendering" || v.render_status === "pending" || v.render_status === "storing"
   );
   const hasRendering = renderingVideos.length > 0;
+
+  /**
+   * Big cards for the last 10 days, one line each for the rest (2026-10-29,
+   * the owner's pick). A video still being made, or the one just opened by
+   * link, always stays big.
+   */
+  const [recentVideos, olderVideos] = splitRecent(
+    videos,
+    (v) => v.created_at,
+    (v) => v.id === highlightId || v.render_status === "rendering" || v.render_status === "pending" || v.render_status === "storing",
+  );
+  const blogItems = drafts.filter((d) => !!d.ai_script?.blog_body?.trim());
+  const [recentBlogs, olderBlogs] = splitRecent(blogItems, (d) => d.created_at);
+  const postedOn = (id: string) => Array.from(new Set(
+    (postsByVideo[id] ?? []).filter((p) => p.post_status === "posted")
+      .map((p) => (p.platform === "youtube" ? "YouTube" : partnerPlatform(p.platform)?.label ?? p.platform)),
+  ));
+  const olderVideoItems: OlderItem[] = olderVideos.map((v) => {
+    const on = postedOn(v.id);
+    const ready = v.render_status === "completed" && !!v.video_url;
+    return {
+      id: v.id,
+      title: (v.projects as { title?: string } | null)?.title || "Untitled Video",
+      at: v.created_at,
+      thumbUrl: (v.projects as { thumbnail_url?: string | null } | null)?.thumbnail_url ?? null,
+      chip: ready ? (on.length ? { text: `Posted · ${on.join(", ")}`, ok: true } : { text: "Not posted", ok: false })
+        : v.render_status === "failed" ? { text: "Couldn't be made", ok: false } : null,
+      notPosted: ready && on.length === 0,
+      actions: (
+        <>
+          {ready && (
+            <Button size="sm" className="gap-1" onClick={() => setPreviewVideo(v)}><Play size={12} /> Watch</Button>
+          )}
+          {v.project_id && (
+            <Link href={`/create/${v.project_id}`} className="hidden sm:block">
+              <Button size="sm" variant="outline">Edit &amp; remake</Button>
+            </Link>
+          )}
+          <Button size="sm" variant="ghost" title="Delete" onClick={() => setVideoToDelete(v)}
+            disabled={deletingId === v.id} className="text-slate-300 hover:text-red-500">
+            <Trash2 size={13} />
+          </Button>
+        </>
+      ),
+    };
+  });
+  const olderBlogItems: OlderItem[] = olderBlogs.map((d) => ({
+    id: d.id,
+    title: d.title || "Untitled Article",
+    at: d.created_at,
+    actions: (
+      <>
+        <Link href={`/create/${d.id}?step=5`}><Button size="sm" className="gap-1"><FileText size={12} /> Open</Button></Link>
+        <Button size="sm" variant="ghost" title="Delete" onClick={() => handleDeleteDraft(d)}
+          disabled={deletingDraftId === d.id} className="text-slate-300 hover:text-red-500">
+          {deletingDraftId === d.id ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
+        </Button>
+      </>
+    ),
+  }));
 
   if (loading) {
     return (
@@ -929,7 +994,7 @@ function VideosContent() {
             )}
           </div>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-            {s.items.map((d) => {
+            {(s.key === "blogs" ? recentBlogs : s.items).map((d) => {
               const deletePicking = s.key === "blogs" && selecting === "blogs";
               const picking = (s.key === "blogs" && pickingPosts) || deletePicking;
               const picked = deletePicking ? selected.includes(d.id) : picking && pickedPosts.includes(d.id);
@@ -985,6 +1050,16 @@ function VideosContent() {
               );
             })}
           </div>
+          {s.key === "blogs" && (
+            <OlderList
+              kind="blogs"
+              items={olderBlogItems}
+              checking={selecting === "blogs" || pickingPosts}
+              isChecked={(id) => (selecting === "blogs" ? selected.includes(id) : pickedPosts.includes(id))}
+              onCheck={(id) => (selecting === "blogs" ? toggleSelected(id) : togglePost(id))}
+              onStartSelect={() => { setPickingPosts(false); setPickedPosts([]); setSelecting("blogs"); setSelected([]); }}
+            />
+          )}
           {s.key === "blogs" && selecting === "blogs" && (
             <BatchBar
               count={selected.length}
@@ -1095,7 +1170,7 @@ function VideosContent() {
           )}
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {videos.map((video) => {
+          {recentVideos.map((video) => {
             const status = statusConfig[video.render_status] || statusConfig.pending;
             const StatusIcon = status.icon;
             const isHighlighted = video.id === highlightId;
@@ -1514,6 +1589,14 @@ function VideosContent() {
             );
           })}
         </div>
+        <OlderList
+          kind="videos"
+          items={olderVideoItems}
+          checking={selecting === "videos"}
+          isChecked={(id) => selected.includes(id)}
+          onCheck={toggleSelected}
+          onStartSelect={() => { setPickingPosts(false); setPickedPosts([]); setSelecting("videos"); setSelected([]); }}
+        />
         {selecting === "videos" && (
           <BatchBar
             count={selected.length}

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Sparks older items</title>
+<style>
+  :root { --ink:#2b2a26; --muted:#77736a; --faint:#a29d92; --rule:#e8e3d8; --amber:#BA7517; --tint:#fbf3e4; --paper:#faf9f5; --green:#0f7a52; --greenbg:#e8f5ee; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.45 -apple-system, "Segoe UI", Inter, sans-serif; padding:28px 16px 60px; }
+  .wrap { max-width:1180px; margin:0 auto; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 22px; font-size:15px; }
+  h2 { font-size:19px; margin:26px 0 12px; display:flex; align-items:center; gap:10px; }
+  .pill { font-size:12.5px; font-weight:600; color:var(--muted); background:#fff; border:1px solid var(--rule); border-radius:99px; padding:2px 10px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px; }
+  .card { background:#fff; border:1px solid var(--rule); border-radius:14px; overflow:hidden; }
+  .thumb { aspect-ratio:16/9; background:linear-gradient(135deg,#3a2b17,#BA7517); display:flex; align-items:flex-end; padding:10px; color:#fff; font-weight:800; font-size:17px; }
+  .card .b { padding:12px 14px 14px; }
+  .t { font-weight:650; font-size:15.5px; }
+  .when { color:var(--faint); font-size:13px; margin-top:2px; }
+  .btns { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .btn { border:1px solid var(--rule); background:#fff; border-radius:9px; padding:5px 10px; font-size:13.5px; font-weight:600; color:var(--ink); }
+  .btn.gold { background:var(--amber); color:#fff; border-color:var(--amber); }
+  .older { background:#fff; border:1px solid var(--rule); border-radius:14px; margin-top:16px; }
+  .older summary { list-style:none; cursor:pointer; padding:14px 16px; display:flex; align-items:center; gap:10px; font-weight:650; }
+  .older summary::-webkit-details-marker { display:none; }
+  .older summary .chev { margin-left:auto; color:var(--amber); font-size:14px; }
+  .tools { display:flex; gap:8px; padding:0 16px 12px; flex-wrap:wrap; }
+  .search { flex:1; min-width:180px; border:1px solid var(--rule); border-radius:10px; padding:8px 12px; font-size:14.5px; }
+  .month { padding:6px 16px; font-size:12.5px; font-weight:700; letter-spacing:.06em; color:var(--faint); text-transform:uppercase; background:var(--paper); border-top:1px solid var(--rule); }
+  .row { display:flex; align-items:center; gap:12px; padding:10px 16px; border-top:1px solid var(--rule); }
+  .mini { width:72px; aspect-ratio:16/9; border-radius:6px; background:linear-gradient(135deg,#3a2b17,#BA7517); flex:none; }
+  .mini.v { width:34px; aspect-ratio:9/16; }
+  .mini.doc { background:var(--tint); border:1px solid var(--rule); display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .rt { min-width:0; flex:1; }
+  .rt .t { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14.5px; }
+  .chip { font-size:12px; font-weight:600; border-radius:99px; padding:2px 9px; white-space:nowrap; }
+  .chip.ok { color:var(--green); background:var(--greenbg); }
+  .chip.no { color:var(--muted); background:var(--paper); border:1px solid var(--rule); }
+  .row .btns { margin:0; flex-wrap:nowrap; }
+  .more { text-align:center; padding:12px; border-top:1px solid var(--rule); }
+  .cb { width:18px; height:18px; accent-color:var(--amber); flex:none; }
+  .selbar { display:flex; align-items:center; gap:10px; padding:10px 16px; background:var(--tint); border-top:1px solid var(--rule); font-size:14px; font-weight:600; }
+  .btn.red { color:#b42318; border-color:#f3c7c2; }
+  .note { margin-top:30px; background:#fff8ea; border:1px solid #f0d9ad; border-radius:12px; padding:14px 16px; font-size:14.5px; color:#6b4a12; }
+  @media (max-width:640px) { .row .btns .btn:not(.gold) { display:none; } .chip { display:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>My Sparks</h1>
+  <p class="sub">Mockup · older videos and blogs move into a compact list</p>
+
+  <h2>Videos <span class="pill">Last 10 days · 3</span></h2>
+  <div class="grid">
+    <div class="card"><div class="thumb">What's Happening This Week</div><div class="b"><div class="t">Montgomery County this week</div><div class="when">Oct 29, 2:14 PM</div><div class="btns"><span class="btn gold">Publish</span><span class="btn">Edit &amp; remake</span><span class="btn">Email it</span></div></div></div>
+    <div class="card"><div class="thumb">3 Things Buyers Miss</div><div class="b"><div class="t">3 things buyers miss on a walkthrough</div><div class="when">Oct 26, 9:02 AM</div><div class="btns"><span class="btn gold">Publish</span><span class="btn">Edit &amp; remake</span><span class="btn">Email it</span></div></div></div>
+    <div class="card"><div class="thumb">Is Blue Bell Worth It?</div><div class="b"><div class="t">Is Blue Bell worth the price?</div><div class="when">Oct 21, 4:40 PM</div><div class="btns"><span class="btn gold">Publish</span><span class="btn">Edit &amp; remake</span><span class="btn">Email it</span></div></div></div>
+  </div>
+
+  <details class="older" open>
+    <summary>Older videos <span class="pill">24</span><span class="chev">Hide ▴</span></summary>
+    <div class="tools"><input class="search" placeholder="Search older videos"><span class="btn">All</span><span class="btn">Not posted</span><span class="btn">Select</span></div>
+    <div class="selbar"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="cb" checked> Select all 24</label><span style="margin-left:auto">2 selected</span><span class="btn red">Delete selected</span><span class="btn">Cancel</span></div>
+    <div class="month">October</div>
+    <div class="row"><input type="checkbox" class="cb" checked><div class="mini"></div><div class="rt"><div class="t">Why Plymouth Meeting buyers are waiting</div><div class="when">Oct 18, 11:20 AM</div></div><span class="chip ok">Posted · YouTube, Facebook</span><div class="btns"><span class="btn gold">Watch</span><span class="btn">Edit &amp; remake</span><span class="btn">⋯</span></div></div>
+    <div class="row"><input type="checkbox" class="cb" checked><div class="mini v"></div><div class="rt"><div class="t">Open house checklist in 60 seconds</div><div class="when">Oct 12, 3:05 PM</div></div><span class="chip no">Not posted</span><div class="btns"><span class="btn gold">Watch</span><span class="btn">Edit &amp; remake</span><span class="btn">⋯</span></div></div>
+    <div class="month">September</div>
+    <div class="row"><input type="checkbox" class="cb"><div class="mini"></div><div class="rt"><div class="t">Fall market update for Montgomery County</div><div class="when">Sep 30, 10:15 AM</div></div><span class="chip ok">Posted · YouTube</span><div class="btns"><span class="btn gold">Watch</span><span class="btn">Edit &amp; remake</span><span class="btn">⋯</span></div></div>
+    <div class="more"><span class="btn">Show 20 more</span></div>
+  </details>
+
+  <h2>Blogs <span class="pill">Last 10 days · 2</span></h2>
+  <div class="grid">
+    <div class="card"><div class="thumb">Montgomery County This Week</div><div class="b"><div class="t">What's happening this week in Montgomery County</div><div class="when">Oct 29, 2:10 PM</div><div class="btns"><span class="btn gold">Open</span><span class="btn">Copy as HTML</span></div></div></div>
+    <div class="card"><div class="thumb">Buyers Miss These</div><div class="b"><div class="t">3 things buyers miss on a walkthrough</div><div class="when">Oct 26, 8:58 AM</div><div class="btns"><span class="btn gold">Open</span><span class="btn">Copy as HTML</span></div></div></div>
+  </div>
+
+  <details class="older">
+    <summary>Older blogs <span class="pill">17</span><span class="chev">Show ▾</span></summary>
+    <div class="tools"><input class="search" placeholder="Search older blogs"><span class="btn">Select</span></div>
+    <div class="month">October</div>
+    <div class="row"><div class="mini doc">📄</div><div class="rt"><div class="t">Why Plymouth Meeting buyers are waiting</div><div class="when">Oct 18</div></div><div class="btns"><span class="btn gold">Open</span><span class="btn">Copy as HTML</span></div></div>
+  </details>
+
+  <div class="note">
+    <strong>How it works:</strong> the last 10 days stay as big cards. Anything older moves into one "Older" box per section: one line each, newest first, grouped by month, with search. Videos show where they were posted. Select works here too: tick items or Select all, then Delete selected (it asks first). The big cards keep their own Select. The older box starts closed so the page opens short, and it remembers if you open it. If nothing is newer than 10 days, the 6 most recent stay big so the page is never empty.
+  </div>
+</div>
+</body>
+</html>
