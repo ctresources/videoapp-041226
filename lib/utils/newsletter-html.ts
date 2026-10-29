@@ -198,8 +198,19 @@ export function personalNote(note: string, firstName?: string | null): string {
 }
 
 /** The note, then the video as a still with a play button and a Watch button, then the sign-off. */
+/**
+ * The gold "Leave me a Google review" button (2026-10-27), shared since
+ * 2026-10-29 so Email it can add it too. Empty when the link isn't a web address.
+ */
+export function reviewButtonHtml(reviewUrl?: string | null): string {
+  if (!isUrl(reviewUrl)) return "";
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 8px;"><tr><td align="center" bgcolor="#BA7517" style="border-radius:10px;mso-padding-alt:16px 24px;"><a href="${esc(reviewUrl!)}" style="display:block;padding:16px 24px;font-family:${FONT};font-size:18px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:10px;"><span style="color:#ffffff;text-decoration:none;">&#9733;&#9733;&#9733;&#9733;&#9733;&nbsp; Leave me a Google review</span></a></td></tr></table>
+<p style="margin:0 0 20px;font-family:${FONT};font-size:14px;color:${MUTED};text-align:center;">It takes about a minute. Thank you!</p>`;
+}
+
+/** Email it (2026-10-15). reviewUrl adds the Google review button (2026-10-29). */
 export function videoEmailAsHtml(opts: {
-  subject: string; note: string; firstName?: string | null; video: SellerVideo; signature: EmailSignature;
+  subject: string; note: string; firstName?: string | null; video: SellerVideo; signature: EmailSignature; reviewUrl?: string | null;
 }): string {
   const paras = personalNote(opts.note, opts.firstName).split(/\n+/).map((s) => s.trim()).filter(Boolean);
   return emailShell({
@@ -208,15 +219,17 @@ export function videoEmailAsHtml(opts: {
     inner: `<tr><td style="padding:28px 24px 24px;">
 ${paras.map(emailP).join("\n")}
 ${videoBlock(opts.video, "Watch the video")}
+${reviewButtonHtml(opts.reviewUrl)}
 ${emailSignatureHtml(opts.signature)}
 </td></tr>`,
   });
 }
 
-export function videoEmailAsText(opts: { note: string; firstName?: string | null; video: SellerVideo; signature: EmailSignature }): string {
+export function videoEmailAsText(opts: { note: string; firstName?: string | null; video: SellerVideo; signature: EmailSignature; reviewUrl?: string | null }): string {
   return [
     personalNote(opts.note, opts.firstName), "",
     `Watch the video${clock(opts.video.seconds) ? ` (${clock(opts.video.seconds)})` : ""}: ${opts.video.url}`, "",
+    ...(isUrl(opts.reviewUrl) ? [`Leave me a Google review: ${opts.reviewUrl}`, ""] : []),
     ...emailSignatureText(opts.signature),
   ].join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
@@ -230,10 +243,7 @@ export function reviewRequestAsHtml(opts: {
   subject: string; note: string; firstName?: string | null; video: SellerVideo; reviewUrl: string; signature: EmailSignature;
 }): string {
   const paras = personalNote(opts.note, opts.firstName).split(/\n+/).map((s) => s.trim()).filter(Boolean);
-  const star = isUrl(opts.reviewUrl)
-    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 8px;"><tr><td align="center" bgcolor="#BA7517" style="border-radius:10px;mso-padding-alt:16px 24px;"><a href="${esc(opts.reviewUrl)}" style="display:block;padding:16px 24px;font-family:${FONT};font-size:18px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:10px;"><span style="color:#ffffff;text-decoration:none;">&#9733;&#9733;&#9733;&#9733;&#9733;&nbsp; Leave me a Google review</span></a></td></tr></table>
-<p style="margin:0 0 20px;font-family:${FONT};font-size:14px;color:${MUTED};text-align:center;">It takes about a minute. Thank you!</p>`
-    : "";
+  const star = reviewButtonHtml(opts.reviewUrl);
   return emailShell({
     title: opts.subject,
     preview: paras[0] ?? opts.subject,

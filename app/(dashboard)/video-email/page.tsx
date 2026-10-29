@@ -38,6 +38,9 @@ export default function VideoEmailPage() {
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [copyMe, setCopyMe] = useState(false);
+  /** The Google review button (2026-10-29): the agent's link, and whether to add it. */
+  const [reviewUrl, setReviewUrl] = useState<string | null>(null);
+  const [addReview, setAddReview] = useState(false);
   const [subject, setSubject] = useState("");
   const [note, setNote] = useState("");
   const [writing, setWriting] = useState(false);
@@ -85,6 +88,9 @@ export default function VideoEmailPage() {
         setBoldtrail(!!d.boldtrail);
         setPicks(d.picks ?? []);
         setLastSent(d.lastSent ?? null);
+        setReviewUrl(typeof d.reviewUrl === "string" && d.reviewUrl.startsWith("https://") ? d.reviewUrl : null);
+        // Ticked to begin with for a video made to ask for a review.
+        setAddReview(!!d.isReview);
         void write(id);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Couldn't open that video.");
@@ -115,7 +121,7 @@ export default function VideoEmailPage() {
       const res = await fetch("/api/video-email/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ videoId, subject, note, contacts: to, copyMe }),
+        body: JSON.stringify({ videoId, subject, note, contacts: to, copyMe, reviewButton: addReview && !!reviewUrl }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d?.error || "Couldn't send it.");
@@ -138,10 +144,10 @@ export default function VideoEmailPage() {
     if (!video || !note.trim()) return null;
     const first = firstOf(to[0]);
     return {
-      html: videoEmailAsHtml({ subject, note, firstName: first, video, signature }),
-      text: videoEmailAsText({ note, firstName: first, video, signature }),
+      html: videoEmailAsHtml({ subject, note, firstName: first, video, signature, reviewUrl: addReview ? reviewUrl : null }),
+      text: videoEmailAsText({ note, firstName: first, video, signature, reviewUrl: addReview ? reviewUrl : null }),
     };
-  }, [video, subject, note, signature, to]);
+  }, [video, subject, note, signature, to, addReview, reviewUrl]);
 
   const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
@@ -238,6 +244,17 @@ export default function VideoEmailPage() {
             </p>
             <textarea rows={5} className={input} value={note} onChange={(e) => setNote(e.target.value)} placeholder={writing ? "Writing…" : "Hi {first name}, …"} />
             <p className="mt-1 text-[11.5px] text-spark-ink-muted">{"{first name}"} becomes each person&apos;s first name.</p>
+            {/* The Google review button (2026-10-29). */}
+            {reviewUrl ? (
+              <label className="mt-3 flex cursor-pointer items-center gap-2 text-[13.5px] text-spark-ink-soft">
+                <input type="checkbox" checked={addReview} onChange={(e) => setAddReview(e.target.checked)} className="h-4 w-4 accent-orange-600" />
+                ⭐ Add my Google review button
+              </label>
+            ) : (
+              <p className="mt-3 text-[12.5px] text-spark-ink-muted">
+                Asking for a review? <a href="/settings#review-link" className="font-semibold text-[#A3660F] underline">Add your Google review link</a> to put a review button in this email.
+              </p>
+            )}
 
             <div className="mt-auto pt-4">
               <button type="button" onClick={() => write()} disabled={writing} className="flex items-center gap-1.5 rounded-[10px] border border-spark-rule bg-white px-3.5 py-2 text-[13px] font-semibold text-spark-ink hover:border-[#d9c6a8] disabled:opacity-50">

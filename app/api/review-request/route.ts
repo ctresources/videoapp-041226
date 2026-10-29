@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const admin = createAdminClient();
-  const body = (await req.json().catch(() => ({}))) as { action?: string; script?: string; projectId?: string };
+  const body = (await req.json().catch(() => ({}))) as { action?: string; script?: string; projectId?: string; videoId?: string };
 
   if (body.action === "load") {
     const [{ data: prof }, token, signature, { data: vids }] = await Promise.all([
@@ -85,6 +85,24 @@ export async function POST(req: NextRequest) {
       status: v.render_status === "completed" && v.video_url ? "ready" : v.render_status === "failed" ? "failed" : "making",
       video: v.video_url ? { id: v.id, url: v.video_url, seconds: v.duration_seconds } : null,
     });
+  }
+
+  /**
+   * POST { action: "mark", videoId } (2026-10-29): a camera take or photo reel
+   * made in this tool is a review request too, like the avatar one: no
+   * Publish to socials, and Email it adds the review button to begin with.
+   * Only a video of this account's, and only one made in the last 3 hours.
+   */
+  if (body.action === "mark") {
+    const videoId = (body as { videoId?: string }).videoId ?? "";
+    const { data: v } = await admin.from("generated_videos")
+      .select("project_id, created_at").eq("id", videoId).eq("user_id", user.id).maybeSingle();
+    const row = v as { project_id: string | null; created_at: string } | null;
+    if (!row?.project_id || Date.now() - Date.parse(row.created_at) > 3 * 3600_000) return NextResponse.json({ ok: false });
+    const { data: proj } = await admin.from("projects").select("ai_script").eq("id", row.project_id).eq("user_id", user.id).maybeSingle();
+    const ai = { ...(((proj as { ai_script: Record<string, unknown> | null } | null)?.ai_script) ?? {}), kind: "review_request" };
+    await admin.from("projects").update({ ai_script: ai }).eq("id", row.project_id);
+    return NextResponse.json({ ok: true });
   }
 
   return NextResponse.json({ error: "Unknown action." }, { status: 400 });

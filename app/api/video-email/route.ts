@@ -1,3 +1,4 @@
+import { isReviewRequest } from "@/lib/utils/review-request";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -71,15 +72,20 @@ export async function POST(req: NextRequest) {
     { id: videoId, video_url: url, duration_seconds: seconds, email_poster_url: (video.email_poster_url as string | null) ?? null },
     project?.thumbnail_url ?? null);
 
-  const [signature, token, picks, { data: sends }] = await Promise.all([
+  const [signature, token, picks, { data: sends }, { data: prof }] = await Promise.all([
     loadAgentSignature(admin, user.id),
     loadBoldTrailToken(admin, user.id),
     loadQuickPicks(admin, user.id),
     admin.from("video_email_sends").select("video_id, sent_to, sent_at").eq("user_id", user.id).eq("kind", "video").order("sent_at", { ascending: false }).limit(30),
+    admin.from("profiles").select("google_review_url").eq("id", user.id).single(),
   ]);
 
   const last = (sends ?? []).find((s) => s.video_id === videoId);
   return NextResponse.json({
+    // The Google review button (2026-10-29): the agent's link, and whether
+    // this video was made to ask for a review, which ticks it to begin with.
+    reviewUrl: (prof as { google_review_url: string | null } | null)?.google_review_url ?? null,
+    isReview: isReviewRequest(project?.ai_script),
     video: { id: videoId, title, url, seconds, posterUrl },
     signature,
     boldtrail: !!token,

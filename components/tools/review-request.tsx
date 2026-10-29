@@ -94,7 +94,11 @@ export function ReviewRequestTool() {
         const since = Number(sessionStorage.getItem(RETURN_KEY) || 0);
         if (since && Date.now() - since < 3 * 3600_000) {
           const take = list.find((v) => v.createdAt && Date.parse(v.createdAt) > since);
-          if (take) { setWay("mine"); setVideo(take); toast.success("Your recording is ready to send."); sessionStorage.removeItem(RETURN_KEY); }
+          if (take) {
+            setWay("mine"); setVideo(take); toast.success("Your recording is ready to send."); sessionStorage.removeItem(RETURN_KEY);
+            // Recorded for this: a review request, like the avatar one (2026-10-29).
+            void markReview(take.id);
+          }
         }
       } catch { /* unavailable */ }
       setLoaded(true);
@@ -112,6 +116,15 @@ export function ReviewRequestTool() {
     }, 15000);
     return () => clearInterval(t);
   }, [avatarProject]);
+
+  /** Marks a camera take or reel made here as a review request (2026-10-29). */
+  async function markReview(videoId: string) {
+    await fetch("/api/review-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "mark", videoId }),
+    }).catch(() => {});
+  }
 
   function recordMyself() {
     try {
@@ -172,6 +185,7 @@ export function ReviewRequestTool() {
       const d = await res.json().catch(() => ({}));
       if (!res.ok) { if (showTrialLock(d)) return; throw new Error(d?.error || "Couldn't make the reel."); }
       setVideo({ id: d.videoId, url: d.videoUrl, title: "Google review request" });
+      if (d.videoId) void markReview(d.videoId);
       toast.success("Your photo reel is ready.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't make the reel.");

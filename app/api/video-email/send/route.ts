@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = (await req.json().catch(() => ({}))) as { videoId?: string; subject?: string; note?: string; contacts?: Contact[]; copyMe?: boolean };
+  const body = (await req.json().catch(() => ({}))) as { videoId?: string; subject?: string; note?: string; contacts?: Contact[]; copyMe?: boolean; reviewButton?: boolean };
   const subject = (body.subject ?? "").trim().slice(0, 150);
   const note = (body.note ?? "").trim().slice(0, 3000);
   const emailOk = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -71,6 +71,17 @@ export async function POST(req: NextRequest) {
   }
 
   const signature = await loadAgentSignature(admin, user.id);
+  /**
+   * The Google review button (2026-10-29): Abby's review asks went out through
+   * Email it, which had no button. The agent's own link from Settings, only
+   * when asked for and only a real https address.
+   */
+  let reviewUrl: string | null = null;
+  if (body.reviewButton) {
+    const { data: prof } = await admin.from("profiles").select("google_review_url").eq("id", user.id).single();
+    const r = ((prof as { google_review_url: string | null } | null)?.google_review_url ?? "").trim();
+    if (r.startsWith("https://")) reviewUrl = r;
+  }
   const posterUrl = await emailPosterFor(admin, user.id,
     { id: video.id as string, video_url: url, duration_seconds: (video.duration_seconds as number | null) ?? null, email_poster_url: (video.email_poster_url as string | null) ?? null },
     proj?.thumbnail_url ?? null);
@@ -79,7 +90,7 @@ export async function POST(req: NextRequest) {
   const results: (Contact & { sent: boolean; via: "boldtrail" | "sparkreels"; error?: string })[] = [];
   for (const c of contacts) {
     const first = greetingName(c.name);
-    const html = videoEmailAsHtml({ subject, note, firstName: first, video: v, signature });
+    const html = videoEmailAsHtml({ subject, note, firstName: first, video: v, signature, reviewUrl });
     // A BoldTrail contact goes through BoldTrail; someone typed in (not saved
     // to BoldTrail) is emailed by SparkReels (2026-10-27, the owner's ask).
     if (token && c.id) {
@@ -88,7 +99,7 @@ export async function POST(req: NextRequest) {
       results.push({ ...c, id, sent: r.ok, via: "boldtrail", ...(r.ok ? {} : { error: `BoldTrail said ${r.status}` }) });
       if (!r.ok) console.error("[video-email] send failed", id, r.status, r.text);
     } else {
-      const text = videoEmailAsText({ note, firstName: first, video: v, signature });
+      const text = videoEmailAsText({ note, firstName: first, video: v, signature, reviewUrl });
       const ok = await sendAgentEmailViaSparkReels({ to: c.email, agentName: signature.name ?? null, replyTo, subject, html, text });
       results.push({ ...c, sent: ok, via: "sparkreels", ...(ok ? {} : { error: "Couldn't send it." }) });
     }
@@ -102,8 +113,8 @@ export async function POST(req: NextRequest) {
     await sendAgentEmailViaSparkReels({
       to: replyTo, agentName: signature.name ?? null, replyTo,
       subject: `[Copy] ${subject}`,
-      html: `<p style="font-family:Arial,sans-serif;font-size:13px;color:#555;margin:0 0 12px">Your copy. Sent to ${who.replace(/[<>&]/g, "")}.</p>` + videoEmailAsHtml({ subject, note, firstName: greetingName(sent[0]?.name), video: v, signature }),
-      text: `Your copy. Sent to ${who}.\n\n` + videoEmailAsText({ note, firstName: greetingName(sent[0]?.name), video: v, signature }),
+      html: `<p style="font-family:Arial,sans-serif;font-size:13px;color:#555;margin:0 0 12px">Your copy. Sent to ${who.replace(/[<>&]/g, "")}.</p>` + videoEmailAsHtml({ subject, note, firstName: greetingName(sent[0]?.name), video: v, signature, reviewUrl }),
+      text: `Your copy. Sent to ${who}.\n\n` + videoEmailAsText({ note, firstName: greetingName(sent[0]?.name), video: v, signature, reviewUrl }),
     }).catch(() => false);
   }
   if (sent.length) {
