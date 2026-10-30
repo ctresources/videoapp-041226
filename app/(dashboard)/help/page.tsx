@@ -1393,8 +1393,8 @@ function FullGuide() {
             <Step n={23} title="The Everyday Tools" icon={Wand2} anchor="record-my-screen">
               <Link href="/tools" className="text-primary-600 font-medium hover:underline">Spark Tools</Link> is in four
               groups: <strong>For a video</strong> (Thumbnail, Title, Description, Tags, Script, Record My Screen),{" "}
-              <strong>Images &amp; banners</strong>, <strong>Profile &amp; reviews</strong> (Channel Name,
-              LinkedIn Profile, Google Reviews, Ask for Google Review Video Email) and <strong>Sellers &amp; AI search</strong> (Seller Update,
+              <strong>Images &amp; banners</strong> (AI images, banners, Channel Name, LinkedIn Profile),{" "}
+              <strong>Reviews</strong> (Google Reviews, Ask for Google Review Video Email) and <strong>Sellers &amp; AI search</strong> (Seller Update,
               AI Answer Blocks). Pick a group, then a tool.{" "}
               <strong>Record My Screen</strong> is the simple screen recorder: tick or untick{" "}
               <strong>Show me in a corner circle</strong>, press <strong>Start recording</strong>, pick the tab or window

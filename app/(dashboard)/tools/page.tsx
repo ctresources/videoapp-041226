@@ -168,8 +168,9 @@ const WORKFLOW_TABS: Tab[] = ["seller", "review", "reviews", "screen"];
 // row were too many to scan. Each group's chips are the tools inside it.
 const TOOL_GROUPS: { label: string; tabs: Tab[] }[] = [
   { label: "For a video",        tabs: ["thumbnail", "title", "description", "tags", "script", "screen"] },
-  { label: "Images & banners",   tabs: ["image", "banner"] },
-  { label: "Profile & reviews",  tabs: ["channel", "linkedin", "reviews", "review"] },
+  // Channel Name and LinkedIn moved here, and the group below renamed (2026-10-30, the owner's ask).
+  { label: "Images & banners",   tabs: ["image", "banner", "channel", "linkedin"] },
+  { label: "Reviews",            tabs: ["reviews", "review"] },
   { label: "Sellers & AI search", tabs: ["seller", "answers"] },
 ];
 
