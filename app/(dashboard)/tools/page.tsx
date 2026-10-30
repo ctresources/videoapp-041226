@@ -165,7 +165,8 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
  * (the owner's call). The generators are open to free accounts within the
  * free plan's tries.
  */
-const WORKFLOW_TABS: Tab[] = ["seller", "review", "reviews", "screen"];
+// The Video Business Card too (2026-10-30, the owner's call).
+const WORKFLOW_TABS: Tab[] = ["seller", "review", "reviews", "screen", "card"];
 
 // The tabs in four groups (2026-10-26, usability sweep #8): twelve tabs in a
 // row were too many to scan. Each group's chips are the tools inside it.

@@ -36,9 +36,10 @@ const ITEMS: WhatsNewItem[] = [
       "A short video card with your name and contact details, plus a card page with tap-to-call, Book a call and Save my contact. Share it by text, QR code or email signature.",
     releaseDate: "2026-10-30",
     howItWorksAnchor: "video-business-card",
+    featureKey: "tool_workflows",
     badge: "NEW",
-    freeHref: "/tools?tab=card",
-    freeLabel: "Make my card",
+    // Paid plans only (2026-10-30, the owner's call).
+    paidOnlyDetails: true,
   },
   {
     id: "home-ask-sparklee",

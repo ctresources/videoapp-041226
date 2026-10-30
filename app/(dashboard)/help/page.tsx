@@ -1559,7 +1559,7 @@ function FullGuide() {
               </span>
               {/* The Video Business Card (2026-10-30). */}
               <span className="block mt-1.5 scroll-mt-20" id="video-business-card">
-                <strong>Video Business Card</strong> (Spark Tools → <strong>Images &amp; banners</strong>) is two
+                <strong>Video Business Card</strong> (paid plans; Spark Tools → <strong>Images &amp; banners</strong>) is two
                 things that work together. Your <strong>card page</strong> at sparkreels.ai/card/your-name shows
                 your <strong>Agent Intro</strong> (or a video you pick), your name, brokerage and logo, round{" "}
                 <strong>Call</strong>, <strong>Text</strong>, <strong>Email</strong> and <strong>Website</strong>{" "}

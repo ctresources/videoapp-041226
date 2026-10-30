@@ -48,6 +48,16 @@ export const cardColor = (c: Card) => {
   const pick = [c.settings.color, ...(c.profile.brand_colors ?? [])].find((x) => typeof x === "string" && /^#[0-9a-fA-F]{6}$/.test(x));
   return pick ?? DEFAULT_CARD_COLOR;
 };
+/**
+ * A card works while its agent is on a paid plan (2026-10-30, the owner's
+ * call: the Video Business Card is a paid feature). When the plan ends the
+ * page and its contact file stop, and come back if they subscribe again.
+ */
+export const cardActive = (c: Card) => {
+  const level = getAccessLevel(c.profile);
+  return level === "admin" || isPaidLevel(level);
+};
+
 /** Google reviews on a card are a paid feature (2026-10-30, the owner's call). */
 export const cardReviewsOn = (c: Card) => {
   const level = getAccessLevel(c.profile);
