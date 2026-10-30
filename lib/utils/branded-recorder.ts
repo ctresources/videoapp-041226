@@ -1237,10 +1237,14 @@ export class BrandedComposite {
     const v = this.videoEl;
     if (!ctx || !v || v.readyState < 2 || !v.videoWidth) return;
 
-    // A clip or camera of the other orientation (a vertical phone clip in a
-    // horizontal video): whole over a blurred copy, not cut to a strip
-    // through the middle of the speaker (2026-10-24).
-    if (needsBlurFill(v.videoWidth, v.videoHeight, W, H)) {
+    // A camera of the other orientation. An upright phone feed in a wide
+    // video stays whole over a blurred copy (2026-10-24): cropping it would cut
+    // through the head. A wide laptop camera in a vertical video is cropped to
+    // fill the frame instead (2026-10-30, the owner's call): the full height
+    // keeps head and shoulders, where the blurred fill showed the speaker
+    // small between two blurred bands.
+    const wideIntoTall = v.videoWidth > v.videoHeight && H > W;
+    if (!wideIntoTall && needsBlurFill(v.videoWidth, v.videoHeight, W, H)) {
       this.drawWholeOnBlur(v, v.videoWidth, v.videoHeight, W, H, 1, true);
       return;
     }
