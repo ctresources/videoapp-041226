@@ -67,6 +67,12 @@ export async function startSparkleeDraft(
   user: { id: string; email: string | null },
   profile: HaloProfile,
   ask: SparkleeAsk,
+  /**
+   * From an approved Home plan (2026-10-29): the accounts the plan named, and
+   * no video yet. The draft is written and waits; the agent presses Make
+   * video, then Approve. Nothing is charged until then.
+   */
+  opts: { makeVideo?: boolean; platforms?: string[] } = {},
 ): Promise<{ draftId: string; slotAt: string; platforms: string[]; work: Promise<void> } | null> {
   const s = sanitizeSettings(profile.halo_settings);
   const tz = zoneOf(profile);
@@ -89,7 +95,9 @@ export async function startSparkleeDraft(
     look: ask.look ?? base.look,
     lookId: ask.lookId ?? base.lookId,
     size: ask.size ?? base.size,
-    platforms: lastPlatforms.length ? lastPlatforms : base.platforms,
+    platforms: opts.platforms?.length
+      ? opts.platforms.filter((p) => HALO_PLATFORMS.includes(p))
+      : lastPlatforms.length ? lastPlatforms : base.platforms,
   };
   const slot = sparkleeSlot(ask.words, tz, s.time);
 
@@ -137,6 +145,10 @@ export async function startSparkleeDraft(
       // Make video while this is already making one (no second charge).
       await admin.from("autopilot_drafts").update({ project_id: projectId }).eq("id", draftId);
       await buildThumbnail(admin, user.id, projectId, null);
+      if (opts.makeVideo === false) {
+        await admin.from("autopilot_drafts").update({ status: "draft", post_error: null }).eq("id", draftId);
+        return;
+      }
       // Made straight away: that is what was asked for.
       const made = await makeDraftVideo(admin, user, { id: draftId, setup, project_id: projectId });
       const why = made.status >= 400

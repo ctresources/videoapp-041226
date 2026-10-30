@@ -33,7 +33,7 @@ export default function ResetPasswordPage() {
     }
 
     toast.success("Password updated! Signing you in...");
-    router.push("/create");
+    router.push("/home");
     router.refresh();
   }
 

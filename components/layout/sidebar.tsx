@@ -27,6 +27,14 @@ const NAV_ICONS: Record<string, ReactNode> = {
       <rect x="14" y="14" width="7" height="7" rx="1.5" />
     </>
   ),
+  // Home (2026-10-29): a house.
+  "/home": (
+    <>
+      <path d="M3 11l9-7 9 7" />
+      <path d="M5 10v10h14V10" />
+      <path d="M10 20v-6h4v6" />
+    </>
+  ),
   "/create": (
     <>
       <rect x="9" y="2.5" width="6" height="11" rx="3" />
@@ -187,7 +195,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
            -mr-px covers the sidebar's own right border, which would otherwise
            draw a pale line between the two halves of one header. */
         <div className="-mr-px mb-3 flex h-[49px] items-center justify-center bg-[#050505]">
-          <Link href="/create">
+          <Link href="/home">
             <Image
               src="/sparkreels-logo-dark.png"
               alt="SparkReels.ai — Speak. Spark. Share."
@@ -201,7 +209,7 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
         </div>
       ) : (
       <div className="px-4 pb-4">
-        <Link href="/create">
+        <Link href="/home">
           {/* The new logo's light-background copy (2026-10-16), so no
               darkening filter is needed any more. */}
           <Image

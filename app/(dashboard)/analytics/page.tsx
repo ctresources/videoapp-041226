@@ -2,8 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { BarChart2, Video, Share2, TrendingUp, Eye, Heart, MessageCircle, Clock, Repeat2 } from "lucide-react";
 import { partnerPlatform } from "@/lib/utils/social-platforms";
-import { Suspense } from "react";
-import { DraftQueueWrapper, GettingStarted, PlanBar, QuickLinks, RecentProjects } from "@/components/insights/start-parts";
 
 async function getAnalyticsData() {
   const supabase = await createClient();
@@ -71,7 +69,7 @@ export default async function AnalyticsPage() {
     return <div className="text-slate-500 text-sm">Please log in to view analytics.</div>;
   }
 
-  const { userId, videos, posts, stats } = data;
+  const { videos, posts, stats } = data;
 
   interface StatRow {
     social_post_id: string; views: number; likes: number; comments: number; shares: number | null;
@@ -140,12 +138,9 @@ export default async function AnalyticsPage() {
         </h1>
       </div>
 
-      {/* From the Dashboard, which this page took in (2026-10-14): what you
-          have left, what's waiting, how far setup is, and two ways on. */}
-      <Suspense fallback={null}><PlanBar userId={userId} /></Suspense>
-      <Suspense fallback={null}><DraftQueueWrapper userId={userId} /></Suspense>
-      <Suspense fallback={null}><GettingStarted userId={userId} /></Suspense>
-      <QuickLinks />
+      {/* The plan bar, waiting drafts, setup checklist, shortcuts and recent
+          projects moved to Home (2026-10-29, the owner's ask): Insights is
+          what happened; Home is what needs you. */}
 
       {/* Top stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -284,7 +279,6 @@ export default async function AnalyticsPage() {
         )}
       </Card>
 
-      <Suspense fallback={null}><RecentProjects userId={userId} /></Suspense>
     </div>
   );
 }

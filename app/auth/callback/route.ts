@@ -10,7 +10,7 @@ import { screenSignup, canonicalEmail } from "@/lib/spam-guards";
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/create";
+  const next = searchParams.get("next") ?? "/home";
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`);
@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
 
     // Admins always go straight to the app — no billing or onboarding check
     if (hasAdminPerks(profile?.role)) {
-      return redirectTo("/create");
+      return redirectTo("/home");
     }
 
     if (profile?.onboarding_done) {
@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
       const paidPlans = ["starter", "agent", "pro"];
       const hasCredits = (profile.credits_remaining ?? 0) > 0 || (profile.long_credits_remaining ?? 0) > 0 || (profile.purchased_short_videos ?? 0) > 0 || (profile.purchased_long_videos ?? 0) > 0;
       const hasPaidAccess = paidPlans.includes(tier) || hasCredits;
-      return redirectTo(hasPaidAccess ? "/create" : "/billing");
+      return redirectTo(hasPaidAccess ? "/home" : "/billing");
     }
   }
 

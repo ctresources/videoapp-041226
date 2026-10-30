@@ -217,14 +217,14 @@ export async function middleware(request: NextRequest) {
     }
 
     if (hasAdminPerks(profile.role)) {
-      return applyRef(NextResponse.redirect(new URL("/create", request.url)));
+      return applyRef(NextResponse.redirect(new URL("/home", request.url)));
     }
 
     const tier = profile.subscription_tier ?? "free";
     const paidPlans = ["starter", "agent", "pro"];
     const hasCredits = (profile.credits_remaining ?? 0) > 0 || (profile.long_credits_remaining ?? 0) > 0 || (profile.purchased_short_videos ?? 0) > 0 || (profile.purchased_long_videos ?? 0) > 0;
     const hasPaidAccess = paidPlans.includes(tier) || hasCredits;
-    return applyRef(NextResponse.redirect(new URL(hasPaidAccess ? "/create" : "/billing", request.url)));
+    return applyRef(NextResponse.redirect(new URL(hasPaidAccess ? "/home" : "/billing", request.url)));
   }
 
   // Unauthenticated users on protected routes → login

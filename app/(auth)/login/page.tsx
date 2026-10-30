@@ -94,7 +94,7 @@ export default function LoginPage() {
 
     // Route based on subscription and credits — same logic as auth callback
     const { data: { user } } = await supabase.auth.getUser();
-    let destination = "/create";
+    let destination = "/home";
     if (user) {
       const { data: profile } = await supabase
         .from("profiles")

@@ -23,6 +23,8 @@ import { track } from "@/lib/track";
 type NavItem = { href: string; label: string; from: "md" | "lg" | "xl" };
 
 const PAID_NAV: NavItem[] = [
+  // The agentic Home, first (2026-10-29, the owner's dashboard).
+  { href: "/home", label: "Home", from: "md" },
   { href: "/create", label: "Spark Studio", from: "md" },
   { href: "/videos", label: "My Sparks", from: "md" },
   // Weekly Autopilot's review screen (2026-10-21).
@@ -44,6 +46,7 @@ const PAID_NAV: NavItem[] = [
  * also refuse a free account on the server (components/access/feature-gate).
  */
 const FREE_NAV: NavItem[] = [
+  { href: "/home", label: "Home", from: "md" },
   { href: "/create", label: "Spark Studio", from: "md" },
   { href: "/videos", label: "My Sparks", from: "md" },
   // The free plan's limited tries (2026-10-28); locked once they're spent.
@@ -55,7 +58,7 @@ const FREE_NAV: NavItem[] = [
 ];
 
 /** Until the plan is known: only what both menus share, so nothing flashes. */
-const LOADING_NAV: NavItem[] = PAID_NAV.filter((i) => i.href === "/create" || i.href === "/videos");
+const LOADING_NAV: NavItem[] = PAID_NAV.filter((i) => i.href === "/home" || i.href === "/create" || i.href === "/videos");
 
 export function navItemsFor(account: Account | null): NavItem[] {
   if (!account) return LOADING_NAV;

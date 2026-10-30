@@ -8,6 +8,7 @@ import { useCreateProgress } from "@/components/layout/create-progress";
 import { cn } from "@/lib/utils/cn";
 import { AskSparklee } from "@/components/layout/ask-sparklee";
 import { AccountMenu, MeetMenu, TopNav } from "@/components/layout/top-nav";
+import { HeaderMic } from "@/components/home/header-mic";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -21,6 +22,7 @@ const pageTitles: Record<string, string> = {
   "/analytics": "Spark Insights",
   "/social": "Social Media",
   "/billing": "Billing",
+  "/home": "Home",
   "/affiliate": "Affiliate Program",
   "/settings": "Settings",
   "/whats-new": "What's New",
@@ -76,7 +78,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     <>
     {/* Sticky only in the Create treatment: elsewhere the bar has always
         scrolled with the page and moving it would be a change to every route. */}
-    <div className={cn("shrink-0", onCreate && "sticky top-0 z-20")}>
+    {/* Sticky on Home too (2026-10-29), so the Sparklee mic stays in reach while scrolling. */}
+    <div className={cn("shrink-0", (onCreate || pathname === "/home") && "sticky top-0 z-20")}>
       <header
         className={cn(
           "flex h-[46px] items-center justify-between border-b px-4 md:px-5",
@@ -123,7 +126,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               ink and the gold a shade deeper. */}
           {/* Phones only since 2026-10-29: on computers the side menu shows
               the logo, and two side by side read as a mistake. */}
-          <Link href="/create" className="shrink-0 md:hidden">
+          <Link href="/home" className="shrink-0 md:hidden">
             <Image
               src={onCreate ? "/sparkreels-logo-dark-bar.webp" : "/sparkreels-logo-light-bar.webp"}
               alt="SparkReels.ai"
@@ -146,6 +149,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           {/* Google Meet, on computers (2026-10-20): Start now or Schedule
               for later. There is no side menu here, so the phone menu's rows
               never showed. */}
+          {/* Speak to Sparklee from any page (2026-10-29). */}
+          <HeaderMic dark={onCreate} />
           <MeetMenu dark={onCreate} />
           {/* The "Step 1" label came off at the owner's ask (2026-10-15): the
               steps bar on the page already says where you are. */}
