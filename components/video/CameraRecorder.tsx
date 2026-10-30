@@ -24,6 +24,7 @@ import {
   Megaphone,
   Film,
   Trash2,
+  Mail,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { showTrialLock } from "@/lib/utils/trial-lock";
@@ -51,6 +52,7 @@ import { micErrorMessage, useMicrophoneDevices, useStreamLevel } from "@/lib/hoo
 import { BrandedComposite, type SmoothSkin } from "@/lib/utils/branded-recorder";
 import { VoiceFollower, LiveTranscriber, isVoiceFollowSupported, followWordInContainer } from "@/lib/utils/voice-follow";
 import { PublishModal } from "@/components/social/PublishModal";
+import { useAccount } from "@/lib/hooks/use-account";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 import { TopicRadar } from "@/components/create/topic-radar";
 
@@ -605,6 +607,8 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
   const [openingVideo, setOpeningVideo] = useState(false);
   const [savedTitle, setSavedTitle] = useState("Camera Recording");
   const [showPublish, setShowPublish] = useState(false);
+  /** Email it after a take (2026-10-30, the owner's ask): paid plans, as in My Sparks. */
+  const account = useAccount();
   const [ctaProfile, setCtaProfile] = useState<{
     full_name: string | null; company_name: string | null;
     location_city: string | null; location_state: string | null;
@@ -2907,11 +2911,20 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
           </div>
         )}
 
-        {/* Action buttons */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* Action buttons. Email it once the take is saved (2026-10-30, the
+            owner's ask): the same Email it page My Sparks opens, set to this
+            video. Paid plans, as everywhere else. */}
+        <div className={cn("grid gap-2", viewedSaved && account?.paid ? "grid-cols-3" : "grid-cols-2")}>
           <Button onClick={handleDownload} variant="outline" size="lg" className="gap-2">
             <Download size={16} /> Download
           </Button>
+          {viewedSaved && account?.paid && (
+            <a href={`/video-email?video=${viewedSaved.videoId}`} className="contents">
+              <Button variant="outline" size="lg" className="gap-2 border-orange-600 text-orange-700 hover:bg-orange-50">
+                <Mail size={16} /> Email it
+              </Button>
+            </a>
+          )}
           <Button
             onClick={handleSaveForSocial}
             loading={saving}
