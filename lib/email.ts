@@ -436,7 +436,7 @@ export async function notifyTrialWindow({
   if (!RESEND_API_KEY) return false;
 
   const hi = name ? `Hi ${name.split(" ")[0]},` : "Hi,";
-  const plans = `${appUrl}/billing`;
+  const plans = `${appUrl}/settings/billing`;
   const dayWord = daysLeft === 1 ? "day" : "days";
 
   const subject = stage === "warning"
@@ -1302,4 +1302,64 @@ export function buildFreeFollowupEmail({ name, city, step, unsubscribeUrl }: {
     `${footer} Stop these reminders: ${unsubscribeUrl}`,
   ].join("\n");
   return { subject, html, text };
+}
+
+/**
+ * Account cleanup warnings (2026-10-29, the owner's go-ahead): 30 and 7 days
+ * before an inactive free account's or a canceled account's videos and
+ * uploads are removed (app/api/cron/account-cleanup). Opening SparkReels
+ * before the date keeps everything.
+ */
+export async function sendAccountCleanupWarning({ email, name, daysLeft, dueAt, videos, reason, appUrl }: {
+  email: string;
+  name: string | null;
+  daysLeft: 30 | 7;
+  /** ISO date the files go. */
+  dueAt: string;
+  videos: number;
+  reason: "inactive_free" | "canceled";
+  appUrl: string;
+}): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+  const first = name?.trim().split(/\s+/)[0];
+  const date = new Date(dueAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" });
+  const what = videos > 0 ? `your ${videos} video${videos === 1 ? "" : "s"} and uploaded photos` : "your uploaded photos and recordings";
+  const why = reason === "canceled"
+    ? "Your SparkReels plan has ended."
+    : "We haven't seen you on SparkReels in a while.";
+  const subject = daysLeft === 30
+    ? `Your SparkReels videos will be removed on ${date}`
+    : `Reminder: your SparkReels videos will be removed in 7 days`;
+  const lines = [
+    `${why} To keep things tidy, on ${date} we'll remove ${what}.`,
+    "Your account, blog posts and settings stay.",
+    "To keep everything, just open SparkReels before then. That's all it takes.",
+    videos > 0 ? "Or download any videos you want to keep from My Sparks." : "",
+  ].filter(Boolean);
+  const cta = "Open SparkReels";
+  const res = await resendPost({
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: email,
+      reply_to: NOTIFY_EMAIL,
+      subject,
+      html: `
+        <p>Hi${first ? ` ${escHtml(first)}` : ""},</p>
+        ${lines.map((l) => `<p>${escHtml(l)}</p>`).join("\n        ")}
+        <p><a href="${appUrl}/videos" style="display:inline-block;background:#BA7517;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:600">${cta}</a></p>
+        ${reason === "canceled" ? `<p>Want your plan back? <a href="${appUrl}/settings/billing">See plans</a>.</p>` : ""}
+        ${SIGNOFF_HTML}
+      `,
+      text: [
+        `Hi${first ? ` ${first}` : ""},`, "",
+        ...lines.flatMap((l) => [l, ""]),
+        `${cta}: ${appUrl}/videos`,
+        reason === "canceled" ? `Want your plan back? ${appUrl}/settings/billing` : "",
+        "", SIGNOFF_TEXT,
+      ].join("\n"),
+    }),
+  }).catch(() => null);
+  return !!res?.ok;
 }

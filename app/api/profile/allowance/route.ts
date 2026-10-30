@@ -1,6 +1,7 @@
 import { hasAdminPerks } from "@/lib/utils/roles";
 import { getAccessLevel, isAffiliateEligible } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
 import {
@@ -30,11 +31,18 @@ export async function GET() {
 
   const { data } = await supabase
     .from("profiles")
-    .select(`${ALLOWANCE_SELECT}, subscription_tier, role, first_video_generated_at, last_seen_whats_new, current_period_end`)
+    .select(`${ALLOWANCE_SELECT}, subscription_tier, role, first_video_generated_at, last_seen_whats_new, current_period_end, last_active_at`)
     .eq("id", user.id)
     .single();
 
   const profile = (data ?? {}) as Record<string, number | string | null>;
+
+  // Opening the app counts as being back (2026-10-29): read by the account
+  // cleanup job. Written at most once a day.
+  const seen = Date.parse(String(profile.last_active_at ?? "")) || 0;
+  if (Date.now() - seen > 86_400_000) {
+    await createAdminClient().from("profiles").update({ last_active_at: new Date().toISOString() }).eq("id", user.id).then(() => {}, () => {});
+  }
   const isAdmin = hasAdminPerks(profile.role as string | null);
   /** The owner: Admin panel and owner-only tools. Staff get perks, not this. */
   const isRealAdmin = profile.role === "admin";

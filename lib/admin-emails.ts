@@ -1,7 +1,7 @@
 import {
   SIGNOFF_HTML, SIGNOFF_TEXT, previewEmails,
   notifyAffiliateApproved, notifyAffiliateCommission, notifyPostFailed, notifyTrialWindow,
-  sendAiQuestionsToVisitor, sendAutopilotWeek, sendFreeFollowupEmail, sendImportAddress, sendWelcomeEmail, sendVideoReadyEmail,
+  sendAiQuestionsToVisitor, sendAutopilotWeek, sendFreeFollowupEmail, sendImportAddress, sendWelcomeEmail, sendVideoReadyEmail, sendAccountCleanupWarning,
   type CapturedEmail,
 } from "@/lib/email";
 
@@ -85,6 +85,10 @@ export const EMAIL_CATALOG: { key: string; name: string; goesTo: string; when: s
     build: () => sendAutopilotWeek({ ...SAMPLE, videos: 2, blogs: 1, monday: "2026-10-26" }) },
   { key: "video-ready", name: "Your video is ready", goesTo: "Agent", when: "A video finishes and they aren't in the app",
     build: () => sendVideoReadyEmail({ ...SAMPLE, title: "Springfield Events This Week", url: `${APP}/videos` }) },
+  { key: "cleanup-30", name: "Videos removed in 30 days", goesTo: "Free account quiet 6 months, or canceled", when: "30 days before cleanup",
+    build: () => sendAccountCleanupWarning({ ...SAMPLE, daysLeft: 30, dueAt: "2026-12-01T12:00:00Z", videos: 4, reason: "inactive_free", appUrl: APP }) },
+  { key: "cleanup-7", name: "Videos removed in 7 days", goesTo: "Same accounts, not back yet", when: "7 days before cleanup",
+    build: () => sendAccountCleanupWarning({ ...SAMPLE, daysLeft: 7, dueAt: "2026-12-01T12:00:00Z", videos: 4, reason: "canceled", appUrl: APP }) },
   { key: "post-failed", name: "Post didn't go out", goesTo: "Agent", when: "When a social post fails",
     build: () => notifyPostFailed({ ...SAMPLE, platform: "Facebook", title: "Springfield market update", reason: "Facebook needs the Page reconnected.", appUrl: APP }) },
   { key: "import-address", name: "Import address", goesTo: "Agent", when: "When they press Email this address to me",
