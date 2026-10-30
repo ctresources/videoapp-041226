@@ -30,11 +30,11 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const admin = createAdminClient();
-  const body = (await req.json().catch(() => ({}))) as { action?: string; script?: string; projectId?: string; videoId?: string; lookId?: string };
+  const body = (await req.json().catch(() => ({}))) as { action?: string; script?: string; subject?: string; projectId?: string; videoId?: string | null; lookId?: string };
 
   if (body.action === "load") {
     const [{ data: prof }, token, signature, { data: vids }] = await Promise.all([
-      admin.from("profiles").select("google_review_url").eq("id", user.id).single(),
+      admin.from("profiles").select("google_review_url, review_request_defaults, review_video_id").eq("id", user.id).single(),
       loadBoldTrailToken(admin, user.id),
       loadAgentSignature(admin, user.id),
       admin.from("generated_videos")
@@ -43,8 +43,22 @@ export async function POST(req: NextRequest) {
         .order("created_at", { ascending: false }).limit(12),
     ]);
     const picks = token ? await loadQuickPicks(admin, user.id).catch(() => []) : [];
+    const pr = prof as { google_review_url: string | null; review_request_defaults: { script?: string; subject?: string } | null; review_video_id: string | null } | null;
+    // The saved review video (2026-10-30), wherever it is in their list.
+    let savedVideo: { id: string; url: string; createdAt: string; seconds: number | null; title: string; thumbnail: string | null } | null = null;
+    if (pr?.review_video_id) {
+      const { data: sv } = await admin.from("generated_videos")
+        .select("id, video_url, created_at, duration_seconds, render_status, projects(title, thumbnail_url)")
+        .eq("id", pr.review_video_id).eq("user_id", user.id).maybeSingle();
+      const v = sv as unknown as { id: string; video_url: string | null; created_at: string; duration_seconds: number | null; render_status: string | null; projects: { title: string | null; thumbnail_url: string | null } | null } | null;
+      if (v?.video_url && v.render_status === "completed") {
+        savedVideo = { id: v.id, url: v.video_url, createdAt: v.created_at, seconds: v.duration_seconds, title: v.projects?.title ?? "Review video", thumbnail: v.projects?.thumbnail_url ?? null };
+      }
+    }
     return NextResponse.json({
-      reviewUrl: (prof as { google_review_url: string | null } | null)?.google_review_url ?? null,
+      reviewUrl: pr?.google_review_url ?? null,
+      defaults: pr?.review_request_defaults ?? null,
+      savedVideo,
       boldtrail: !!token,
       picks,
       signature,
@@ -120,6 +134,38 @@ export async function POST(req: NextRequest) {
     const ai = { ...(((proj as { ai_script: Record<string, unknown> | null } | null)?.ai_script) ?? {}), kind: "review_request" };
     await admin.from("projects").update({ ai_script: ai }).eq("id", row.project_id);
     return NextResponse.json({ ok: true });
+  }
+
+  /**
+   * POST { action: "defaults", script, subject } (2026-10-30, the owner's
+   * ask): the agent's own words, filled in every time. Empty clears them.
+   */
+  if (body.action === "defaults") {
+    const script = (body.script ?? "").trim().replace(/\s+/g, " ").slice(0, 2000);
+    const subject = (body.subject ?? "").trim().slice(0, 150);
+    const value = script || subject ? { ...(script && { script }), ...(subject && { subject }) } : null;
+    const { error } = await admin.from("profiles").update({ review_request_defaults: value }).eq("id", user.id);
+    if (error) return NextResponse.json({ error: "Couldn't save them. Try again." }, { status: 500 });
+    return NextResponse.json({ defaults: value });
+  }
+
+  /**
+   * POST { action: "saveVideo", videoId | null } (2026-10-30): one video
+   * reused for every request, so it is made once. null clears it. Only a
+   * finished video of this account's.
+   */
+  if (body.action === "saveVideo") {
+    if (!body.videoId) {
+      await admin.from("profiles").update({ review_video_id: null }).eq("id", user.id);
+      return NextResponse.json({ ok: true, savedVideoId: null });
+    }
+    const { data: v } = await admin.from("generated_videos")
+      .select("id, render_status, video_url").eq("id", body.videoId).eq("user_id", user.id).maybeSingle();
+    const row = v as { id: string; render_status: string | null; video_url: string | null } | null;
+    if (!row?.video_url || row.render_status !== "completed") return NextResponse.json({ error: "That video isn't ready yet." }, { status: 400 });
+    const { error } = await admin.from("profiles").update({ review_video_id: row.id }).eq("id", user.id);
+    if (error) return NextResponse.json({ error: "Couldn't save it. Try again." }, { status: 500 });
+    return NextResponse.json({ ok: true, savedVideoId: row.id });
   }
 
   return NextResponse.json({ error: "Unknown action." }, { status: 400 });

@@ -1435,7 +1435,12 @@ function FullGuide() {
                 teleprompter, and when it&apos;s saved, come back and it&apos;s picked for you),{" "}
                 <strong>Avatar in circle</strong> (up to 60 seconds, uses 1 short video),{" "}
                 <strong>Photo reel</strong> (upload your photos; the words show as text cards or your cloned voice
-                reads them; free) or <strong>Use a video I made</strong>. <strong>3 The email</strong>: the
+                reads them; free) or <strong>Use a video I made</strong>. Make one general video once, with no
+                client names, and press <strong>Save as my review video</strong>: from then on it&apos;s picked for
+                you every time and never made again, so it uses nothing more from your plan.{" "}
+                <strong>Save as my default</strong> under the words keeps your words and subject; they fill in
+                every time, and you can also change them in Settings under your review link.{" "}
+                <strong>3 The email</strong>: the
                 subject and note; {"{first name}"} becomes each person&apos;s first name.{" "}
                 <strong>4 Send email</strong>: BoldTrail contacts get it from your BoldTrail address. Someone
                 new is saved to BoldTrail only if you tick <strong>Also add them to my BoldTrail</strong>;

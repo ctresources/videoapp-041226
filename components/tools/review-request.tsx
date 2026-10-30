@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { Camera, CircleUser, Film, ImagePlus, Loader2, Send, X } from "lucide-react";
+import { Camera, CircleUser, Film, ImagePlus, Loader2, Send, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmailResult } from "@/components/email/email-result";
 import { BoldTrailPeople, BT_MAX, type BtContact } from "@/components/email/boldtrail-send";
@@ -106,6 +106,15 @@ export function ReviewRequestTool() {
   const [note, setNote] = useState(DEFAULT_NOTE);
   /** The note follows the video's words until it's typed in here (2026-10-29). */
   const [noteOwn, setNoteOwn] = useState(false);
+  /**
+   * The agent's own default words and one saved review video (2026-10-30,
+   * the owner's ask): filled in and picked each time, so it's add people and
+   * send. Saved on the profile (/api/review-request "defaults", "saveVideo").
+   */
+  const [savedWords, setSavedWords] = useState<{ script?: string; subject?: string } | null>(null);
+  const [savedVideoId, setSavedVideoId] = useState<string | null>(null);
+  const [savingWords, setSavingWords] = useState(false);
+  const [savingVideo, setSavingVideo] = useState(false);
   useEffect(() => { if (!noteOwn) setNote(noteFromScript(script)); }, [script, noteOwn]);
   const [confirming, setConfirming] = useState(false);
   const [copyMe, setCopyMe] = useState(false);
@@ -122,7 +131,14 @@ export function ReviewRequestTool() {
       setPicks(d.picks ?? []);
       setSignature(d.signature ?? {});
       const list = (d.videos ?? []) as Vid[];
-      setVideos(list);
+      const sv = (d.savedVideo ?? null) as Vid | null;
+      setVideos(sv && !list.some((v) => v.id === sv.id) ? [sv, ...list] : list);
+      if (d.defaults) {
+        setSavedWords(d.defaults);
+        if (d.defaults.script) setScript(d.defaults.script);
+        if (d.defaults.subject) setSubject(d.defaults.subject);
+      }
+      if (sv) { setSavedVideoId(sv.id); setWay("mine"); setVideo(sv); }
       // Back from recording it on the camera: the newest take since then.
       try {
         const since = Number(sessionStorage.getItem(RETURN_KEY) || 0);
@@ -166,6 +182,32 @@ export function ReviewRequestTool() {
       sessionStorage.setItem(RETURN_KEY, String(Date.now()));
     } catch { /* unavailable */ }
     router.push("/create?tab=camera");
+  }
+
+  async function saveWords() {
+    setSavingWords(true);
+    try {
+      const r = await fetch("/api/review-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "defaults", script, subject }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { toast.error(d?.error || "Couldn't save them."); return; }
+      setSavedWords(d.defaults ?? null);
+      toast.success("Saved. These words fill in every time.");
+    } finally { setSavingWords(false); }
+  }
+
+  async function saveVideo(id: string | null) {
+    setSavingVideo(true);
+    try {
+      const r = await fetch("/api/review-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveVideo", videoId: id }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { toast.error(d?.error || "Couldn't save it."); return; }
+      setSavedVideoId(id);
+      if (id) {
+        // The video's words become the default too, so the note matches it.
+        await saveWords();
+        toast.success("Saved. This video is picked for you every time.");
+      } else toast.success("Saved video cleared.");
+    } finally { setSavingVideo(false); }
   }
 
   async function makeAvatar() {
@@ -352,8 +394,15 @@ export function ReviewRequestTool() {
           <Step n={2} title="Your video">
             <p className={eyebrow}>The words</p>
             <textarea rows={4} value={script} onChange={(e) => setScript(e.target.value)} className={`${input} resize-none`} />
-            <p className={`mb-3 mt-1 text-[12px] ${way === "avatar" && words > MAX_AVATAR_WORDS ? "font-semibold text-red-600" : "text-spark-ink-faint"}`}>
+            <p className={`mt-1 text-[12px] ${way === "avatar" && words > MAX_AVATAR_WORDS ? "font-semibold text-red-600" : "text-spark-ink-faint"}`}>
               {words} words, about {Math.max(1, Math.round((words / WPM) * 60))} seconds{way === "avatar" ? ` · Avatar in circle: ${MAX_AVATAR_WORDS} words at most` : ""}
+            </p>
+            <p className="mb-3 mt-1 text-[12.5px]">
+              {savedWords && (savedWords.script ?? "") === script.trim().replace(/\s+/g, " ") && (savedWords.subject ?? "") === subject.trim()
+                ? <span className="text-[#0f7a52]">✓ Your default words</span>
+                : <button type="button" onClick={() => void saveWords()} disabled={savingWords} className="font-semibold text-[#A3660F] underline disabled:opacity-60">
+                    {savingWords ? "Saving…" : "Save as my default (words and subject)"}
+                  </button>}
             </p>
             <div className="grid grid-cols-2 gap-2">
               {choice("record", <Camera size={14} />, "Record it myself", "Free, unlimited")}
@@ -432,8 +481,16 @@ export function ReviewRequestTool() {
             )}
             {video && (
               <p className="mt-3 text-[13px] font-medium text-[#0f7a52]">
-                ✓ Video ready · <a href={video.url} target="_blank" rel="noreferrer" className="underline">Watch it</a>
+                ✓ {video.id === savedVideoId ? "Your saved review video" : "Video ready"} · <a href={video.url} target="_blank" rel="noreferrer" className="underline">Watch it</a>
                 {way !== "mine" && <> · <button type="button" className="underline" onClick={() => setVideo(null)}>Make another</button></>}
+                {video.id === savedVideoId
+                  ? <> · <button type="button" className="underline" onClick={() => { setVideo(null); setWay(null); }}>Use a different one</button> · <button type="button" className="text-spark-ink-muted underline" disabled={savingVideo} onClick={() => void saveVideo(null)}>Clear saved video</button></>
+                  : video.id && <> · <button type="button" disabled={savingVideo} onClick={() => void saveVideo(video.id)} className="inline-flex items-center gap-1 font-semibold text-[#A3660F] underline disabled:opacity-60"><Star size={12} /> {savingVideo ? "Saving…" : "Save as my review video"}</button></>}
+              </p>
+            )}
+            {!video && savedVideoId && (
+              <p className="mt-3 text-[12.5px] text-spark-ink-muted">
+                <button type="button" className="font-semibold text-[#A3660F] underline" onClick={() => { const v = videos.find((x) => x.id === savedVideoId); if (v) { setWay("mine"); setVideo(v); } }}>Use my saved review video</button>
               </p>
             )}
           </Step>

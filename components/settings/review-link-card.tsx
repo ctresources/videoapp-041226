@@ -15,14 +15,36 @@ export function ReviewLinkCard({ userId }: { userId: string }) {
   const [url, setUrl] = useState("");
   const [saved, setSaved] = useState("");
   const [saving, setSaving] = useState(false);
+  // Default words for the review request (2026-10-30, the owner's ask): the
+  // same ones the tool's "Save as my default" saves.
+  const [words, setWords] = useState("");
+  const [subject, setSubject] = useState("");
+  const [savedWords, setSavedWords] = useState({ words: "", subject: "" });
+  const [savingWords, setSavingWords] = useState(false);
 
   useEffect(() => {
-    createClient().from("profiles").select("google_review_url").eq("id", userId).single()
+    createClient().from("profiles").select("google_review_url, review_request_defaults").eq("id", userId).single()
       .then(({ data }) => {
-        const v = (data as { google_review_url: string | null } | null)?.google_review_url ?? "";
+        const row = data as { google_review_url: string | null; review_request_defaults: { script?: string; subject?: string } | null } | null;
+        const v = row?.google_review_url ?? "";
         setUrl(v); setSaved(v);
+        const w = row?.review_request_defaults?.script ?? "";
+        const sub = row?.review_request_defaults?.subject ?? "";
+        setWords(w); setSubject(sub); setSavedWords({ words: w, subject: sub });
       });
   }, [userId]);
+
+  async function saveWords() {
+    setSavingWords(true);
+    const r = await fetch("/api/review-request", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "defaults", script: words, subject }),
+    }).catch(() => null);
+    setSavingWords(false);
+    if (!r?.ok) { toast.error("Couldn't save them. Try again."); return; }
+    setSavedWords({ words: words.trim(), subject: subject.trim() });
+    toast.success(words.trim() || subject.trim() ? "Default words saved." : "Default words cleared.");
+  }
 
   const clean = url.trim();
   const valid = !clean || /^https:\/\/\S+\.\S+/.test(clean);
@@ -63,6 +85,31 @@ export function ReviewLinkCard({ userId }: { userId: string }) {
             <Button size="sm" variant="outline">Test the link</Button>
           </a>
         )}
+      </div>
+
+      <div className="mt-5 border-t border-spark-rule pt-4">
+        <p className="font-semibold text-brand-text">Your default review request words</p>
+        <p className="mt-0.5 text-[13px] text-spark-ink-muted">Filled in every time you ask for a review, in Spark Tools.</p>
+        <label className="mt-3 block text-[13px] font-semibold text-spark-ink-soft">Video words</label>
+        <textarea
+          rows={4}
+          value={words}
+          onChange={(e) => setWords(e.target.value)}
+          placeholder="Hi! It was such a pleasure helping you with your move. If you have a minute, would you leave me a quick Google review?…"
+          className="mt-1 w-full resize-none rounded-xl border border-spark-rule px-3.5 py-2.5 text-[15px] outline-none focus:ring-2 focus:ring-spark-amber"
+        />
+        <label className="mt-2 block text-[13px] font-semibold text-spark-ink-soft">Email subject</label>
+        <input
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          placeholder="Would you leave me a quick review?"
+          className="mt-1 w-full rounded-xl border border-spark-rule px-3.5 py-2.5 text-[15px] outline-none focus:ring-2 focus:ring-spark-amber"
+        />
+        <p className="mt-1.5 text-[12.5px] text-spark-ink-muted">The email&apos;s note starts with &ldquo;Hi {"{first name}"},&rdquo; and follows the video words.</p>
+        <Button size="sm" className="mt-3" onClick={() => void saveWords()} loading={savingWords}
+          disabled={words.trim() === savedWords.words && subject.trim() === savedWords.subject}>
+          Save words
+        </Button>
       </div>
     </Card>
   );
