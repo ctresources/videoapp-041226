@@ -3319,7 +3319,7 @@ export default function ToolsPage() {
             <HelpCircle size={13} /> How To Use
           </button>
         </div>
-        <p className="text-sm text-primary-100 mt-1">Supercharge your content creation with AI</p>
+        <p className="text-sm text-primary-100 mt-1">Everything around your videos: thumbnails and titles, images and banners, Google reviews, seller updates and AI search answers.</p>
       </div>
 
       {(trialLocked || (freeRunsLeft !== null && freeRunsLeft >= 0)) && (
