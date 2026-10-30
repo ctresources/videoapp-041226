@@ -30,6 +30,17 @@ export type WhatsNewItem = {
 
 const ITEMS: WhatsNewItem[] = [
   {
+    id: "home-ask-sparklee",
+    title: "Home: Tell Sparklee What You Want",
+    description:
+      "Say or type a goal and Sparklee plans it from your plan and accounts. See what needs your approval, what she found and what is running, all on one page. Nothing posts until you approve.",
+    releaseDate: "2026-10-29",
+    howItWorksAnchor: "home",
+    badge: "NEW",
+    freeHref: "/home",
+    freeLabel: "Open Home",
+  },
+  {
     id: "twin-outfits",
     title: "Outfits for Your Digital Twin",
     description:

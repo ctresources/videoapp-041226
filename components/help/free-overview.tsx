@@ -15,6 +15,11 @@ import { TrackedLink } from "@/components/access/tracked-link";
 
 const BASICS = [
   {
+    icon: Sparkles,
+    title: "Ask Sparklee on Home",
+    text: "Say or type what you want. Sparklee plans it, and nothing posts until you approve.",
+  },
+  {
     icon: Mic,
     title: "Create a Spark",
     text: "Start with an idea, article, URL, upload, or recording.",
@@ -47,7 +52,7 @@ const LOCKED = [
 export function FreeOverview() {
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {BASICS.map(({ icon: Icon, title, text }) => (
           <Card key={title} padding="md" className="h-full">
             <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-spark-amber-tint">

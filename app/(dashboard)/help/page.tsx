@@ -100,9 +100,10 @@ function FullGuide() {
           <ul className="flex flex-col gap-2 text-sm text-slate-600 leading-relaxed list-disc pl-5">
             <li>
               <strong>The menu is on the left side and across the top</strong> on a computer, the same
-              pages in both: Spark Studio, My Sparks, AutoSparks, Spark Tools, Spark Calendar, Spark
-              Insights, Affiliate, Settings, What&apos;s New and How It Works. The side menu also has{" "}
-              <strong>Google Meet</strong> and <strong>Sign Out</strong>, and stays put as you scroll.{" "}
+              pages in both: Home, Spark Studio, My Sparks, AutoSparks, Spark Tools, Spark Calendar, Spark
+              Insights, Settings, What&apos;s New, How It Works and Affiliate. <strong>Home</strong> is
+              where you land when you sign in, and the logo always takes you back to it. The side menu
+              also has <strong>Google Meet</strong> and <strong>Sign Out</strong>, and stays put as you scroll.{" "}
               <strong>What&apos;s New</strong> shows the latest features, with a gold dot when there is
               one you haven&apos;t seen; each has <strong>Learn How It Works</strong>, which brings you to
               its step here. The page you are on is highlighted on the side and underlined on top. On a
@@ -139,6 +140,69 @@ function FullGuide() {
               <strong>The first time you sign in</strong>, Sparklee asks you to set up your profile.{" "}
               <strong>Ask me how</strong> has her talk you through it; <strong>Go to Settings</strong> takes
               you straight there.
+            </li>
+          </ul>
+        </Card>
+
+        {/* Home (2026-10-29, the owner's agentic dashboard). Not a numbered
+            step, so every step below keeps its number. */}
+        <Card padding="sm">
+          <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Start Here</p>
+          <h2 className="text-base font-bold text-brand-text mb-3 scroll-mt-20" id="home">Home — Tell Sparklee What You Want</h2>
+          <ul className="flex flex-col gap-2 text-sm text-slate-600 leading-relaxed list-disc pl-5">
+            <li>
+              <strong>Ask Sparklee</strong> is the big box at the top: <em>What do you want to accomplish?</em>{" "}
+              Tap the <strong>mic</strong> and say it, or type it, then press <strong>Send</strong>. For
+              example: &ldquo;Keep me visible to sellers in my town this week&rdquo; or &ldquo;I haven&apos;t
+              posted this week. What should I make?&rdquo; The <strong>Try saying</strong> buttons under it
+              ask for you.
+            </li>
+            <li>
+              Sparklee checks your plan, the videos you have left, the accounts you&apos;ve connected and your
+              CRM, then shows her <strong>plan</strong>: each video, the day it would post and where, plus any
+              step you finish yourself in a tool (a seller update or a review request, for example). Under it
+              she says how many of your remaining videos it would use. If it needs an account you
+              haven&apos;t connected, she says so with a link to connect it.
+            </li>
+            <li>
+              <strong>Edit plan</strong> lets you change a day or remove a step. <strong>Approve plan</strong>{" "}
+              writes the drafts: script, blog article, title and thumbnail. <strong>No video is made and
+              nothing is used from your plan yet.</strong> Each draft waits in <strong>Needs Your Approval</strong>,
+              where you press <strong>Make video</strong>, watch it, then <strong>Approve</strong> to post.
+              Nothing posts, sends or contacts anyone without your approval.
+            </li>
+            <li>
+              <strong>Or create it yourself:</strong> the row under Ask Sparklee opens Spark Studio on Video /
+              Reel, Camera, Blog or Listing, or Spark Tools, for when you want full control.
+            </li>
+            <li>
+              <strong>Needs Your Approval</strong> lists drafts from AutoSparks, Halo, email and Sparklee, and
+              seller updates. A finished video has <strong>Watch</strong> and <strong>Approve</strong> right
+              there; one not made yet has <strong>Make video</strong>, which opens AutoSparks.
+            </li>
+            <li>
+              <strong>Opportunities Sparklee Found</strong> come from real signs: a new page on a site you watch
+              (Halo or your own website), a post that got well above your usual views, an account with nothing
+              posted for a week or more, a listing with no seller update this week or one that just wrapped up,
+              open days coming up, videos left close to your plan renewing, and questions buyers research about
+              your town. <strong>Make draft</strong> hands it to Sparklee as a request, so you see her plan first.
+            </li>
+            <li>
+              <strong>Working For You</strong> shows what&apos;s happening right now: videos rendering, videos
+              waiting in line, drafts being prepared, approved videos waiting for their day, posts booked, and
+              what posted recently. It never guesses how long something will take.
+            </li>
+            <li>
+              <strong>This Week</strong> shows each day: green is posted, blue is booked, gold is waiting on you,
+              and an open day has <strong>+ Open</strong>, which asks Sparklee to plan something for it.{" "}
+              <strong>Calendar →</strong> opens Spark Calendar. It shows what SparkReels posts or schedules, not
+              posts you make directly on the platforms.
+            </li>
+            <li>
+              Below that: <strong>Your Plan</strong> (videos left, AI images used, when it renews),{" "}
+              <strong>Quick Insights</strong> (views on the last 30 days of posts, posts this week, your top post),{" "}
+              <strong>What&apos;s New</strong> and your latest <strong>Sparks</strong>. New accounts also see the{" "}
+              <strong>Getting Started</strong> checklist here until it&apos;s done.
             </li>
           </ul>
         </Card>
@@ -1538,12 +1602,10 @@ function FullGuide() {
             {/* The Dashboard and Spark Insights became one page on 2026-10-14. */}
             <Step n={27} title="Spark Insights — What You Have And How It Did" icon={BarChart2}>
               <Link href="/analytics" className="text-primary-600 font-medium hover:underline">Spark Insights</Link>{" "}
-              opens with what you have left — short videos, long videos, and whether camera recording
-              is unlocked with the days remaining — a <strong>Getting Started</strong> checklist that
-              disappears once you&apos;ve finished it, and buttons to create a video or open the
-              calendar. Your five most recent projects are at the bottom to pick back up.
+              is what happened; <strong>Home</strong> is what needs you. What you have left, the{" "}
+              <strong>Getting Started</strong> checklist and your latest work are on Home now.
               <span className="block mt-1.5">
-              Then it looks backwards. How many videos you&apos;ve made and published, a
+              Insights looks backwards: how many videos you&apos;ve made and published, a
               breakdown by platform and by video shape, and — for anything published to your connected
               YouTube channel — real <strong>views, likes and comments</strong>, with every video
               ranked and linked. Those numbers are fetched from YouTube once a day, so they&apos;re
@@ -1599,6 +1661,7 @@ function FullGuide() {
           <h2 className="text-base font-bold text-brand-text mb-3">The Weekly Rhythm</h2>
           <ol className="text-sm text-slate-600 leading-relaxed space-y-1.5 list-decimal pl-5">
             <li><strong>Once:</strong> set up your profile, voice, avatar, CTA, YouTube and your email import address (Part 1)</li>
+            <li><strong>Any time:</strong> on Home, tell Sparklee what you want, check her plan and approve it — then approve each video before it posts</li>
             <li><strong>Weekly:</strong> hit the mic and say it, tap a topic chip, or forward a report → generate script → Spark Video — about 5 minutes of your time</li>
             <li><strong>Hands off:</strong> add your Halo site on AutoSparks, or forward an email, and approve the drafts that show up there — they make and post themselves</li>
             <li><strong>Publish:</strong> one window sends it to YouTube and the other accounts you connected, with title, description, and tags attached</li>
