@@ -927,6 +927,20 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
     }
   }
 
+  /**
+   * The format switch on the live camera (2026-10-30): the shape is fixed
+   * when the camera opens, so a change closes it and opens it again in the
+   * new shape. Runs after the render, so openCamera sees the new shape.
+   */
+  const [reshapeTick, setReshapeTick] = useState(0);
+  const [reshaping, setReshaping] = useState(false);
+  useEffect(() => {
+    if (!reshapeTick) return;
+    setReshaping(true);
+    closeCamera();
+    void openCamera().finally(() => setReshaping(false));
+  }, [reshapeTick]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function closeCamera() {
     compositeRef.current?.destroy();
     compositeRef.current = null;
@@ -2582,6 +2596,35 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
             <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1.5">
               <Pause size={11} className="text-yellow-400" />
               <span className="text-white text-xs font-medium">{formatTime(seconds)}</span>
+            </div>
+          )}
+
+          {/* The format, right on the camera before recording (2026-10-30, the
+              owner's ask): the setup's Choose your format box is easy to miss,
+              and every way into the camera lands here. Switching reopens the
+              camera in the new shape. */}
+          {!isRecording && !isPaused && countdown === null && !screenMode && brandedSupported && (
+            <div className="absolute left-1/2 top-3 z-[5] flex -translate-x-1/2 overflow-hidden rounded-full border border-white/20 bg-black/65 p-0.5 backdrop-blur-sm">
+              {SHAPE_META.map((sh) => (
+                <button
+                  key={sh.key}
+                  type="button"
+                  aria-pressed={shape === sh.key}
+                  disabled={reshaping}
+                  onClick={() => {
+                    if (shape === sh.key) return;
+                    setShape(sh.key);
+                    if (!brandedLook) setBrandedLook(true);
+                    setReshapeTick((n) => n + 1);
+                  }}
+                  className={cn(
+                    "rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors",
+                    shape === sh.key ? "bg-spark-amber text-white" : "text-white/80 hover:text-white",
+                  )}
+                >
+                  {sh.label} · {sh.ratio}
+                </button>
+              ))}
             </div>
           )}
 
