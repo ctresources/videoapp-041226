@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
-  const script = (project as { ai_script: { hook?: string; title?: string } | null }).ai_script;
+  const script = (project as { ai_script: { hook?: string; title?: string; thumbnail_hook?: string } | null }).ai_script;
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -61,7 +61,8 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   return renderThumbnailCard({
-    hook: script?.hook || script?.title,
+    // A camera take's short hook (2026-10-30) before its full title.
+    hook: script?.hook || script?.thumbnail_hook || script?.title,
     agent: (profile as { full_name: string | null } | null)?.full_name,
   });
 }

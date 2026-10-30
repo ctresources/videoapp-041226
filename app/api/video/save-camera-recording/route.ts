@@ -3,6 +3,32 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSparkFor } from "@/lib/utils/ensure-spark";
 import { cameraGateResponse, noteRecordingSaved } from "@/lib/utils/free-trial";
 import { generateSeoData } from "@/lib/api/perplexity";
+import { openaiChatJson } from "@/lib/api/openai-chat";
+
+/**
+ * A take's title is the first line of what was read (CameraRecorder), so a
+ * spoken intro like "Hi, I wanted to give you a quick explanation of…" became
+ * the title and the thumbnail's big words. True when the title is that kind
+ * of stand-in rather than one the agent chose (2026-10-30, the owner's ask).
+ */
+function isStandInTitle(title: string, spoken: string): boolean {
+  const t = title.trim().toLowerCase().replace(/\s+/g, " ");
+  if (!t || t === "camera recording" || / recording$/.test(t)) return true;
+  const s = spoken.trim().toLowerCase().replace(/\s+/g, " ");
+  return s.length > 0 && s.startsWith(t.slice(0, Math.min(30, t.length)));
+}
+
+/** 3–5 punchy words for the thumbnail, from the title and what was said. */
+async function thumbnailHook(title: string, spoken: string): Promise<string> {
+  const out = await openaiChatJson(
+    "Write the big words for a YouTube thumbnail for a real estate agent's video: 3 to 5 words, plain English, title case, no emojis, no quotes, no punctuation except ? or !. Return only JSON: {\"hook\":\"...\"}",
+    [{ role: "user", content: `Title: ${title}\n\nWhat was said: ${spoken.slice(0, 1500)}` }],
+    { label: "camera-hook", maxTokens: 200, timeoutMs: 10_000 },
+  ).catch(() => null);
+  const h = typeof out?.hook === "string" ? out.hook.replace(/["“”]/g, "").trim() : "";
+  if (h && h.split(/\s+/).length <= 7) return h.slice(0, 60);
+  return title.split(/\s+/).slice(0, 5).join(" ");
+}
 import { ensureFaststart, needsFaststart } from "@/lib/utils/faststart";
 import { SCENES_DISCLOSURE } from "@/lib/utils/ai-made";
 import { getAccessLevel, isPaidLevel } from "@/lib/access";
@@ -348,6 +374,7 @@ export async function POST(req: NextRequest) {
   // from a scripted project that wrote its own, and regenerating would
   // overwrite wording the user may have edited.
   const canSummarise = spokenScript.length > 40;
+  let thumbHook = "";
   if (canSummarise || hook || cta || aiScenes) {
     try {
       const { data: existing } = await admin
@@ -375,6 +402,14 @@ export async function POST(req: NextRequest) {
 
         // The sign-off is appended rather than handed to the model. It is the
         // agent's own wording, and a summariser would paraphrase it.
+        // A real title and thumbnail words, not the first sentence spoken
+        // (2026-10-30, the owner's ask).
+        if (seo?.youtube_title && isStandInTitle(title, spokenScript)) {
+          title = seo.youtube_title.slice(0, 120);
+          await admin.from("projects").update({ title }).eq("id", resolvedProjectId);
+          if (!hook) thumbHook = await thumbnailHook(title, spokenScript);
+        }
+
         const body = seo?.youtube_description || hook || spokenScript;
         const description = [body, cta, aiScenes ? SCENES_DISCLOSURE : ""].filter(Boolean).join("\n\n").slice(0, 4900);
 
@@ -387,8 +422,10 @@ export async function POST(req: NextRequest) {
             } as unknown as Record<string, unknown>,
             // Keeps the script with the project so the editor and Publish
             // window have something to show for a camera video.
-            ai_script: (existing as { ai_script: unknown } | null)?.ai_script
-              ?? { title, script: spokenScript, hook, cta, keywords: [] },
+            ai_script: thumbHook
+              ? { ...(((existing as { ai_script: Record<string, unknown> | null } | null)?.ai_script) ?? { script: spokenScript, hook, cta, keywords: [] }), title, thumbnail_hook: thumbHook }
+              : (existing as { ai_script: unknown } | null)?.ai_script
+                ?? { title, script: spokenScript, hook, cta, keywords: [] },
           })
           .eq("id", resolvedProjectId);
       }
