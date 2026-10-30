@@ -779,6 +779,9 @@ function CreatePageInner() {
     // out what was meant and goes ahead if it is complete. The parameter is
     // taken off the address straight away, so a refresh or the back button
     // does not carry out the same command a second time.
+    // From the Video Business Card: open the Agent Intro (2026-10-30).
+    if (searchParams.get("intro") === "1") setIntroOpen(true);
+
     const say = searchParams.get("say");
     if (say?.trim()) {
       setInputMode("script");

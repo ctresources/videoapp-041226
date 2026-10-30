@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video Business Card</title>
+<style>
+  :root { --ink:#24221e; --soft:#4a463e; --muted:#77736a; --rule:#e8e3d8; --amber:#BA7517; --amber2:#A3660F; --tint:#fbf3e4; --paper:#f6f3ec; --brand:#1B5E82; --green:#0f7a52; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:15.5px/1.45 -apple-system, "Segoe UI", Inter, sans-serif; padding:24px 16px 50px; }
+  .wrap { max-width:1180px; margin:0 auto; }
+  h1 { font-size:24px; margin:0 0 4px; } .sub { color:var(--muted); margin:0 0 20px; }
+  .cols { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:28px; align-items:start; }
+  .label { font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--amber2); margin:0 0 8px; }
+  /* App side */
+  .panel { background:#fff; border:1px solid var(--rule); border-radius:18px; padding:18px 20px; margin-bottom:14px; }
+  .panel h2 { font-size:18px; margin:0 0 10px; display:flex; align-items:center; gap:8px; }
+  .row { display:flex; gap:10px; align-items:center; padding:9px 0; border-top:1px solid var(--rule); font-size:15px; }
+  .row:first-of-type { border-top:none; }
+  .row b { width:140px; flex:none; color:var(--soft); font-weight:600; }
+  .row span { flex:1; min-width:0; } .row em { font-style:normal; color:var(--green); font-weight:600; font-size:13px; }
+  .tog { width:38px; height:22px; border-radius:99px; background:var(--amber); position:relative; flex:none; } .tog::after { content:""; position:absolute; right:3px; top:3px; width:16px; height:16px; border-radius:50%; background:#fff; }
+  .tog.off { background:#d9d3c6; } .tog.off::after { right:auto; left:3px; }
+  .btn { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--rule); background:#fff; border-radius:11px; padding:8px 14px; font-size:14.5px; font-weight:650; color:var(--ink); }
+  .btn.gold { background:var(--amber); border-color:var(--amber); color:#fff; }
+  .share { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .share .btn { justify-content:center; }
+  .linkbox { display:flex; gap:8px; align-items:center; background:var(--paper); border:1px solid var(--rule); border-radius:12px; padding:8px 10px; margin-bottom:10px; font-size:14.5px; }
+  .linkbox span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .qrwrap { display:flex; gap:14px; align-items:center; margin-top:12px; }
+  .qr { width:96px; height:96px; flex:none; background:
+    repeating-linear-gradient(90deg,#111 0 6px,#fff 6px 12px), repeating-linear-gradient(0deg,#111 0 6px,#fff 6px 12px); background-blend-mode:difference; border:6px solid #fff; outline:1px solid var(--rule); border-radius:8px; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .stat { background:var(--paper); border-radius:12px; padding:10px 12px; } .stat b { font-size:20px; display:block; } .stat span { font-size:12.5px; color:var(--muted); }
+  .sig { border:1px dashed var(--rule); border-radius:12px; padding:12px; display:flex; gap:12px; align-items:center; font-size:13.5px; margin-top:10px; background:#fff; }
+  .sig .mini { width:86px; height:48px; border-radius:8px; background:linear-gradient(135deg,#2a3c4a,#1B5E82); position:relative; flex:none; }
+  .sig .mini::after { content:"▶"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px; }
+  /* Phone (public card) */
+  .phone { width:380px; border:12px solid #111; border-radius:40px; overflow:hidden; background:#fff; box-shadow:0 20px 50px rgba(0,0,0,.18); }
+  .url { background:#f1f1f1; font-size:12px; color:#555; text-align:center; padding:6px; }
+  .video { position:relative; aspect-ratio:9/12; background:linear-gradient(160deg,#cfd9e0 0%,#7d97a8 45%,#1B5E82 100%); }
+  .video .person { position:absolute; left:50%; bottom:0; transform:translateX(-50%); width:62%; height:82%; border-radius:48% 48% 0 0; background:radial-gradient(circle at 50% 22%, #e8c9a8 0 18%, transparent 19%), linear-gradient(#2b3440,#2b3440); opacity:.9; }
+  .play { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+  .play span { width:64px; height:64px; border-radius:50%; background:rgba(255,255,255,.92); display:flex; align-items:center; justify-content:center; font-size:22px; color:#1B5E82; box-shadow:0 6px 20px rgba(0,0,0,.25); }
+  .cap { position:absolute; left:12px; right:12px; bottom:12px; background:rgba(0,0,0,.55); color:#fff; border-radius:10px; padding:6px 10px; font-size:13px; text-align:center; }
+  .who { padding:14px 18px 6px; text-align:center; }
+  .who h3 { margin:0; font-size:22px; } .who p { margin:2px 0 0; color:var(--muted); font-size:14px; }
+  .logo { display:inline-block; margin-top:8px; font-weight:800; color:var(--brand); letter-spacing:.04em; font-size:13px; border:1.5px solid var(--brand); border-radius:6px; padding:2px 8px; }
+  .actions { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:12px 16px; }
+  .act { display:flex; flex-direction:column; align-items:center; gap:4px; font-size:12px; color:var(--soft); font-weight:600; }
+  .act i { width:46px; height:46px; border-radius:50%; background:var(--brand); color:#fff; display:flex; align-items:center; justify-content:center; font-style:normal; font-size:19px; }
+  .big { margin:4px 16px 8px; display:block; text-align:center; padding:12px; border-radius:14px; font-weight:700; font-size:15.5px; }
+  .big.primary { background:var(--brand); color:#fff; }
+  .big.line { border:1.5px solid var(--brand); color:var(--brand); }
+  .links { padding:6px 16px 4px; }
+  .links a { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--rule); border-radius:12px; margin-bottom:8px; color:var(--ink); text-decoration:none; font-size:14.5px; font-weight:600; }
+  .links a span { margin-left:auto; color:var(--muted); font-weight:400; font-size:13px; }
+  .socials { display:flex; justify-content:center; gap:10px; padding:4px 0 10px; }
+  .socials i { width:34px; height:34px; border-radius:50%; background:var(--paper); display:flex; align-items:center; justify-content:center; font-style:normal; font-size:13px; font-weight:800; color:var(--soft); }
+  .foot { text-align:center; font-size:11.5px; color:var(--muted); padding:8px 0 14px; border-top:1px solid var(--rule); }
+  .note { margin-top:22px; background:#fff8ea; border:1px solid #f0d9ad; border-radius:14px; padding:14px 18px; font-size:14px; color:#6b4a12; }
+  .story { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px; }
+  .frame p { font-size:13.5px; color:var(--soft); margin:8px 2px 0; }
+  .fv { position:relative; aspect-ratio:9/16; border-radius:16px; overflow:hidden; background:linear-gradient(160deg,#cfd9e0 0%,#7d97a8 45%,#1B5E82 100%); }
+  .fv .person { position:absolute; left:50%; bottom:0; transform:translateX(-50%); width:70%; height:72%; border-radius:48% 48% 0 0; background:radial-gradient(circle at 50% 22%, #e8c9a8 0 18%, transparent 19%), linear-gradient(#2b3440,#2b3440); opacity:.9; }
+  .lower { position:absolute; left:10px; right:10px; bottom:18%; background:#fff; border-left:5px solid var(--brand); border-radius:8px; padding:7px 10px; box-shadow:0 6px 18px rgba(0,0,0,.25); }
+  .lower b { display:block; font-size:15px; } .lower span { font-size:11.5px; color:var(--muted); }
+  .capt { position:absolute; left:10px; right:10px; bottom:12%; background:rgba(0,0,0,.6); color:#fff; border-radius:8px; padding:6px 8px; font-size:12.5px; text-align:center; font-weight:600; }
+  .bug { position:absolute; top:10px; right:10px; font-size:9.5px; font-weight:800; letter-spacing:.05em; color:#fff; border:1.5px solid #fff; border-radius:5px; padding:2px 5px; }
+  .tc { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.55); color:#fff; font-size:11px; border-radius:6px; padding:2px 6px; }
+  .fv.end { background:linear-gradient(170deg,#1B5E82,#0f3a52); display:flex; align-items:center; justify-content:center; }
+  .endcard { background:#fff; border-radius:14px; width:82%; padding:14px 12px; text-align:center; }
+  .endcard .av { width:54px; height:54px; border-radius:50%; margin:0 auto 6px; background:radial-gradient(circle at 50% 38%, #e8c9a8 0 30%, #2b3440 31%); }
+  .endcard b { display:block; font-size:15px; } .endcard > span { display:block; font-size:11px; color:var(--muted); }
+  .endcard .lines { font-size:11.5px; margin:8px 0; line-height:1.6; }
+  .qr.small { width:58px; height:58px; margin:0 auto; border-width:4px; }
+  .scan { display:block; font-size:10.5px; color:var(--muted); margin-top:3px; }
+  .sharebox { background:#fff; border:1px solid var(--rule); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:8px; }
+  .sharebox .btn { justify-content:flex-start; }
+  @media (max-width:900px) { .story { grid-template-columns:repeat(2, minmax(0,1fr)); } }
+  @media (max-width:900px) { .cols { grid-template-columns:1fr; } .phone { margin:0 auto; width:100%; max-width:380px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Video Business Card</h1>
+  <p class="sub">Mockup · two parts that work together: <b>the video card</b> people see and share, and <b>the card page</b> its QR code and link open</p>
+
+  <p class="label">Part 1 · The video card · about 30 seconds · vertical or wide</p>
+  <div class="story">
+    <div class="frame">
+      <div class="fv"><div class="person"></div>
+        <div class="lower"><b>Jane Carter</b><span>REALTOR® · Main Street Realty</span></div>
+        <span class="tc">0:00–0:03</span></div>
+      <p><b>Opening.</b> Your Agent Intro starts; your name, title and logo slide in.</p>
+    </div>
+    <div class="frame">
+      <div class="fv"><div class="person"></div>
+        <div class="capt">"I help families buy and sell in Springfield and the towns around it…"</div>
+        <div class="bug">MAIN STREET REALTY</div>
+        <span class="tc">0:03–0:25</span></div>
+      <p><b>Middle.</b> You talk, with captions. Your logo stays small in the corner.</p>
+    </div>
+    <div class="frame">
+      <div class="fv end">
+        <div class="endcard">
+          <div class="av"></div>
+          <b>Jane Carter</b><span>REALTOR® · Main Street Realty</span>
+          <div class="lines">📞 (555) 214-8890<br>✉️ jane@mainstreetrealty.com<br>🌐 janecarter.com</div>
+          <div class="qr small"></div><span class="scan">Scan to save my contact</span>
+        </div>
+        <span class="tc">0:25–0:30</span></div>
+      <p><b>End card.</b> Photo, phone, email, website and a QR code to the card page.</p>
+    </div>
+    <div class="frame sharebox">
+      <p class="label" style="margin-top:0">Send the video</p>
+      <span class="btn">💬 Text it</span>
+      <span class="btn">📱 Post as a story</span>
+      <span class="btn">in Share on LinkedIn</span>
+      <span class="btn">✉️ Email it</span>
+      <span class="btn">⬇️ Download MP4</span>
+      <p style="font-size:13px;color:var(--muted);margin:8px 0 0">The caption carries your card link. Made from your Agent Intro: nothing more from your plan.</p>
+    </div>
+  </div>
+
+  <p class="label" style="margin-top:26px">Part 2 · The card page · where the QR code and link land</p>
+
+  <div class="cols">
+    <div>
+      <p class="label">In SparkReels · Spark Tools → Images &amp; banners → Video Business Card</p>
+
+      <div class="panel">
+        <h2>🎬 Your card</h2>
+        <div class="row"><b>Video</b><span>Your Agent Intro · 30 sec · Oct 23</span><span class="btn">Change</span></div>
+        <div class="row"><b>Video card</b><span>Vertical (9:16) · name strip + end card with QR</span><span class="btn gold">Make my video card</span></div>
+        <div class="row"><b>Name &amp; title</b><span>Jane Carter · REALTOR®</span><em>from Settings</em></div>
+        <div class="row"><b>Brokerage &amp; logo</b><span>Main Street Realty</span><em>from Settings</em></div>
+        <div class="row"><b>Phone · email</b><span>(555) 214-8890 · jane@mainstreetrealty.com</span><em>from Settings</em></div>
+        <div class="row"><b>Book a call</b><span>calendly.com/janecarter</span><span class="tog"></span></div>
+        <div class="row"><b>Home value</b><span>Your home value page link</span><span class="tog"></span></div>
+        <div class="row"><b>Google reviews</b><span>Your review link</span><span class="tog"></span></div>
+        <div class="row"><b>Latest videos</b><span>Your 3 newest from YouTube</span><span class="tog off"></span></div>
+        <div class="row"><b>Card colour</b><span>Your brand blue</span><span class="btn">Change</span></div>
+      </div>
+
+      <div class="panel">
+        <h2>📤 Share it</h2>
+        <div class="linkbox"><span>sparkreels.ai/card/jane-carter</span><span class="btn">Copy link</span></div>
+        <div class="share">
+          <span class="btn">💬 Text it</span>
+          <span class="btn">✉️ Email it</span>
+          <span class="btn">⬇️ Download QR code</span>
+          <span class="btn">✍️ Email signature</span>
+        </div>
+        <div class="qrwrap"><div class="qr"></div><div style="font-size:13.5px;color:var(--soft)">Print the QR on paper cards, yard signs and open house sheets. It always opens your newest card.</div></div>
+        <div class="sig"><div class="mini"></div><div><b>Jane Carter</b> · REALTOR®<br><span style="color:var(--muted)">Watch my 30-second intro →</span></div></div>
+      </div>
+
+      <div class="panel">
+        <h2>📊 Who opened it · last 30 days</h2>
+        <div class="stats">
+          <div class="stat"><b>48</b><span>Opened</span></div>
+          <div class="stat"><b>31</b><span>Watched the video</span></div>
+          <div class="stat"><b>9</b><span>Tapped call, text or book</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p class="label">What the client sees</p>
+      <div class="phone">
+        <div class="url">sparkreels.ai/card/jane-carter</div>
+        <div class="video"><div class="person"></div><div class="play"><span>▶</span></div><div class="cap">"Hi, I'm Jane. I help families buy and sell in Springfield…"</div></div>
+        <div class="who"><h3>Jane Carter</h3><p>REALTOR® · Springfield &amp; nearby towns</p><span class="logo">MAIN STREET REALTY</span></div>
+        <div class="actions">
+          <div class="act"><i>📞</i>Call</div>
+          <div class="act"><i>💬</i>Text</div>
+          <div class="act"><i>✉️</i>Email</div>
+          <div class="act"><i>🌐</i>Website</div>
+        </div>
+        <span class="big primary">📅 Book a call</span>
+        <span class="big line">👤 Save my contact</span>
+        <div class="links">
+          <a>🏡 What's my home worth? <span>→</span></a>
+          <a>⭐ Read my Google reviews <span>4.9 · 62</span></a>
+        </div>
+        <div class="socials"><i>YT</i><i>FB</i><i>IG</i><i>in</i></div>
+        <div class="foot">Made with SparkReels</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note"><b>How it works:</b> the video card is your Agent Intro with your name strip and an end card added, so it uses nothing more from your plan (only making a new intro uses one short video). Its QR code and caption link open the card page. The card page uses your Agent Intro video and the details already in Settings, so there's nothing to retype. One link and one QR code that never change, even when you replace the video. Save my contact downloads a contact card to the client's phone. Free plans would get the card with their free video; the open counts are for paid plans. Mockup · sample names.</div>
+</div>
+</body>
+</html>

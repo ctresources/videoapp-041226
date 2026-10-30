@@ -1557,6 +1557,26 @@ function FullGuide() {
                 <strong>Download for Canva (PDF)</strong> for a copy meant to be opened in Canva, where
                 you can change the text and colors yourself.
               </span>
+              {/* The Video Business Card (2026-10-30). */}
+              <span className="block mt-1.5 scroll-mt-20" id="video-business-card">
+                <strong>Video Business Card</strong> (Spark Tools → <strong>Images &amp; banners</strong>) is two
+                things that work together. Your <strong>card page</strong> at sparkreels.ai/card/your-name shows
+                your <strong>Agent Intro</strong> (or a video you pick), your name, brokerage and logo, round{" "}
+                <strong>Call</strong>, <strong>Text</strong>, <strong>Email</strong> and <strong>Website</strong>{" "}
+                buttons, <strong>Book a call</strong>, <strong>Save my contact</strong> (adds you to their phone)
+                and, if you switch them on, your home value page, Google reviews and YouTube channel. Your name,
+                phone, email, website and logo come from Settings; add a title, booking link and home value page,
+                pick a colour, and press <strong>Save card</strong>. Your <strong>video card</strong> is your video
+                with your name strip sliding in at the start and a five-second end card with your photo, phone,
+                email, website and a QR code to your card page. Press <strong>Make my video card</strong>; it takes
+                about a minute and uses nothing from your plan. Then <strong>Download MP4</strong> or{" "}
+                <strong>Text it</strong>, and post it as a story or on LinkedIn. To share the card page, use{" "}
+                <strong>Copy</strong>, <strong>Text it</strong>, <strong>Email it</strong>,{" "}
+                <strong>Download QR code</strong> for print, or <strong>Copy email signature</strong>. The link and
+                QR code never change. On a paid plan you also see how many opened it, watched, tapped and saved
+                your contact in the last 30 days. No Agent Intro yet? <strong>Make my Agent Intro</strong> opens it
+                in Spark Studio.
+              </span>
             </Step>
             <Step n={25} title="AI Answer Blocks — Get Cited By AI Search" icon={Bot}>
               Buyers ask ChatGPT and Perplexity things like &ldquo;which neighborhood should I buy in?&rdquo;

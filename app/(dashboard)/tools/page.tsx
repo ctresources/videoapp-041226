@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   Tag, FileText, Heading, ScrollText, Tv2, Image, Copy, Check,
   Sparkles, ChevronDown, Save, Loader2, HelpCircle, Video, X, User, Upload,
-  Megaphone, Bot, Camera, ImagePlus, Download, RefreshCw, Type, Newspaper, Share2, BriefcaseBusiness, Send, Star, Home,
+  Megaphone, Bot, Camera, ImagePlus, Download, RefreshCw, Type, Newspaper, Share2, BriefcaseBusiness, Send, Star, Home, Contact,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -17,6 +17,7 @@ import { DEFAULT_THUMB_STYLE, type ThumbStyle } from "@/lib/utils/thumbnail-styl
 import { GoogleReviewsTool } from "@/components/tools/google-reviews";
 import { SellerUpdateTool } from "@/components/tools/seller-update";
 import { ReviewRequestTool } from "@/components/tools/review-request";
+import { BusinessCardTool } from "@/components/tools/business-card";
 import { ScreenRecorderTool } from "@/components/tools/screen-recorder";
 import { articleHeadline, isPlaceholderTitle } from "@/lib/utils/article-headline";
 import { showTrialLock } from "@/lib/utils/trial-lock";
@@ -28,7 +29,7 @@ import { BASE_AUDIENCES } from "@/lib/utils/audiences";
 import { useCustomAudiences } from "@/lib/hooks/use-custom-audiences";
 import { suggestTextColors, type BannerCustomColors } from "@/lib/utils/banner-colors";
 
-type Tab = "description" | "script" | "title" | "tags" | "channel" | "linkedin" | "thumbnail" | "image" | "banner" | "answers" | "reviews" | "seller" | "review" | "screen";
+type Tab = "description" | "script" | "title" | "tags" | "channel" | "linkedin" | "thumbnail" | "image" | "banner" | "answers" | "reviews" | "seller" | "review" | "screen" | "card";
 
 interface Project {
   id: string;
@@ -143,6 +144,8 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
   { id: "banner",      label: "Banners",              icon: Megaphone },
   { id: "channel",     label: "Channel Name Generator", icon: Tv2 },
   { id: "linkedin",    label: "LinkedIn Profile",     icon: BriefcaseBusiness },
+  // The video business card and its page (2026-10-30).
+  { id: "card",        label: "Video Business Card",  icon: Contact },
   // Not a generator like the rest: it reads the agent's Google reviews and
   // drafts replies. Here because it is a helper used now and then, not a step
   // in making a video.
@@ -169,7 +172,7 @@ const WORKFLOW_TABS: Tab[] = ["seller", "review", "reviews", "screen"];
 const TOOL_GROUPS: { label: string; tabs: Tab[] }[] = [
   { label: "For a video",        tabs: ["thumbnail", "title", "description", "tags", "script", "screen"] },
   // Channel Name and LinkedIn moved here, and the group below renamed (2026-10-30, the owner's ask).
-  { label: "Images & banners",   tabs: ["image", "banner", "channel", "linkedin"] },
+  { label: "Images & banners",   tabs: ["image", "banner", "channel", "linkedin", "card"] },
   { label: "Reviews",            tabs: ["reviews", "review"] },
   { label: "Sellers & AI search", tabs: ["seller", "answers"] },
 ];
@@ -3441,6 +3444,7 @@ export default function ToolsPage() {
         {activeTab === "answers"     && <AnswerBlocksGenerator />}
         {activeTab === "reviews"     && <GoogleReviewsTool onTrialLock={(data) => showTrialLock(data as Parameters<typeof showTrialLock>[0])} onAskForReviews={() => setActiveTab("review")} />}
         {activeTab === "review"      && <ReviewRequestTool />}
+        {activeTab === "card"        && <BusinessCardTool />}
         {activeTab === "screen"      && <ScreenRecorderTool />}
         {activeTab === "seller"      && (
           <SellerUpdateTool

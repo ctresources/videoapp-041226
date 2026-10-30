@@ -17,7 +17,9 @@ const AUTH_ROUTES = ["/login", "/register", "/", "/beta"];
  * the app the way "/" sends them.
  */
 const isPublic = (pathname: string) =>
-  PUBLIC_ROUTES.some((r) => pathname === r) || isPublicMarketingPath(pathname);
+  PUBLIC_ROUTES.some((r) => pathname === r) || isPublicMarketingPath(pathname)
+  // Video Business Cards and their contact file and counts (2026-10-30).
+  || pathname.startsWith("/card/") || pathname.startsWith("/api/card/");
 
 // 60-day last-click attribution window for affiliate referrals.
 const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 60;

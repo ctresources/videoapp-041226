@@ -57,6 +57,12 @@ const nextConfig = {
       "/api/seller-listings/video": ["./node_modules/@ffmpeg-installer/**"],
       // The same still, for Email it in My Sparks.
       "/api/video-email": ["./node_modules/@ffmpeg-installer/**"],
+      // The Video Business Card's name strip and end card (2026-10-30).
+      "/api/business-card/video": [
+        "./node_modules/@ffmpeg-installer/**",
+        "./public/fonts/**",
+        "./fonts/**",
+      ],
       // Converts an iPhone's MOV/HEVC twin recording to MP4 (2026-10-20).
       "/api/avatar/digital-twin": ["./node_modules/@ffmpeg-installer/**"],
       // Joins the spoken pieces of a script or article read aloud (2026-10-21).
