@@ -3436,6 +3436,12 @@ function CreatePageInner() {
           })}
         </div>
       )}
+      {/* Spark Podcast, for the accounts it's switched on for (2026-10-30). */}
+      {step === "input" && account?.sparkPodcast && (
+        <Link href="/podcast" className="mt-2 inline-flex items-center gap-1.5 rounded-[12px] border-[1.5px] border-spark-rule bg-white/60 px-3 py-1.5 text-[14.5px] font-bold text-spark-ink hover:border-spark-amber">
+          🎙 Spark Podcast <span className="text-[12px] font-medium text-spark-ink-muted">you and a co-host</span>
+        </Link>
+      )}
 
       {/* Which kind of video, under the Video / Reel card it belongs to.
           It was a page of its own after Send ("Choose your video"); the owner

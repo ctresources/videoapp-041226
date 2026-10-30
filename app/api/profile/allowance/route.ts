@@ -61,7 +61,11 @@ export async function GET() {
    * in feature_access and are readable only by the service role, so hasFeature
    * uses the admin client while this route uses the caller's session.
    */
-  const campaignCalendar = await hasFeature(user.id, CAMPAIGN_CALENDAR);
+  const [campaignCalendar, sparkPodcast] = await Promise.all([
+    hasFeature(user.id, CAMPAIGN_CALENDAR),
+    // Spark Podcast's switch (2026-10-30).
+    hasFeature(user.id, "spark_podcast"),
+  ]);
 
   // Read through the caller's session: generated_images lets a user read their
   // own rows, which is all a count needs.
@@ -93,6 +97,7 @@ export async function GET() {
     // The newest What's New item this account has seen, for the menu's NEW dot.
     whatsNewSeen: (profile.last_seen_whats_new as string | null) ?? null,
     campaignCalendar,
+    sparkPodcast,
     // AI images made this calendar month, for the image generator's counter.
     // Two before the free video, a hundred after it — the same ceiling the
     // image route enforces, so the counter on the page and the refusal from

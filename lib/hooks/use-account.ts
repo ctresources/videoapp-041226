@@ -19,6 +19,8 @@ export interface Account {
   isStaff: boolean;
   tier: string;
   campaignCalendar: boolean;
+  /** Spark Podcast, while it's switched on for a few accounts (2026-10-30). */
+  sparkPodcast: boolean;
   level: AccessLevel;
   paid: boolean;
   /** Affiliate Program: paid, or canceled but paid through the period. */
@@ -41,6 +43,7 @@ function load(): Promise<Account | null> {
         isStaff: !!a.isStaff,
         tier: a.tier ?? "free",
         campaignCalendar: !!a.campaignCalendar,
+        sparkPodcast: !!a.sparkPodcast,
         level,
         paid: isPaidLevel(level),
         affiliateEligible: !!a.affiliateEligible,

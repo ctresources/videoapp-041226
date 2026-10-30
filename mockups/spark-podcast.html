@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spark Podcast</title>
+<style>
+  :root { --ink:#24221e; --soft:#4a463e; --muted:#77736a; --faint:#a29d92; --rule:#e8e3d8; --amber:#BA7517; --amber2:#A3660F; --tint:#fbf3e4; --paper:#f6f3ec; --blue:#1B5E82; --green:#0f7a52; --greenbg:#e8f5ee; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:15.5px/1.45 -apple-system, "Segoe UI", Inter, sans-serif; padding:22px 16px 50px; }
+  .wrap { max-width:1240px; margin:0 auto; }
+  h1 { font-size:25px; margin:0; } .sub { color:var(--muted); margin:4px 0 18px; }
+  .flag { display:inline-block; font-size:12px; font-weight:700; background:#eee9de; color:var(--soft); border-radius:99px; padding:2px 10px; margin-left:8px; vertical-align:middle; }
+  .steps { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+  .steps span { font-size:13px; font-weight:600; border-radius:99px; padding:4px 12px; background:#fff; border:1px solid var(--rule); color:var(--muted); }
+  .steps span.on { background:var(--amber); border-color:var(--amber); color:#fff; }
+  .grid { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; align-items:start; }
+  .card { background:#fff; border:1px solid var(--rule); border-radius:18px; padding:16px; }
+  .card h2 { font-size:17px; margin:0 0 10px; display:flex; align-items:center; gap:8px; }
+  .num { width:24px; height:24px; border-radius:50%; background:var(--amber); color:#fff; font-size:13px; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+  .lab { font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:12px 0 6px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { border:1px solid var(--rule); border-radius:10px; padding:6px 10px; font-size:13.5px; background:#fff; }
+  .chip.on { border-color:var(--amber); background:var(--tint); color:var(--amber2); font-weight:700; }
+  .field { border:1px solid var(--rule); border-radius:12px; padding:9px 12px; font-size:14.5px; background:#fdfbf7; }
+  .who { display:flex; gap:10px; }
+  .host { flex:1; border:1px solid var(--rule); border-radius:14px; padding:10px; text-align:center; font-size:13.5px; }
+  .host.on { border-color:var(--amber); box-shadow:0 0 0 2px #fbeacc; }
+  .face { width:58px; height:58px; border-radius:50%; margin:0 auto 6px; background:radial-gradient(circle at 50% 38%, #e8c9a8 0 30%, #5a4632 31%); }
+  .face.b { background:radial-gradient(circle at 50% 38%, #c99a76 0 30%, #2b3440 31%); }
+  .host b { display:block; font-size:14px; } .host span { color:var(--muted); font-size:12px; }
+  .opt { font-size:13px; color:var(--muted); margin-top:6px; }
+  /* script */
+  .line { display:flex; gap:8px; padding:7px 0; border-top:1px solid var(--rule); font-size:14px; }
+  .line:first-of-type { border-top:none; }
+  .sp { flex:none; width:74px; font-weight:800; font-size:12.5px; color:var(--amber2); padding-top:1px; }
+  .sp.g { color:var(--blue); }
+  .edit { margin-left:auto; color:var(--faint); font-size:12px; flex:none; }
+  .meta { display:flex; gap:10px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); margin:8px 0 0; }
+  .btn { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--rule); background:#fff; border-radius:11px; padding:8px 14px; font-size:14px; font-weight:650; color:var(--ink); }
+  .btn.gold { background:var(--amber); border-color:var(--amber); color:#fff; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  /* studio frame */
+  .studio { aspect-ratio:16/9; border-radius:14px; overflow:hidden; position:relative; background:linear-gradient(180deg,#2a2018 0%,#3d2f20 55%,#1b1410 100%); }
+  .studio .desk { position:absolute; left:6%; right:6%; bottom:0; height:22%; background:#5a4128; border-radius:10px 10px 0 0; }
+  .studio .p1, .studio .p2 { position:absolute; bottom:18%; width:26%; height:58%; border-radius:48% 48% 0 0; }
+  .studio .p1 { left:16%; background:radial-gradient(circle at 50% 22%, #e8c9a8 0 18%, transparent 19%), linear-gradient(#5a4632,#5a4632); }
+  .studio .p2 { right:16%; background:radial-gradient(circle at 50% 22%, #c99a76 0 18%, transparent 19%), linear-gradient(#2b3440,#2b3440); }
+  .studio .mic1, .studio .mic2 { position:absolute; bottom:20%; width:3%; height:16%; background:#111; border-radius:6px; }
+  .studio .mic1 { left:34%; } .studio .mic2 { right:34%; }
+  .studio .title { position:absolute; left:4%; top:6%; color:#ffe39a; font-weight:800; font-size:14px; }
+  .studio .live { position:absolute; right:4%; top:6%; background:#BA7517; color:#fff; font-size:11px; font-weight:800; border-radius:6px; padding:2px 7px; }
+  .studio .lt { position:absolute; left:4%; bottom:4%; background:#fff; border-left:4px solid #BA7517; border-radius:6px; padding:3px 8px; font-size:11.5px; font-weight:700; }
+  /* outputs */
+  .out { display:flex; gap:10px; align-items:center; padding:8px 0; border-top:1px solid var(--rule); font-size:14px; }
+  .out:first-of-type { border-top:none; }
+  .out i { font-style:normal; width:30px; height:30px; border-radius:8px; background:var(--tint); display:flex; align-items:center; justify-content:center; flex:none; }
+  .out b { flex:1; } .out span { font-size:12.5px; color:var(--muted); }
+  .tick { color:var(--green); font-weight:800; }
+  /* sparklee */
+  .ask { background:radial-gradient(120% 140% at 0% 0%, #2a1f10 0%, #0f0d0b 55%); color:#f3e6cf; border:none; box-shadow:0 0 0 2px #BA7517; }
+  .ask h2 { color:#fff; }
+  .said { background:#1d1915; border:1px solid #3b3226; border-radius:12px; padding:10px 12px; font-size:14.5px; }
+  .plan { background:#1d1915; border:1px solid #3b3226; border-radius:12px; padding:12px; margin-top:10px; font-size:14px; }
+  .plan b { color:#ffe39a; } .plan ul { margin:6px 0 0; padding-left:18px; } .plan li { margin:2px 0; }
+  .usage { background:#2a2219; border-radius:9px; padding:6px 10px; margin-top:8px; font-size:13.5px; }
+  .usage b { color:#ffe39a; }
+  .btn.dark { background:transparent; color:#f3e6cf; border-color:#5a4826; }
+  .note { margin-top:18px; background:#fff8ea; border:1px solid #f0d9ad; border-radius:14px; padding:14px 18px; font-size:14px; color:#6b4a12; }
+  .s2 { grid-column:span 2; } .s3 { grid-column:span 3; }
+  @media (max-width:1000px) { .grid { grid-template-columns:1fr; } .s2, .s3 { grid-column:span 1; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎙 Spark Podcast <span class="flag">Hidden until the video side is confirmed</span></h1>
+  <p class="sub">Turn one idea into a conversation. In Spark Studio as a new tile, and through Ask Sparklee on Home.</p>
+  <div class="steps"><span class="on">1 Source</span><span class="on">2 Hosts</span><span class="on">3 Conversation</span><span>4 Approve</span><span>5 Make video</span><span>6 Clips + posts</span><span>7 Publish</span></div>
+
+  <div class="grid">
+    <!-- 1 Source -->
+    <div class="card">
+      <h2><span class="num">1</span> What's it about?</h2>
+      <div class="chips">
+        <span class="chip on">💡 Topic</span><span class="chip">📝 Blog / article</span><span class="chip">🔗 URL</span>
+        <span class="chip">📄 PDF / document</span><span class="chip">✨ Existing Spark</span><span class="chip">📈 Market update</span>
+        <span class="chip">🏡 Listing</span><span class="chip">🔎 Answer Block</span>
+      </div>
+      <div class="lab">Topic</div>
+      <div class="field">Should you downsize now or wait? Montgomery County, PA</div>
+      <div class="lab">Length</div>
+      <div class="chips"><span class="chip">1 min</span><span class="chip">2 min</span><span class="chip on">3 min</span></div>
+      <div class="lab">Feel</div>
+      <div class="chips"><span class="chip on">Friendly chat</span><span class="chip">Expert interview</span><span class="chip">Myth vs fact</span><span class="chip">Q&amp;A</span></div>
+    </div>
+
+    <!-- 2 Hosts -->
+    <div class="card">
+      <h2><span class="num">2</span> Who's talking?</h2>
+      <div class="lab">Host</div>
+      <div class="who">
+        <div class="host on"><div class="face"></div><b>Me</b><span>My avatar / twin · my voice</span></div>
+        <div class="host"><div class="face b"></div><b>SparkReels host</b><span>A ready-made host</span></div>
+      </div>
+      <div class="lab">Guest</div>
+      <div class="who">
+        <div class="host on"><div class="face b"></div><b>AI co-host</b><span>Asks the buyer/seller questions</span></div>
+        <div class="host"><div class="face"></div><b>Expert</b><span>Lender, inspector, stager…</span></div>
+      </div>
+      <p class="opt">Later: a real guest records their side on their phone.</p>
+      <div class="lab">Studio</div>
+      <div class="studio"><div class="title">Montgomery County Real Talk</div><div class="live">EP 4</div><div class="p1"></div><div class="p2"></div><div class="mic1"></div><div class="mic2"></div><div class="desk"></div><div class="lt">Carmella · Host</div></div>
+    </div>
+
+    <!-- 3 Conversation -->
+    <div class="card">
+      <h2><span class="num">3</span> The conversation</h2>
+      <div class="line"><span class="sp">CARMELLA</span>Welcome back! Today: should you downsize now, or wait for spring?<span class="edit">✎</span></div>
+      <div class="line"><span class="sp g">CO-HOST</span>A lot of empty-nesters ask me that. What are you seeing in Montgomery County?<span class="edit">✎</span></div>
+      <div class="line"><span class="sp">CARMELLA</span>Smaller homes are moving fast, so the timing of your sale and your buy matters more than the season.<span class="edit">✎</span></div>
+      <div class="line"><span class="sp g">CO-HOST</span>So what's the first step if I'm thinking about it?<span class="edit">✎</span></div>
+      <div class="line"><span class="sp">CARMELLA</span>Know what your house is worth today, and what you'd buy next…<span class="edit">✎</span></div>
+      <div class="meta"><span>14 lines</span><span>≈ 2 min 50 s</span><span>Sources: Redfin, Realtor.com</span></div>
+      <div class="row"><span class="btn">🔊 Listen</span><span class="btn">↻ Rewrite</span><span class="btn gold">Approve the conversation</span></div>
+    </div>
+
+    <!-- Studio preview + outputs -->
+    <div class="card s2">
+      <h2><span class="num">5</span> Your episode, and everything made from it</h2>
+      <div class="out"><i>🎬</i><b>Full episode · 16:9, about 3 min</b><span>Studio set, two cameras, b-roll, captions</span><span class="tick">✓</span></div>
+      <div class="out"><i>📱</i><b>2 Shorts · 9:16, 30–45 s</b><span>The best moments, cut for Reels, TikTok and Shorts</span><span class="tick">✓</span></div>
+      <div class="out"><i>▶️</i><b>YouTube title, description, chapters, thumbnail</b><span>Ready to publish</span><span class="tick">✓</span></div>
+      <div class="out"><i>📘</i><b>Facebook post · LinkedIn post</b><span>Each in its own voice</span><span class="tick">✓</span></div>
+      <div class="out"><i>📝</i><b>Show notes blog post</b><span>With the six FAQs, like every SparkReels blog</span><span class="tick">✓</span></div>
+      <div class="out"><i>✉️</i><b>Email to your database</b><span>Copy, or send through BoldTrail</span><span class="tick">✓</span></div>
+      <div class="row"><span class="btn gold">Approve and schedule</span><span class="btn">Open in My Sparks</span></div>
+      <p class="opt">Nothing posts or sends until you approve, as everywhere in SparkReels.</p>
+    </div>
+
+    <!-- Ask Sparklee -->
+    <div class="card ask">
+      <h2>✦ Or just ask Sparklee</h2>
+      <div class="said">"Sparklee, create a podcast about whether now is a good time to downsize in Montgomery County."</div>
+      <div class="plan">
+        <b>Episode:</b> "Should You Downsize Now or Wait?"<br>
+        <b>Host:</b> Carmella (your twin) · <b>Guest:</b> AI co-host
+        <ul><li>3-minute podcast + YouTube version</li><li>2 Shorts</li><li>Facebook + LinkedIn posts</li><li>Show notes blog</li><li>Email to your database</li></ul>
+        <div class="usage">This plan uses <b>1 podcast episode</b> from your plan.</div>
+      </div>
+      <div class="row"><span class="btn gold">Approve podcast plan</span><span class="btn dark">Edit plan</span></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>How it would work:</b> SparkReels writes the two-person conversation from your source (free, editable, with Listen). You approve it, then the video is made with your avatar and voice and the co-host. From the finished episode SparkReels cuts the Shorts and writes the YouTube details, posts, show notes and email, all waiting for your approval. <b>What it costs per episode depends on how the video side is made</b> — see the question for HeyGen. Mockup · sample text.
+  </div>
+</div>
+</body>
+</html>
