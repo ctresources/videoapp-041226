@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { cardColor, cardTitle, loadCardBySlug } from "@/lib/card/card";
+import { cardColor, cardReviewsOn, cardTitle, loadCardBySlug } from "@/lib/card/card";
 import { CardView } from "@/components/card/card-view";
 
 export const dynamic = "force-dynamic";
@@ -23,5 +23,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function CardPage({ params }: { params: { slug: string } }) {
   const card = await loadCardBySlug(createAdminClient(), params.slug);
   if (!card) notFound();
-  return <CardView card={card} color={cardColor(card)} title={cardTitle(card)} />;
+  return <CardView
+    // The plan and role decide what shows; they never go to the browser.
+    card={{ ...card, profile: { ...card.profile, subscription_tier: null, role: null } }}
+    color={cardColor(card)} title={cardTitle(card)} showReviews={cardReviewsOn(card)}
+  />;
 }

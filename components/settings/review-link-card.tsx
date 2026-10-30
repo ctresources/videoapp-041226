@@ -6,12 +6,24 @@ import { Star } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { useAccount } from "@/lib/hooks/use-account";
+import { LockedFeature } from "@/components/access/locked-feature";
 
 /**
  * Your Google review link (2026-10-27), for Ask for Google Review Video
  * Email: the gold "Leave me a Google review" button in the email opens it.
  */
+/** Paid plans only (2026-10-30, the owner's call): every Google review feature is. */
 export function ReviewLinkCard({ userId }: { userId: string }) {
+  const account = useAccount();
+  if (!account) return null;
+  if (!account.paid) {
+    return <LockedFeature compact feature="Google reviews" body="Your review link, review request video emails and saved review words come with a SparkReels plan." />;
+  }
+  return <ReviewLinkCardPaid userId={userId} />;
+}
+
+function ReviewLinkCardPaid({ userId }: { userId: string }) {
   const [url, setUrl] = useState("");
   const [saved, setSaved] = useState("");
   const [saving, setSaving] = useState(false);

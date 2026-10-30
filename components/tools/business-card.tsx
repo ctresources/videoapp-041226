@@ -130,8 +130,10 @@ export function BusinessCardTool() {
             <label className={label}>Home value page <span className="font-normal text-spark-ink-faint">(optional)</span></label>
             <input className={`${input} mb-3`} value={s.homeValueUrl ?? ""} placeholder="yoursite.com/home-value" onChange={(e) => setS({ ...s, homeValueUrl: e.target.value })} />
             <label className="mb-2 flex items-center gap-2 text-[14px]">
-              <input type="checkbox" className="h-4 w-4 accent-[#BA7517]" checked={s.showReviews !== false} onChange={(e) => setS({ ...s, showReviews: e.target.checked })} disabled={!p.google_review_url} />
-              My Google reviews {!p.google_review_url && <span className="text-[12.5px] text-spark-ink-faint">(add your review link in Settings)</span>}
+              <input type="checkbox" className="h-4 w-4 accent-[#BA7517]" checked={d.paid && s.showReviews !== false} onChange={(e) => setS({ ...s, showReviews: e.target.checked })} disabled={!d.paid || !p.google_review_url} />
+              My Google reviews {!d.paid
+                ? <span className="text-[12.5px] text-spark-ink-faint">(paid plans)</span>
+                : !p.google_review_url && <span className="text-[12.5px] text-spark-ink-faint">(add your review link in Settings)</span>}
             </label>
             <label className="mb-3 flex items-center gap-2 text-[14px]">
               <input type="checkbox" className="h-4 w-4 accent-[#BA7517]" checked={s.showYouTube !== false} onChange={(e) => setS({ ...s, showYouTube: e.target.checked })} disabled={!p.youtube_channel_id} />

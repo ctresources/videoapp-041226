@@ -13,7 +13,7 @@ import type { Card } from "@/lib/card/card";
 const withHttps = (u?: string | null) => (u ? (/^https?:\/\//i.test(u) ? u : `https://${u}`) : null);
 const digits = (p: string) => p.replace(/[^\d+]/g, "");
 
-export function CardView({ card, color, title }: { card: Card; color: string; title: string }) {
+export function CardView({ card, color, title, showReviews }: { card: Card; color: string; title: string; showReviews: boolean }) {
   const p = card.profile;
   const played = useRef(false);
   const send = (kind: string) => {
@@ -90,7 +90,7 @@ export function CardView({ card, color, title }: { card: Card; color: string; ti
             <a href={card.settings.homeValueUrl} target="_blank" rel="noreferrer" onClick={() => send("home_value")}
               className="mb-2 flex items-center gap-2.5 rounded-xl border border-[#e8e3d8] px-3 py-2.5 text-[15px] font-semibold text-[#24221e]">🏡 What&apos;s my home worth?<span className="ml-auto text-[#77736a]">→</span></a>
           )}
-          {card.settings.showReviews !== false && p.google_review_url && (
+          {showReviews && p.google_review_url && (
             <a href={withHttps(p.google_review_url)!} target="_blank" rel="noreferrer" onClick={() => send("reviews")}
               className="mb-2 flex items-center gap-2.5 rounded-xl border border-[#e8e3d8] px-3 py-2.5 text-[15px] font-semibold text-[#24221e]">⭐ My Google reviews<span className="ml-auto text-[#77736a]">→</span></a>
           )}

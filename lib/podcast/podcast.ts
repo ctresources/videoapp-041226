@@ -2,6 +2,7 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import { openaiChatJson } from "@/lib/api/openai-chat";
 import { chatJson } from "@/lib/api/perplexity-chat";
 import { generateTwinBackdrop } from "@/lib/api/openai-image";
+import { getAccessLevel, type AccessLevel } from "@/lib/access";
 
 /**
  * Spark Podcast (2026-10-30, the owner's ask; step 1 behind the
@@ -17,6 +18,10 @@ const HEYGEN_API = "https://api.heygen.com";
 const key = () => process.env.HEYGEN_API_KEY ?? "";
 
 export const PODCAST_FEATURE = "spark_podcast";
+/** Producer and up (2026-10-30, the owner's call), and admins. */
+export const PODCAST_LEVELS: readonly AccessLevel[] = ["producer", "influencer", "admin"];
+export const podcastPlanOk = (p: { subscription_tier?: string | null; role?: string | null } | null) =>
+  PODCAST_LEVELS.includes(getAccessLevel(p));
 /** What one episode (up to 3 minutes) uses from the plan: two short videos. */
 export const PODCAST_SHORT_VIDEOS = 2;
 export const PODCAST_MAX_MINUTES = 3;

@@ -1,4 +1,5 @@
 import type { createAdminClient } from "@/lib/supabase/admin";
+import { getAccessLevel, isPaidLevel } from "@/lib/access";
 
 /**
  * Video Business Card (2026-10-30, the owner's approved mockup).
@@ -30,9 +31,10 @@ export interface CardProfile {
   website: string | null; logo_url: string | null; avatar_url: string | null;
   location_city: string | null; location_state: string | null; license_number: string | null;
   google_review_url: string | null; youtube_channel_id: string | null; brand_colors: string[] | null;
+  subscription_tier: string | null; role: string | null;
 }
 export const CARD_PROFILE_SELECT =
-  "full_name, company_name, email, phone, mobile_phone, company_phone, website, logo_url, avatar_url, location_city, location_state, license_number, google_review_url, youtube_channel_id, brand_colors";
+  "full_name, company_name, email, phone, mobile_phone, company_phone, website, logo_url, avatar_url, location_city, location_state, license_number, google_review_url, youtube_channel_id, brand_colors, subscription_tier, role";
 
 export interface CardVideo { id: string; url: string; poster: string | null; vertical: boolean; title: string }
 
@@ -45,6 +47,11 @@ export const DEFAULT_CARD_COLOR = "#1B5E82";
 export const cardColor = (c: Card) => {
   const pick = [c.settings.color, ...(c.profile.brand_colors ?? [])].find((x) => typeof x === "string" && /^#[0-9a-fA-F]{6}$/.test(x));
   return pick ?? DEFAULT_CARD_COLOR;
+};
+/** Google reviews on a card are a paid feature (2026-10-30, the owner's call). */
+export const cardReviewsOn = (c: Card) => {
+  const level = getAccessLevel(c.profile);
+  return c.settings.showReviews !== false && !!c.profile.google_review_url && (level === "admin" || isPaidLevel(level));
 };
 export const cardPhone = (p: CardProfile) => p.mobile_phone || p.phone || p.company_phone || null;
 export const cardTitle = (c: Card) => c.settings.title?.trim() || "REALTOR®";
