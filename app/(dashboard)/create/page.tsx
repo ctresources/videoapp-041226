@@ -2656,7 +2656,7 @@ function CreatePageInner() {
     // step footer's width. The route opts out of the shared page padding, so
     // without this the content ran edge to edge — flush against the sidebar on
     // desktop and touching both screen edges on a phone.
-    <div className={`mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6 ${twoCols ? "lg:max-w-[1480px] lg:px-4" : ""} ${anyActionBar ? "pb-28" : "pb-6"}`}>
+    <div className={`mx-auto w-full max-w-3xl px-4 pt-4 sm:px-6 ${twoCols ? "lg:max-w-none lg:px-6" : ""} ${anyActionBar ? "pb-28" : "pb-6"}`}>
 
       {/* Settings banner — shown until profile is saved. Sparklee says it
           since 2026-10-15 (the owner's pick from the mock): she shakes hello
@@ -2749,12 +2749,8 @@ function CreatePageInner() {
               (2026-10-15). */}
           {/* From the owner's mock (2026-10-15): her two lines as one, above
               the steps; the steps; then the question, in the display face. */}
-          <p ref={studioLineRef} className="text-center text-[20px] font-extrabold leading-[1.3] text-black lg:whitespace-nowrap">
-            {/* Bold black, at the owner's ask (2026-10-15), and on one line on
-                a computer: as large as fits, up to 28px (fitStudioLine). */}
-            <span>Your all-in-one AI visibility studio</span>
-            {" · "}Speak your Spark into more ways to connect, build trust, and stay visible.
-          </p>
+          {/* The studio tagline line was here; the owner removed it
+              (2026-10-31): "What do you want to create?" says it. */}
           {/* The steps bar, and Ask Sparklee beside it rather than inside it
               (the owner's markup, 2026-10-15): the bar loses the height her
               card gave it, and the steps are bigger. */}
@@ -3026,7 +3022,7 @@ function CreatePageInner() {
                 ideas opening the full list below (2026-10-31, the owner's
                 mockup). They were under the card before. */}
             {!tabPage && (
-              <div className={`mt-2.5 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] ${topicOffClass}`} {...topicOffProps}>
+              <div className={`mt-2.5 flex flex-wrap gap-1.5 ${topicOffClass}`} {...topicOffProps}>
                 {quickIdeas.map((idea) => (
                   <button
                     key={idea}
@@ -3037,7 +3033,7 @@ function CreatePageInner() {
                       setTopicTemplateRaw(null);
                       setSparkSeed((x) => ({ text: idea, n: x.n + 1 }));
                     }}
-                    className="shrink-0 whitespace-nowrap rounded-full border border-spark-rule bg-white px-3 py-1.5 text-[13.5px] text-spark-ink hover:border-spark-amber"
+                    className="rounded-full border border-spark-rule bg-white px-3 py-1.5 text-[13.5px] text-spark-ink hover:border-spark-amber"
                   >
                     {idea}
                   </button>

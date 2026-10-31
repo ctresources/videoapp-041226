@@ -69,24 +69,18 @@ export function HomeDashboard({ checklist }: { checklist?: ReactNode }) {
     } finally { setApproving(null); }
   }
 
-  const hour = Number(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, ...(data && { timeZone: data.timeZone }) }));
-  const greet = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const first = data?.name?.trim().split(/\s+/)[0];
   const paid = data ? data.paid : account?.paid ?? true;
 
   return (
     <div className="w-full">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <h1 className="text-[23px] font-bold text-spark-ink">{greet}{first ? `, ${first}` : ""}</h1>
-        <span className="rounded-full bg-[#e8f5ee] px-2.5 py-0.5 text-[12.5px] font-semibold text-[#0f7a52]">✓ Nothing posts until you approve it</span>
-      </div>
+      {/* Ask Sparklee: the main way to work. The greeting moved into its
+          heading, "…today, Carmella?" (2026-10-31, the owner's ask). */}
+      <SparkleeGoal name={first} ask={ask} onApproved={() => { setTimeout(() => void load(), 2500); }} />
 
-      {/* Ask Sparklee: the main way to work. */}
-      <SparkleeGoal ask={ask} onApproved={() => { setTimeout(() => void load(), 2500); }} />
-
-      {/* For people who want control. */}
+      {/* For people who want control: the one "do it yourself" line on Home. */}
       <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-spark-rule bg-white px-3 py-2">
-        <span className="mr-1 text-[14px] font-semibold text-spark-ink-muted">Or create it yourself:</span>
+        <span className="mr-1 text-[14px] font-semibold text-spark-ink-muted">Or create it yourself in Spark Studio:</span>
         {[
           { href: "/create", icon: "🎬", label: "Video / Reel", sub: "Avatar + voice" },
           { href: "/create?tab=camera", icon: "📷", label: "Camera", sub: "You on camera" },

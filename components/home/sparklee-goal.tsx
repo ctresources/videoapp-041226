@@ -50,7 +50,9 @@ function FromSparklee({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function SparkleeGoal({ ask, onApproved }: {
+export function SparkleeGoal({ name, ask, onApproved }: {
+  /** First name, for "What do you want to accomplish today, Carmella?". */
+  name?: string;
   /** Set from outside (an opportunity's Make draft): asked straight away. */
   ask?: { text: string; n: number } | null;
   onApproved?: () => void;
@@ -126,17 +128,18 @@ export function SparkleeGoal({ ask, onApproved }: {
   const showing = listening ? interim : text;
 
   return (
-    <section className="mt-3 overflow-hidden rounded-[20px] border border-spark-rule bg-[#fffcf6] shadow-[0_6px_24px_rgba(36,34,30,0.06)]">
+    <section className="overflow-hidden rounded-[20px] border border-spark-rule bg-[#fffcf6] shadow-[0_6px_24px_rgba(36,34,30,0.06)]">
       {/* Thin dark header strip: Sparklee's black and gold as an accent. */}
-      <div className="flex items-center gap-2.5 bg-[#0f0d0b] px-5 py-2">
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 bg-[#0f0d0b] px-5 py-2">
         <span className="sparklee-badge block h-[32px] w-[32px] shrink-0">
           <Image src="/sparklee.webp" alt="" width={32} height={32} className="h-full w-full" unoptimized />
         </span>
         <b className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[#ffe39a]">Ask Sparklee</b>
+        <span className="ml-auto rounded-full bg-[#e8f5ee] px-2.5 py-0.5 text-[12.5px] font-semibold text-[#0f7a52]">✓ Nothing posts until you approve it</span>
       </div>
 
       <div className="p-4 sm:p-5">
-        <h2 className="mb-3 text-[22px] font-bold leading-tight text-spark-ink sm:text-[24px]">What do you want to accomplish?</h2>
+        <h2 className="mb-3 text-[22px] font-bold leading-tight text-spark-ink sm:text-[24px]">What do you want to accomplish today{name ? `, ${name}` : ""}?</h2>
 
         <form
           onSubmit={(e) => { e.preventDefault(); void send(text); }}
@@ -274,9 +277,6 @@ export function SparkleeGoal({ ask, onApproved }: {
           </div>
         )}
 
-        <p className="mt-3.5 text-[14px] text-spark-ink-muted">
-          Prefer to build it yourself? <Link href="/create" className="font-bold text-[#A3660F] hover:underline">Open Spark Studio →</Link>
-        </p>
       </div>
     </section>
   );
