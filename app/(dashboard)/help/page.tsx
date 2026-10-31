@@ -111,10 +111,12 @@ function FullGuide() {
               <strong>☰</strong>.
             </li>
             <li>
-              <strong>Settings has three tabs.</strong> <strong>Profile</strong> holds your brand, market,
-              voice, closing call to action, import address and password. <strong>Social Accounts</strong>{" "}
-              is where YouTube and your other platforms are connected. <strong>Billing</strong> is your
-              plan and buying more videos. At the top of Profile, <strong>Your studio: 6 of 8 ready</strong>{" "}
+              <strong>Settings has four tabs.</strong> <strong>Profile</strong> (steps 1–8) holds your
+              brand, market, voice, closing call to action, import address and password.{" "}
+              <strong>Social Accounts</strong> (step 9) is where YouTube and your other platforms are
+              connected, plus your Google review link. <strong>CRM</strong> (step 10) holds BoldTrail,
+              GoHighLevel and your Halo website. <strong>Billing</strong> (step 11) is your plan and buying
+              more videos. At the top of Profile, <strong>Your studio: 6 of 8 ready</strong>{" "}
               lists the eight things that make your videos look and sound like you; each one still to do
               has a button that takes you to it.
             </li>
@@ -358,40 +360,13 @@ function FullGuide() {
                 can install it straight away, the card has a button for it.
               </span>
             </Step>
-            <Step n={8} title="Connect Your CRM" icon={Rocket}>
-              <Link href="/settings#crm" className="text-primary-600 font-medium hover:underline">Settings → Profile → 8 · CRM Integration</Link>{" "}
-              sends your work to the CRM you already use.
-              <span className="block mt-1.5">
-                <strong>BoldTrail.</strong> If you use BoldTrail, SparkReels can email your sellers and
-                clients through it, from your own BoldTrail address, and BoldTrail keeps each email on
-                that contact&apos;s record. In BoldTrail, go to Lead Engine → Lead Dropbox → My API
-                Tokens, tick <strong>Contacts</strong>, press <strong>Generate</strong> and copy the
-                token. Then paste it into the <strong>BoldTrail</strong> box in Settings → 8 · CRM
-                Integration and press <strong>Connect</strong>. It&apos;s saved securely and shown only
-                by its last four characters; <strong>Disconnect</strong> removes it. If BoldTrail
-                won&apos;t send with a Contacts token, make one with <strong>All</strong> ticked.
-                Tokens last a year.
-              </span>
-              <span className="block mt-1.5">
-                <strong>GoHighLevel and other CRMs.</strong> Every video you finish can be sent to your
-                CRM automatically, with its title, a short caption, the link, the thumbnail and your name,
-                so a workflow there can text it, email it or post it for you. In GoHighLevel, create a
-                workflow with an <strong>Inbound Webhook</strong> trigger and copy its address. In SparkReels
-                press <strong>Set up for GoHighLevel</strong>, paste the address, keep{" "}
-                <strong>Video published</strong> ticked and save. <strong>Test</strong> sends a sample with
-                the same fields a real video has, so GoHighLevel can learn them. Want it done for you? Press{" "}
-                <strong>Ask for the workflow</strong> on the GoHighLevel card and we&apos;ll email you a
-                ready-made one with step-by-step instructions. Any tool that takes a webhook (Zapier, Make
-                and others) works the same way.
-              </span>
-            </Step>
-            <Step n={9} title="Your Account" icon={User}>
-              <Link href="/settings#account" className="text-primary-600 font-medium hover:underline">Settings → Profile → 9 · Account</Link>{" "}
+            <Step n={8} title="Your Account" icon={User}>
+              <Link href="/settings#account" className="text-primary-600 font-medium hover:underline">Settings → Profile → 8 · Account</Link>{" "}
               is where you set or change your password (if you signed in with Google, you can add one
               here), sign out, or delete your account.
             </Step>
-            <Step n={10} title="Connect YouTube And Your Other Accounts" icon={MonitorPlay}>
-              In <Link href="/settings/social" className="text-primary-600 font-medium hover:underline">Settings → 10 · Social Accounts</Link>,
+            <Step n={9} title="Connect YouTube And Your Other Accounts" icon={MonitorPlay}>
+              In <Link href="/settings/social" className="text-primary-600 font-medium hover:underline">Settings → 9 · Social Accounts</Link>,
               connect the Google account that owns your channel. One-time tip: verify the channel by phone at
               youtube.com/verify so your thumbnails are added automatically.
               {/* The two things that kept the owner's own channel unverified
@@ -432,6 +407,45 @@ function FullGuide() {
                 appears under it: which Facebook Page, your LinkedIn profile or a company page, which
                 Google Business location. Pick once and every post goes there. With two Facebook
                 Pages or two locations you do have to pick, or posts there won&apos;t go out.
+              </span>
+              {/* Moved here from Profile (2026-10-30, the owner's ask). */}
+              <span className="block mt-1.5 scroll-mt-20" id="review-link">
+                <strong>Your Google review link</strong> is at the bottom of this tab (paid plans). In your
+                Google Business Profile, press <strong>Ask for reviews</strong> → <strong>Copy link</strong>,
+                paste it here and press <strong>Save</strong>. It&apos;s the gold button in your review request
+                emails. Under it you can save your <strong>default review request words</strong> and subject,
+                which fill in each time you ask for a review.
+              </span>
+            </Step>
+            <Step n={10} title="Connect Your CRM" icon={Rocket}>
+              <Link href="/settings/crm" className="text-primary-600 font-medium hover:underline">Settings → 10 · CRM</Link>{" "}
+              sends your work to the CRM you already use.
+              <span className="block mt-1.5">
+                <strong>BoldTrail.</strong> If you use BoldTrail, SparkReels can email your sellers and
+                clients through it, from your own BoldTrail address, and BoldTrail keeps each email on
+                that contact&apos;s record. In BoldTrail, go to Lead Engine → Lead Dropbox → My API
+                Tokens, tick <strong>Contacts</strong>, press <strong>Generate</strong> and copy the
+                token. Then paste it into the <strong>BoldTrail</strong> box in Settings → 10 · CRM and press <strong>Connect</strong>. It&apos;s saved securely and shown only
+                by its last four characters; <strong>Disconnect</strong> removes it. If BoldTrail
+                won&apos;t send with a Contacts token, make one with <strong>All</strong> ticked.
+                Tokens last a year.
+              </span>
+              <span className="block mt-1.5">
+                <strong>GoHighLevel and other CRMs.</strong> Every video you finish can be sent to your
+                CRM automatically, with its title, a short caption, the link, the thumbnail and your name,
+                so a workflow there can text it, email it or post it for you. In GoHighLevel, create a
+                workflow with an <strong>Inbound Webhook</strong> trigger and copy its address. In SparkReels
+                press <strong>Set up for GoHighLevel</strong>, paste the address, keep{" "}
+                <strong>Video published</strong> ticked and save. <strong>Test</strong> sends a sample with
+                the same fields a real video has, so GoHighLevel can learn them. Want it done for you? Press{" "}
+                <strong>Ask for the workflow</strong> on the GoHighLevel card and we&apos;ll email you a
+                ready-made one with step-by-step instructions. Any tool that takes a webhook (Zapier, Make
+                and others) works the same way.
+              </span>
+              {/* The Halo website card moved here from Profile (2026-10-30). */}
+              <span className="block mt-1.5">
+                <strong>Your Halo website</strong> is on the same tab, under CRM Integration. Step 16 explains
+                what it does.
               </span>
             </Step>
             <Step n={11} title="Your Plan And Buying More Videos" icon={DollarSign}>
@@ -828,8 +842,8 @@ function FullGuide() {
               <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="halo-sites">Halo sites</span>
               <span className="block mt-1">
                 If you have a Halo website, add it in{" "}
-                <Link href="/settings#halo" className="text-primary-600 font-medium hover:underline">Settings → Halo website</Link>,
-                right after CRM Integration: press <strong>Add your Halo site</strong>, type the address,
+                <Link href="/settings/crm#halo" className="text-primary-600 font-medium hover:underline">Settings → 10 · CRM → Halo website</Link>,
+                under CRM Integration: press <strong>Add your Halo site</strong>, type the address,
                 like <em>springfieldhomes.com</em>, and press <strong>Add</strong>. You can add more than
                 one. Its drafts show up on the AutoSparks page. No Halo website yet? The same card has{" "}
                 <strong>Get Halo</strong>, which opens Halo&apos;s sign-up ($99 a month, billed by Halo). Every morning SparkReels looks for
@@ -1287,7 +1301,7 @@ function FullGuide() {
                 to download the MP4 and post it by hand, which is still there
                 at the end for anywhere that is not connected. */}
             <Step n={22} title="Everywhere Else — From The Same Window" icon={Upload} anchor="auto-publish">
-              The <strong>Publish</strong> window lists every account you connected in step 10. Tick the
+              The <strong>Publish</strong> window lists every account you connected in step 9. Tick the
               ones this video should go to and the button names them — <strong>Publish to
               Facebook</strong>, <strong>Publish to YouTube and Instagram</strong>. Nothing goes out
               until you press it. <strong>Creator</strong> posts each video to YouTube plus three
@@ -1415,7 +1429,7 @@ function FullGuide() {
               <span className="block mt-1.5">
                 <strong>Google Reviews</strong> shows the reviews on your Google Business profile,
                 with your average and how many there are. It needs Google Business connected
-                (step 10). <strong>Needs a reply</strong> is ticked to begin with, so you see only
+                (step 9). <strong>Needs a reply</strong> is ticked to begin with, so you see only
                 the ones you haven&apos;t answered; untick it to see them all. On any review,{" "}
                 <strong>Draft a reply</strong> writes a short one in your voice for you to edit, or{" "}
                 <strong>Write my own</strong> gives you an empty box. Nothing goes to Google until

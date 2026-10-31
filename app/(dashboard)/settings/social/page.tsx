@@ -14,6 +14,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { SettingsSteps } from "@/components/settings/settings-steps";
+import { ReviewLinkCard } from "@/components/settings/review-link-card";
+import { useAuth } from "@/providers/supabase-provider";
 
 interface SocialAccount {
   id: string;
@@ -68,6 +70,7 @@ const PLATFORM_META: Record<string, { label: string; icon: React.ElementType; co
 };
 
 function SocialSettingsContent() {
+  const { user } = useAuth();
   const searchParams = useSearchParams();
 
   const [youtubeConnected, setYoutubeConnected] = useState(false);
@@ -247,7 +250,7 @@ function SocialSettingsContent() {
       {/* No back arrow: Profile is the tab beside this one. */}
       <div className="flex items-center gap-3 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-brand-text">10 · Social Accounts</h2>
+          <h2 className="text-xl font-bold text-brand-text">9 · Social Accounts</h2>
           <p className="text-sm text-slate-500 mt-0.5">Connect your accounts once and publish to them straight from SparkReels</p>
         </div>
       </div>
@@ -256,8 +259,8 @@ function SocialSettingsContent() {
           "More platforms" (paid) are the same place, one or the other, so one step. */}
       <SettingsSteps
         steps={[
-          { id: "youtube", n: "10.1", label: "YouTube", done: !!youtubeConnected && !youtubeChannel?.needsReconnect },
-          { id: "other-platforms", n: "10.2", label: "Other platforms", done: connectedCount > 0 },
+          { id: "youtube", n: "9.1", label: "YouTube", done: !!youtubeConnected && !youtubeChannel?.needsReconnect },
+          { id: "other-platforms", n: "9.2", label: "Other platforms", done: connectedCount > 0 },
         ]}
       />
 
@@ -579,6 +582,8 @@ function SocialSettingsContent() {
         </Card>
       )}
 
+      {/* The Google review link, moved here from Profile (2026-10-30, the owner's ask). */}
+      {user && <div className="mt-6"><ReviewLinkCard userId={user.id} /></div>}
     </div>
   );
 }

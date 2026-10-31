@@ -246,7 +246,7 @@ export default function VideoEmailPage() {
                 )}
                 <p className="mt-1.5 text-[11.5px] text-spark-ink-muted">
                   Up to {MAX} people. It comes from &ldquo;{signature.name || "you"} via SparkReels&rdquo; and replies go to your email; send yourself a test first.{" "}
-                  <Link href="/settings#crm" className="font-semibold text-[#A3660F] hover:underline">Connect BoldTrail</Link> to send from your own address.
+                  <Link href="/settings/crm" className="font-semibold text-[#A3660F] hover:underline">Connect BoldTrail</Link> to send from your own address.
                 </p>
                 <button
                   type="button"
@@ -276,7 +276,7 @@ export default function VideoEmailPage() {
               </label>
             ) : (
               <p className="mt-3 text-[12.5px] text-spark-ink-muted">
-                Asking for a review? <a href="/settings#review-link" className="font-semibold text-[#A3660F] underline">Add your Google review link</a> to put a review button in this email.
+                Asking for a review? <a href="/settings/social#review-link" className="font-semibold text-[#A3660F] underline">Add your Google review link</a> to put a review button in this email.
               </p>
             )}
 

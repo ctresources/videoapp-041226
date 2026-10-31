@@ -5,22 +5,16 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/supabase-provider";
-import { Lock, Trash2, LogOut, Globe, MapPin, Webhook, Palette, Mic, Megaphone, Clock, Mail } from "lucide-react";
+import { Lock, Trash2, LogOut, Globe, MapPin, Palette, Mic, Megaphone, Clock, Mail } from "lucide-react";
 import { EmailImportAddress } from "@/components/settings/email-import-address";
-import { CrmIntegrations } from "@/components/settings/crm-integrations";
-import { BoldTrailConnect } from "@/components/settings/boldtrail-connect";
 import { BrandProfile, VoiceCloneUploader, type BrandProfileInitial } from "@/components/settings/brand-profile";
 import { BrandKitPicker } from "@/components/settings/brand-kit-picker";
 import { SignOutGuard } from "@/components/recovery/sign-out-guard";
 import { SettingsSteps } from "@/components/settings/settings-steps";
 import { StudioChecklist } from "@/components/settings/studio-checklist";
-import { ReviewLinkCard } from "@/components/settings/review-link-card";
 import { HomeScreenCard } from "@/components/settings/home-screen-card";
 import { AffiliateCard } from "@/components/settings/affiliate-card";
-import { HaloSettingsCard } from "@/components/halo/halo-settings-card";
 import { useHomeScreen } from "@/lib/hooks/use-home-screen";
-import { useAccount } from "@/lib/hooks/use-account";
-import { LockedFeature } from "@/components/access/locked-feature";
 import { DEFAULT_CTA_TEMPLATE, MAX_CTA_WORDS, ctaWords, resolveCta } from "@/lib/utils/default-cta";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,8 +26,6 @@ import { allTimeZones, browserTimeZone, isValidTimeZone, US_TIME_ZONES } from "@
 export default function SettingsPage() {
   const router = useRouter();
   const { user } = useAuth();
-  // Free vs paid: CRM and Halo setup are paid workflows (lib/access.ts).
-  const account = useAccount();
   const [passwords, setPasswords] = useState({ current: "", newPass: "", confirm: "" });
   const [savingPassword, setSavingPassword] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -296,8 +288,7 @@ export default function SettingsPage() {
           { id: "cta", n: 5, label: "Video CTA", done: savedCta },
           { id: "email-import", n: 6, label: "Email import" },
           { id: "phone", n: 7, label: "Phone", done: standalone },
-          { id: "crm", n: 8, label: "CRM" },
-          { id: "account", n: 9, label: "Account" },
+          { id: "account", n: 8, label: "Account" },
         ]}
       />
 
@@ -524,9 +515,7 @@ export default function SettingsPage() {
         </form>
       </Card>
 
-      {/* Import by email */}
-      {/* The Google review link, for Ask for Google Review Video Email (2026-10-27). */}
-      <ReviewLinkCard userId={user.id} />
+      {/* Import by email. (The Google review link moved to Social Accounts, 2026-10-30.) */}
 
       <Card id="email-import" className="scroll-mt-28">
         <div className="flex items-center gap-3 mb-5">
@@ -546,34 +535,8 @@ export default function SettingsPage() {
       {/* On the phone's Home Screen (2026-10-17); before CRM since 2026-10-18. */}
       <HomeScreenCard id="phone" />
 
-      {/* CRM Integrations */}
-      <Card id="crm" className="scroll-mt-28">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-9 h-9 bg-spark-amber-tint rounded-xl flex items-center justify-center">
-            <Webhook size={18} className="text-spark-amber" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-brand-text">8 · CRM Integration</h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              BoldTrail connects by token below; webhooks notify GoHighLevel when videos publish
-            </p>
-          </div>
-        </div>
-        {/* BoldTrail by API token, above the webhooks (2026-10-15). Paid
-            plans only since 2026-10-28; nothing shows until the plan is known. */}
-        {account?.paid ? (
-          <>
-            <BoldTrailConnect />
-            <CrmIntegrations />
-          </>
-        ) : account ? (
-          <LockedFeature compact feature="CRM Integration" body="Connect BoldTrail and GoHighLevel with a paid plan." />
-        ) : null}
-      </Card>
-
-      {/* Halo website (2026-10-24, moved here from AutoSparks): optional, so
-          not a numbered step. Paid plans only (2026-10-28). */}
-      {account?.paid && <HaloSettingsCard />}
+      {/* CRM Integration and the Halo website have their own tab now:
+          Settings → CRM (2026-10-30). */}
 
       {/* Share and earn (2026-10-17): optional, so not a numbered step. */}
       <AffiliateCard />
@@ -584,7 +547,7 @@ export default function SettingsPage() {
           <div className="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center">
             <Lock size={18} className="text-slate-500" />
           </div>
-          <h3 className="font-semibold text-brand-text">{hasPassword ? "9 · Change Password" : "9 · Set A Password"}</h3>
+          <h3 className="font-semibold text-brand-text">{hasPassword ? "8 · Change Password" : "8 · Set A Password"}</h3>
         </div>
         <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
           {hasPassword && (

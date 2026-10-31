@@ -289,7 +289,7 @@ export function BoldTrailSend({
   if (!connected) {
     return (
       <p className="mt-3 text-[12.5px] text-spark-ink-muted">
-        <Link href="/settings#crm" className="font-semibold text-[#A3660F] hover:underline">Connect BoldTrail in Settings</Link> to send this to up to {MAX} people from here.
+        <Link href="/settings/crm" className="font-semibold text-[#A3660F] hover:underline">Connect BoldTrail in Settings</Link> to send this to up to {MAX} people from here.
       </p>
     );
   }

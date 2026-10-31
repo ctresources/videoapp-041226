@@ -269,7 +269,7 @@ export function SellerAutoSection({ preview }: { /** Shown as is (screenshots). 
           ))}
         </p>
         {!data.boldtrail && (
-          <p className="mt-2 text-[13px] text-amber-800">Connect BoldTrail in <Link href="/settings#crm" className="font-semibold underline">Settings</Link> so these can send.</p>
+          <p className="mt-2 text-[13px] text-amber-800">Connect BoldTrail in <Link href="/settings/crm" className="font-semibold underline">Settings</Link> so these can send.</p>
         )}
         {settings.enabled && settings.video === "circle" && (
           <p className="mt-1 text-[12.5px] text-spark-ink-faint">The video uses 1 short video per listing each week. Recording it yourself is unlimited.</p>

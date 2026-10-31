@@ -339,7 +339,7 @@ export function ReviewRequestTool() {
       {!reviewUrl && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
           <p className="text-sm text-amber-900">Add your Google review link first. It&apos;s the button in this email.</p>
-          <Link href="/settings#review-link" className="rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white">Add my review link</Link>
+          <Link href="/settings/social#review-link" className="rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white">Add my review link</Link>
         </div>
       )}
 

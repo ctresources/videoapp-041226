@@ -361,7 +361,7 @@ export default function AutopilotPage() {
       {/* Halo sites moved to Settings after CRM Integration (2026-10-24, the
           owner's mockup); a link for agents who have one, above their drafts. */}
       {halo.loaded && halo.sites.length > 0 && (
-        <Link href="/settings#halo" className="-mb-2 self-end text-[13px] font-semibold text-[#A3660F] hover:underline">
+        <Link href="/settings/crm#halo" className="-mb-2 self-end text-[13px] font-semibold text-[#A3660F] hover:underline">
           Halo settings →
         </Link>
       )}
