@@ -26,7 +26,7 @@ interface Plan {
   usageLine: string; overBudget: boolean; missing: { label: string; href: string }[]; paid: boolean;
 }
 
-export const TRY_SAYING = ["Plan my week", "Market my listing", "Create a market update", "Turn my blog into a video", "I haven't posted this week. What should I make?"];
+export const TRY_SAYING = ["Plan my week", "Market my listing", "Create a market update", "Turn my blog into a video", "What should I post this week?"];
 const DAYS = ["today", "tomorrow", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const LABEL: Record<string, string> = { youtube: "YouTube", facebook: "Facebook", instagram: "Instagram", linkedin: "LinkedIn", tiktok: "TikTok", x: "X", threads: "Threads", google_business: "Google Business" };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -44,17 +44,20 @@ export function SparkleeGoal({ variant = "hero", ask, onApproved }: {
   const [approving, setApproving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [done, setDone] = useState<number | null>(null);
+  /** What was asked, shown above Sparklee's answer (2026-10-30, the owner's ask). */
+  const [asked, setAsked] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function send(words: string) {
     const said = words.trim();
     if (!said) { inputRef.current?.focus(); return; }
-    setText(said); setPlanning(true); setPlan(null); setDone(null); setEditing(false);
+    setText(said); setAsked(said); setPlanning(true); setPlan(null); setDone(null); setEditing(false);
     try {
       const res = await fetch("/api/sparklee/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ words: said }) });
       const out = await res.json().catch(() => ({}));
       if (!res.ok) { toast.error(out.error || "Sparklee couldn't plan that. Try again."); return; }
       setPlan(out as Plan);
+      setText("");
     } finally { setPlanning(false); }
   }
 
@@ -90,7 +93,7 @@ export function SparkleeGoal({ variant = "hero", ask, onApproved }: {
   const showing = listening ? interim || "Listening…" : text;
 
   return (
-    <div className={hero ? "grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]" : "flex flex-col gap-3"}>
+    <div className={hero && (planning || plan || done !== null) ? "grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]" : "flex flex-col gap-3"}>
       <div className="min-w-0">
         {hero && (
           <div className="mb-3 flex items-center gap-3">
@@ -124,11 +127,11 @@ export function SparkleeGoal({ variant = "hero", ask, onApproved }: {
             {planning ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />} <span className="hidden sm:inline">Send</span>
           </button>
         </form>
-        <p className="mt-2.5 text-[12.5px] text-[#cdbf9f]">Try saying:</p>
-        <div className="mt-1 flex flex-wrap gap-1.5">
+        <p className="mt-3 text-[13.5px] text-[#cdbf9f]">Try saying:</p>
+        <div className="mt-1.5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
           {TRY_SAYING.slice(0, hero ? 5 : 4).map((t) => (
             <button key={t} type="button" onClick={() => void send(t)}
-              className="rounded-full border border-[#3b3226] px-3 py-1 text-[13.5px] text-[#f3e6cf] hover:border-[#e7a92c]">{t}</button>
+              className="shrink-0 whitespace-nowrap rounded-full border border-[#5a4826] bg-[#1d1915] px-4 py-2 text-[15.5px] font-medium text-[#f3e6cf] hover:border-[#e7a92c]">{t}</button>
           ))}
         </div>
         {hero && (
@@ -140,6 +143,12 @@ export function SparkleeGoal({ variant = "hero", ask, onApproved }: {
 
       {(planning || plan || done !== null) && (
         <div className="flex min-w-0 flex-col rounded-2xl border border-[#3b3226] bg-[#1d1915] p-3.5 text-[#f3e6cf]">
+          {asked && (
+            <div className="mb-3 self-end rounded-2xl rounded-br-sm bg-[#2a2219] px-3 py-2 text-[14px] text-white">
+              <span className="block text-[11.5px] font-bold uppercase tracking-wide text-[#cdbf9f]">You asked</span>
+              {asked}
+            </div>
+          )}
           <p className="mb-1.5 text-[13px] font-bold text-[#ffe39a]">✦ Sparklee</p>
           {planning && <p className="flex items-center gap-2 text-[14px]"><Loader2 size={15} className="animate-spin" /> Checking your plan, accounts and calendar…</p>}
 
