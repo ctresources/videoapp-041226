@@ -399,7 +399,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
+    <div className="w-full px-4 py-6 sm:px-6">
       <div className="flex items-center gap-3 mb-6">
         <Link href="/dashboard">
           <button className="p-1.5 rounded-xl hover:bg-slate-100 transition-colors">
@@ -413,7 +413,7 @@ export default function AdminPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
         {[
           { label: "Total Users", value: stats.totalUsers, icon: Users, color: "text-primary-500", bg: "bg-primary-50" },
           { label: "Videos Generated", value: stats.totalVideos, icon: Video, color: "text-secondary-500", bg: "bg-purple-50" },
@@ -958,8 +958,8 @@ export default function AdminPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
-                  {["User", "Plan", "Credits", "Videos", "Last active", "Time in app (30 days)", "Status", "Welcome email", "Follow-up", "Affiliate", "Joined", ""].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
+                  {["User", "Plan", "Credits", "Videos", "Last active", "In app · 30 days", "Status", "Welcome email", "Follow-up", "Affiliate", "Joined", ""].map((h) => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
