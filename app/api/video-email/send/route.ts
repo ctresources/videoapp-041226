@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { staffLimits, STAFF_NO_EMAIL } from "@/lib/staff/staff";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadBoldTrailToken, sendBoldTrailEmail } from "@/lib/api/boldtrail";
@@ -31,6 +32,8 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Staff without email access (Admin → Staff activity, 2026-10-30).
+  if ((await staffLimits(user.id))?.emails === false) return NextResponse.json({ error: STAFF_NO_EMAIL, code: "staff_access" }, { status: 403 });
 
   const body = (await req.json().catch(() => ({}))) as { videoId?: string; subject?: string; note?: string; contacts?: Contact[]; copyMe?: boolean; reviewButton?: boolean };
   const subject = (body.subject ?? "").trim().slice(0, 150);

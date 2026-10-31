@@ -61,6 +61,8 @@ export async function POST(req: NextRequest) {
   let title: string;
   let spokenScript: string;
   let hook: string;
+  /** A screen recording, marked on the video for Admin → Staff activity (2026-10-30). */
+  let isScreen = false;
   let city: string;
   let state: string;
   let cta: string;
@@ -135,6 +137,7 @@ export async function POST(req: NextRequest) {
     if (gate) return gate;
 
     // Record My Screen is for paid plans (2026-10-28, the owner's call).
+    isScreen = body.screen === true;
     if (body.screen === true) {
       const { data: prof } = await admin.from("profiles").select("subscription_tier, role").eq("id", user.id).single();
       if (!isPaidLevel(getAccessLevel(prof as never))) {
@@ -264,7 +267,7 @@ export async function POST(req: NextRequest) {
       render_status: "completed",
       // "scenes" is what isAiMadeVideo reads to set the platform disclosures.
       metadata: {
-        source: "teleprompter",
+        source: isScreen ? "screen" : "teleprompter",
         ...(aiScenes && { motion: "scenes" }),
         ...(cameraPhotos.length > 0 && { camera_photos: cameraPhotos }),
       },

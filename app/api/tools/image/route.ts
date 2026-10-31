@@ -10,6 +10,7 @@ import {
 import { IMAGE_MONTHLY_LIMIT, aiImagesUsedThisMonth } from "@/lib/utils/image-allowance";
 import { photoBriefFor } from "@/lib/api/photo-brief";
 import { marketStatsFrom } from "@/lib/api/market-stats";
+import { logActivity } from "@/lib/staff/staff";
 
 // Two AI backgrounds in parallel, each up to a minute, then two renders.
 export const maxDuration = 180;
@@ -69,6 +70,8 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Spark Tools use, for Admin → Staff activity (2026-10-30).
+  await logActivity(user.id, "tool:image");
 
   const gate = await freeTrialGateResponse(user.id, { preVideo: "allow" });
   if (gate) return gate;

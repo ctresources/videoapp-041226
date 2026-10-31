@@ -7,6 +7,7 @@ import {
   SocialPublishError, deleteGoogleReviewReply, getDestinations, getProfile, listGoogleReviews, profileUsername,
   replyToGoogleReview, uploadPostConfigured,
 } from "@/lib/api/upload-post";
+import { logActivity } from "@/lib/staff/staff";
 
 export const maxDuration = 45;
 export const dynamic = "force-dynamic";
@@ -99,6 +100,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const me = await signedIn();
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  await logActivity(me.user.id, "tool:google_reviews");
   if (!uploadPostConfigured() || !me.created) {
     return NextResponse.json({ error: "Connect Google Business in Settings first." }, { status: 400 });
   }

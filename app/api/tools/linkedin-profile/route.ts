@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { writeLinkedInProfile, type LinkedInInput } from "@/lib/api/linkedin-profile";
 import { NextRequest, NextResponse } from "next/server";
+import { logActivity } from "@/lib/staff/staff";
 
 // Two model calls at most: the draft, and one rewrite of any field that ran
 // over its LinkedIn limit. Each can take up to 50s (perplexityChat's timeout).
@@ -11,6 +12,8 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Spark Tools use, for Admin → Staff activity (2026-10-30).
+  await logActivity(user.id, "tool:linkedin_profile");
 
   const gate = await freeTrialGateResponse(user.id);
   if (gate) return gate;

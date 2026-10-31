@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { generateAnswerBlocks } from "@/lib/ai/answer-blocks";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
+import { logActivity } from "@/lib/staff/staff";
 
 export const maxDuration = 60;
 
@@ -27,6 +28,8 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Spark Tools use, for Admin → Staff activity (2026-10-30).
+  await logActivity(user.id, "tool:answer_blocks");
 
   const gate = await freeTrialGateResponse(user.id);
   if (gate) return gate;

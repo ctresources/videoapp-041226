@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { staffLimits, STAFF_NO_EMAIL } from "@/lib/staff/staff";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSellerUpdate } from "@/lib/seller/send";
@@ -25,6 +26,8 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Staff without email access (Admin → Staff activity, 2026-10-30).
+  if ((await staffLimits(user.id))?.emails === false) return NextResponse.json({ error: STAFF_NO_EMAIL, code: "staff_access" }, { status: 403 });
 
   const { listingId, updateOn, subjectIdx, alsoText } = (await req.json().catch(() => ({}))) as {
     listingId?: string; updateOn?: string; subjectIdx?: number; alsoText?: boolean;

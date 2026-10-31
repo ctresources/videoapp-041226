@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff Activity</title>
+<style>
+  :root { --ink:#24221e; --soft:#4a463e; --muted:#77736a; --faint:#a29d92; --rule:#e8e3d8; --amber:#BA7517; --amber2:#A3660F; --tint:#fbf3e4; --paper:#f6f3ec; --green:#0f7a52; --greenbg:#e8f5ee; --red:#b42318; --redbg:#fdecea; --blue:#1B5E82; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.45 -apple-system, "Segoe UI", Inter, sans-serif; padding:22px 16px 50px; }
+  .wrap { max-width:1240px; margin:0 auto; }
+  .tabs { display:flex; gap:20px; border-bottom:1px solid var(--rule); margin-bottom:16px; font-weight:600; color:var(--muted); }
+  .tabs span { padding:8px 0; } .tabs .on { color:var(--amber2); border-bottom:2px solid var(--amber); }
+  .head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  h1 { font-size:22px; margin:0; }
+  .sel { border:1px solid var(--rule); background:#fff; border-radius:10px; padding:6px 12px; font-size:14px; }
+  .flags { background:#fff; border:1px solid var(--rule); border-radius:16px; padding:12px 14px; margin-bottom:14px; }
+  .flags h2 { font-size:15px; margin:0 0 8px; }
+  .flag { display:flex; gap:10px; align-items:center; padding:7px 0; border-top:1px solid var(--rule); font-size:14px; }
+  .flag:first-of-type { border-top:none; padding-top:0; }
+  .dot { width:9px; height:9px; border-radius:50%; flex:none; } .dot.r { background:var(--red); } .dot.a { background:var(--amber); } .dot.g { background:#a29d92; }
+  .flag b { font-weight:650; } .flag .act { margin-left:auto; display:flex; gap:6px; }
+  .btn { border:1px solid var(--rule); background:#fff; border-radius:9px; padding:4px 10px; font-size:13px; font-weight:650; color:var(--ink); white-space:nowrap; }
+  .btn.gold { background:var(--amber); border-color:var(--amber); color:#fff; }
+  .people { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px; margin-bottom:14px; }
+  .person { background:#fff; border:1px solid var(--rule); border-radius:16px; padding:12px 14px; }
+  .person.on { border-color:var(--amber); box-shadow:0 0 0 2px #fbeacc; }
+  .person .top { display:flex; align-items:center; gap:10px; }
+  .av { width:38px; height:38px; border-radius:50%; background:radial-gradient(circle at 50% 38%, #e8c9a8 0 30%, #5a4632 31%); flex:none; }
+  .person b { display:block; font-size:15px; } .person span { font-size:12.5px; color:var(--muted); }
+  .bar { height:7px; border-radius:99px; background:#eee9de; overflow:hidden; margin:10px 0 4px; } .bar i { display:block; height:100%; background:var(--amber); }
+  .nums { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:8px; }
+  .nums div { background:var(--paper); border-radius:10px; padding:6px 8px; } .nums b { font-size:16px; } .nums span { font-size:11.5px; }
+  .chip { font-size:11.5px; font-weight:700; border-radius:99px; padding:1px 8px; }
+  .chip.r { background:var(--redbg); color:var(--red); } .chip.g { background:var(--greenbg); color:var(--green); }
+  .grid2 { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); gap:12px; align-items:start; }
+  .card { background:#fff; border:1px solid var(--rule); border-radius:16px; padding:12px 14px; }
+  .card h2 { font-size:15px; margin:0 0 8px; display:flex; align-items:center; gap:8px; }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; }
+  th { text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; padding:6px 6px; border-bottom:1px solid var(--rule); }
+  td { padding:8px 6px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  .th { width:56px; height:32px; border-radius:6px; background:linear-gradient(135deg,#3a2b17,#BA7517); }
+  .acct { display:block; font-size:12.5px; } .acct.bad { color:var(--red); font-weight:650; }
+  .muted { color:var(--muted); font-size:12.5px; }
+  .row { display:flex; justify-content:space-between; gap:8px; padding:7px 0; border-top:1px solid var(--rule); font-size:13.5px; }
+  .row:first-of-type { border-top:none; }
+  .approved { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 10px; }
+  .approved span { border:1px solid var(--rule); border-radius:99px; padding:3px 10px; font-size:12.5px; background:var(--greenbg); color:var(--green); font-weight:600; }
+  .toggle { display:flex; gap:8px; align-items:center; font-size:13.5px; margin-top:6px; }
+  .sw { width:34px; height:20px; border-radius:99px; background:var(--amber); position:relative; } .sw::after { content:""; position:absolute; right:3px; top:3px; width:14px; height:14px; border-radius:50%; background:#fff; }
+  .lab2 { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:10px 0 5px; }
+  .seg { display:inline-flex; border:1px solid var(--rule); border-radius:10px; overflow:hidden; font-size:13px; font-weight:600; }
+  .seg span { padding:5px 11px; border-left:1px solid var(--rule); color:var(--soft); background:#fff; }
+  .seg span:first-child { border-left:none; }
+  .seg span.on { background:var(--amber); color:#fff; }
+  .note { margin-top:16px; background:#fff8ea; border:1px solid #f0d9ad; border-radius:14px; padding:12px 16px; font-size:13.5px; color:#6b4a12; }
+  @media (max-width:900px) { .people, .grid2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tabs"><span>Users</span><span>Emails</span><span class="on">Staff activity</span><span>Affiliates</span></div>
+  <div class="head"><h1>Staff activity</h1><span class="sel">October 2026 ▾</span><span class="sel">All staff ▾</span></div>
+
+  <div class="flags">
+    <h2>Needs a look · 3</h2>
+    <div class="flag"><span class="dot r"></span><span><b>Jaina</b> posted "My weekend in Cebu" to <b>Instagram · jaina.travels</b>, an account you haven't approved for her.</span><span class="act"><span class="btn">Watch</span><span class="btn">Approve account</span><span class="btn gold">Set to approved only</span></span></div>
+    <div class="flag"><span class="dot a"></span><span><b>Jaina</b> made 2 videos that weren't posted or emailed anywhere.</span><span class="act"><span class="btn">See them</span><span class="btn">It's fine</span></span></div>
+    <div class="flag"><span class="dot g"></span><span><b>Mark</b> has used <b>5 of 5</b> videos this month.</span><span class="act"><span class="btn">Raise cap</span></span></div>
+  </div>
+
+  <div class="people">
+    <div class="person on">
+      <div class="top"><div class="av"></div><div><b>Jaina Porciuncula</b><span>Staff · last active 9:14 AM your time · 9:14 PM Manila</span></div><span class="chip r" style="margin-left:auto">2 flags</span></div>
+      <div class="bar"><i style="width:80%"></i></div><span style="font-size:12.5px;color:var(--muted)">4 of 5 videos this month</span>
+      <div class="nums"><div><b>6</b><br><span>Videos</span></div><div><b>9</b><br><span>Posts</span></div><div><b>3</b><br><span>Emails</span></div><div><b>2</b><br><span>Approvals</span></div></div>
+    </div>
+    <div class="person">
+      <div class="top"><div class="av"></div><div><b>Mark Rivera</b><span>Staff · last active yesterday · Manila</span></div><span class="chip r" style="margin-left:auto">1 flag</span></div>
+      <div class="bar"><i style="width:100%"></i></div><span style="font-size:12.5px;color:var(--muted)">5 of 5 videos this month</span>
+      <div class="nums"><div><b>7</b><br><span>Videos</span></div><div><b>12</b><br><span>Posts</span></div><div><b>5</b><br><span>Emails</span></div><div><b>4</b><br><span>Approvals</span></div></div>
+    </div>
+    <div class="person">
+      <div class="top"><div class="av"></div><div><b>Demo account</b><span>Staff · last active Oct 22</span></div><span class="chip g" style="margin-left:auto">OK</span></div>
+      <div class="bar"><i style="width:40%"></i></div><span style="font-size:12.5px;color:var(--muted)">2 of 5 videos this month</span>
+      <div class="nums"><div><b>2</b><br><span>Videos</span></div><div><b>0</b><br><span>Posts</span></div><div><b>0</b><br><span>Emails</span></div><div><b>0</b><br><span>Approvals</span></div></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Jaina · what she made and where it went</h2>
+      <table>
+        <tr><th></th><th>Video</th><th>Made</th><th>Counted</th><th>Posted to</th></tr>
+        <tr><td><div class="th"></div></td><td><b>A week of videos in 10 minutes with SparkReels</b><br><span class="muted">Avatar video · Watch</span></td><td>Oct 29</td><td>✓</td><td><span class="acct">YouTube · SparkReels ↗</span></td></tr>
+        <tr><td><div class="th"></div></td><td><b>My weekend in Cebu</b><br><span class="muted">Scenes reel · Watch</span></td><td>Oct 27</td><td>✓</td><td><span class="acct bad">Instagram · jaina.travels ↗ (not approved)</span></td></tr>
+        <tr><td><div class="th"></div></td><td><b>SparkReels vs doing it yourself</b><br><span class="muted">Avatar in circle · Watch</span></td><td>Oct 24</td><td>✓</td><td><span class="muted">Not posted</span></td></tr>
+        <tr><td><div class="th"></div></td><td><b>How the Video Business Card works</b><br><span class="muted">Camera · Watch</span></td><td>Oct 21</td><td>Free</td><td><span class="acct">YouTube · SparkReels ↗</span></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Jaina · other activity</h2>
+      <div class="row"><span>✉️ Email it · "A week of videos in 10 minutes"</span><span class="muted">8 people · Oct 29</span></div>
+      <div class="row"><span>⭐ Review request video email</span><span class="muted">none</span></div>
+      <div class="row"><span>✅ AutoSparks approved</span><span class="muted">2 · Oct 22, Oct 28</span></div>
+      <div class="row"><span>🧰 Spark Tools used</span><span class="muted">Thumbnails 4 · Banners 1</span></div>
+      <div class="row"><span>🪪 Business card opened</span><span class="muted">11 times</span></div>
+      <h2 style="margin-top:14px">Jaina's access</h2>
+      <p class="muted" style="margin:0 0 8px">Set per person. Mark can have different rights.</p>
+      <div class="lab2">Publishing</div>
+      <div class="seg"><span>Off</span><span class="on">Approved accounts only</span><span>Any account</span></div>
+      <div class="approved"><span>YouTube · SparkReels</span><span style="background:#fff;color:var(--muted);border-style:dashed">+ Add an account</span></div>
+      <div class="lab2">Email it, review and seller emails</div>
+      <div class="seg"><span>Off</span><span class="on">On</span></div>
+      <div class="lab2">AutoSparks approvals</div>
+      <div class="seg"><span class="on">Off</span><span>On</span></div>
+      <div class="lab2">Videos a month</div>
+      <div class="seg"><span class="on">5</span><span style="color:var(--muted)">change</span></div>
+      <p class="muted" style="margin:8px 0 0">Off hides the button for her. Approved accounts only: Publish offers just those, and anything else is refused.</p>
+    </div>
+  </div>
+
+  <div class="note"><b>Mockup · sample people and posts.</b> Only you (Admin) see this page. Email counts show how many people, never their addresses. Times show in your time zone and theirs.</div>
+</div>
+</body>
+</html>

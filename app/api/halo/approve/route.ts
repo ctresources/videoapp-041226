@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { staffLimits, STAFF_NO_AUTOSPARKS } from "@/lib/staff/staff";
 import { haloSession } from "@/lib/halo/session";
 import { makeDraftVideo } from "@/lib/halo/make";
 import type { HaloSetup } from "@/lib/halo";
@@ -38,6 +39,11 @@ export async function POST(req: NextRequest) {
   if (!d || !["halo", "halo_promo", "email", "sparklee"].includes(d.source)) return NextResponse.json({ error: "Draft not found." }, { status: 404 });
   if (d.status !== "draft") return NextResponse.json({ error: d.status === "writing" ? "Still writing. Try again in a minute." : "This one is already approved." }, { status: 409 });
   if (!d.project_id) return NextResponse.json({ error: "Still writing. Try again in a minute." }, { status: 409 });
+  // Staff without AutoSparks approvals (2026-10-30): making the video is
+  // fine; approving it to post is not.
+  if (!make && (await staffLimits(s.user.id))?.autosparks === false) {
+    return NextResponse.json({ error: STAFF_NO_AUTOSPARKS, code: "staff_access" }, { status: 403 });
+  }
 
   /**
    * A video already made from this draft (2026-10-24, Daniel Okiro's draft):

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getValidAccessToken, uploadVideoToYouTube, setVideoThumbnail } from "@/lib/api/youtube";
 import { NextRequest, NextResponse } from "next/server";
+import { canPublishTo, staffLimits, STAFF_NO_PUBLISH } from "@/lib/staff/staff";
 
 export const maxDuration = 300; // 5 min — video download + YouTube upload can be slow
 
@@ -11,6 +12,8 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Staff publishing access (2026-10-30).
+  if (!canPublishTo(await staffLimits(user.id), "youtube")) return NextResponse.json({ error: STAFF_NO_PUBLISH, code: "staff_access" }, { status: 403 });
 
   const body = await req.json() as {
     videoId: string;

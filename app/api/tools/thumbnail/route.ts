@@ -3,6 +3,7 @@ import { renderAndSaveThumbnail } from "@/lib/utils/thumbnail-render";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import type { ThumbStyle } from "@/lib/utils/thumbnail-style";
 import { NextRequest, NextResponse } from "next/server";
+import { logActivity } from "@/lib/staff/staff";
 
 // AI background generation can take up to a minute on its own.
 export const maxDuration = 120;
@@ -17,6 +18,8 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Spark Tools use, for Admin → Staff activity (2026-10-30).
+  await logActivity(user.id, "tool:thumbnail");
 
   const gate = await freeTrialGateResponse(user.id);
   if (gate) return gate;

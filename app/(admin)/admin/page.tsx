@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmailsTab } from "@/components/admin/emails-tab";
+import { StaffTab } from "@/components/admin/staff-tab";
 import { HaloTab } from "@/components/admin/halo-tab";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -148,7 +149,7 @@ export default function AdminPage() {
   const [saving, setSaving] = useState<Record<string, boolean>>({});
 
   // Invite codes state
-  const [adminTab, setAdminTab] = useState<"users" | "invites" | "affiliates" | "waitlist" | "costs" | "emails" | "halo">("users");
+  const [adminTab, setAdminTab] = useState<"users" | "invites" | "affiliates" | "waitlist" | "costs" | "emails" | "halo" | "staff">("users");
 
   // ── Cost per user ────────────────────────────────────────────────────────
   const [costs, setCosts] = useState<CostsResponse | null>(null);
@@ -459,7 +460,7 @@ export default function AdminPage() {
 
       {/* Tab switcher */}
       <div className="flex flex-wrap gap-2 mb-5">
-        {([["users", Users, "Users"], ["costs", Coins, "Costs"], ["invites", Gift, "Beta Invites"], ["affiliates", DollarSign, "Affiliates"], ["waitlist", Mail, "Waitlist"], ["emails", Mail, "Emails"], ["halo", Globe, "Halo"]] as const).map(([tab, Icon, label]) => (
+        {([["users", Users, "Users"], ["costs", Coins, "Costs"], ["invites", Gift, "Beta Invites"], ["affiliates", DollarSign, "Affiliates"], ["waitlist", Mail, "Waitlist"], ["emails", Mail, "Emails"], ["halo", Globe, "Halo"], ["staff", Users, "Staff activity"]] as const).map(([tab, Icon, label]) => (
           <button key={tab} onClick={() => setAdminTab(tab)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
               adminTab === tab ? "bg-blue-600 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300"
@@ -473,6 +474,8 @@ export default function AdminPage() {
       {adminTab === "emails" && <EmailsTab />}
       {/* ── HALO TAB (2026-10-24): who pressed Get Halo ── */}
       {adminTab === "halo" && <HaloTab />}
+      {/* ── STAFF ACTIVITY (2026-10-30, the owner's mockup) ── */}
+      {adminTab === "staff" && <StaffTab />}
 
       {/* ── INVITE CODES TAB ── */}
       {adminTab === "invites" && (

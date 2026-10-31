@@ -14,6 +14,7 @@
  */
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { canPublishTo, staffLimits } from "@/lib/staff/staff";
 import { getProfile, profileUsername, uploadPostConfigured, type ConnectedAccount } from "@/lib/api/upload-post";
 import { PARTNER_PLATFORMS, partnerAccountId, partnerPlatformLimit } from "@/lib/utils/social-platforms";
 
@@ -103,8 +104,11 @@ export async function GET() {
       source: "partner" as const,
     }));
 
+  // Staff see only the accounts they may post to (2026-10-30).
+  const staff = await staffLimits(user.id);
+  const mayPost = (a: { platform: string }) => canPublishTo(staff, a.platform);
   return NextResponse.json({
-    accounts: [...youtube, ...others],
+    accounts: [...youtube, ...others].filter(mayPost),
     connected: youtube.length + others.length > 0,
     youtubeConnected: youtube.length > 0,
     more: {

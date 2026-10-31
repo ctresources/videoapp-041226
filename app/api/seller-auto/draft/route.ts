@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { staffLimits, STAFF_NO_AUTOSPARKS } from "@/lib/staff/staff";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { autopilotEligible } from "@/lib/autopilot";
@@ -54,6 +55,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, href: `/tools?tab=seller&listing=${d.listing_id}&on=${d.update_on}` });
     }
     case "approve": {
+      // Staff without AutoSparks approvals (2026-10-30).
+      if ((await staffLimits(user.id))?.autosparks === false) return NextResponse.json({ error: STAFF_NO_AUTOSPARKS, code: "staff_access" }, { status: 403 });
       const { data: up } = await admin.from("seller_listing_updates").select("email, video_url")
         .eq("listing_id", d.listing_id).eq("update_on", d.update_on).maybeSingle();
       const u = up as { email: unknown; video_url: string | null } | null;

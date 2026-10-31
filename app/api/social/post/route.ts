@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getValidAccessToken, uploadVideoToYouTube, setVideoThumbnail, setVideoThumbnailBytes, YouTubeReconnectError } from "@/lib/api/youtube";
 import { thumbnailCardPng } from "@/lib/api/thumbnail-card";
 import { NextRequest, NextResponse } from "next/server";
+import { canPublishTo, staffLimits, STAFF_NO_PUBLISH } from "@/lib/staff/staff";
 import {
   SocialPublishError, profileUsername, publishPhoto, publishVideo, uploadPostConfigured,
   type PublishAccepted,
@@ -57,6 +58,12 @@ export async function POST(req: NextRequest) {
     targets: PostRequestTarget[];
     scheduledAt?: string;
   };
+  // Staff publishing access (Admin → Staff activity, 2026-10-30): off, or
+  // only to the accounts approved for them.
+  const staff = await staffLimits(user.id);
+  if (staff && (staff.publish === "off" || (targets ?? []).some((t) => !canPublishTo(staff, t.platform)))) {
+    return NextResponse.json({ error: staff.publish === "off" ? STAFF_NO_PUBLISH : "That account isn't approved for you to post to. Ask the account owner.", code: "staff_access" }, { status: 403 });
+  }
 
   if (!videoId || !targets?.length) {
     return NextResponse.json({ error: "videoId and targets required" }, { status: 400 });
