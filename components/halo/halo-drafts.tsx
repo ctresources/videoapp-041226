@@ -444,8 +444,8 @@ export function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; hal
         {!open && <Thumb d={d} onOpen={() => setViewThumb(true)} />}
         {viewThumb && <ThumbView d={d} onClose={() => setViewThumb(false)} />}
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-spark-ink-muted">
-            <span className="font-bold text-spark-ink">{when(d.slot_at)}</span>
+          <div className="flex flex-wrap items-center gap-1.5 text-[13px] text-spark-ink-muted">
+            <span className="text-[15px] font-bold text-spark-ink">{when(d.slot_at)}</span>
             {needsVideo && !d.madeVideo && d.status === "draft" && <span className="rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-700">Needs 1 more video</span>}
             <span className={`rounded-full border px-2 py-0.5 font-semibold ${d.source === "halo_promo" ? "border-[#f1d9b0] bg-spark-amber-tint text-[#A3660F]" : d.source === "email" ? "border-spark-rule bg-[#faf9f5] text-spark-ink-soft" : "border-[#cfe2ec] bg-[#eef5f9] text-spark-blue"}`}>{tag}</span>
           </div>

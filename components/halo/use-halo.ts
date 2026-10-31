@@ -85,7 +85,15 @@ export function useHalo(userId: string | undefined) {
       .neq("status", "skipped")
       .gte("slot_at", since)
       .order("slot_at");
-    const list = (data ?? []) as unknown as HaloDraft[];
+    // Only today and ahead (2026-10-31, the owner's ask): a draft whose day has
+    // passed without going out is stale, so it drops off. Kept: one being
+    // posted right now, and a posted Halo one still waiting on Put on my Halo
+    // post. The video itself stays in My Sparks.
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const list = ((data ?? []) as unknown as HaloDraft[]).filter((d) =>
+      Date.parse(d.slot_at) >= today.getTime()
+      || d.status === "approved"
+      || (d.source === "halo" && !d.on_halo_at && (d.status === "posted" || d.status === "scheduled")));
     // Drafts still to approve whose video was already made elsewhere (the
     // editor): Approve then posts that one instead of making another.
     const open = list.filter((d) => d.status === "draft" && d.project_id).map((d) => d.project_id as string);

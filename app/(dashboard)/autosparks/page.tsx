@@ -102,7 +102,10 @@ export default function AutopilotPage() {
       // Halo drafts share the table; they have their own list below.
       .eq("source", "autosparks")
       .order("slot_at");
-    setDrafts((data ?? []) as unknown as Draft[]);
+    // Only today and ahead (2026-10-31, the owner's ask): earlier days this
+    // week drop off. What was made stays in My Sparks.
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    setDrafts(((data ?? []) as unknown as Draft[]).filter((d) => Date.parse(d.slot_at) >= today.getTime()));
     setLoading(false);
   }, [user, monday]);
 
@@ -300,7 +303,7 @@ export default function AutopilotPage() {
       {/* The weekly mix (2026-10-21, the owner's ask). */}
       {videos !== null && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-spark-ink-muted">Each week:</span>
+          <span className="text-[15px] font-medium text-spark-ink-muted">Each week:</span>
           {[
             { n: 1, label: "1 video + 2 blogs" },
             { n: 2, label: "2 videos + 1 blog" },
@@ -312,7 +315,7 @@ export default function AutopilotPage() {
               type="button"
               onClick={() => { if (n !== videos) void chooseMix(n); }}
               aria-pressed={videos === n}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              className={`rounded-full border px-3.5 py-1.5 text-[15px] font-medium transition-colors ${
                 videos === n
                   ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]"
                   : "border-spark-rule bg-white text-spark-ink-muted hover:border-spark-rule-dim"
@@ -327,14 +330,14 @@ export default function AutopilotPage() {
       {/* Which days, and what time (2026-10-21, the owner's ask). */}
       {days !== null && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="mr-0.5 text-xs font-medium text-spark-ink-muted">Post on:</span>
+          <span className="mr-0.5 text-[15px] font-medium text-spark-ink-muted">Post on:</span>
           {[1, 2, 3, 4, 5, 6, 0].map((d) => (
             <button
               key={d}
               type="button"
               onClick={() => void toggleDay(d)}
               aria-pressed={days.includes(d)}
-              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+              className={`rounded-full border px-3 py-1.5 text-[15px] font-medium transition-colors ${
                 days.includes(d)
                   ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]"
                   : "border-spark-rule bg-white text-spark-ink-muted hover:border-spark-rule-dim"
@@ -343,18 +346,18 @@ export default function AutopilotPage() {
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d]}
             </button>
           ))}
-          <span className="ml-1 text-xs text-spark-ink-muted">at</span>
+          <span className="ml-1 text-[15px] text-spark-ink-muted">at</span>
           <select
             value={time}
             onChange={(e) => void chooseTime(e.target.value)}
-            className="rounded-lg border border-spark-rule bg-white px-2 py-1 text-xs text-spark-ink outline-none focus:border-spark-amber"
+            className="rounded-lg border border-spark-rule bg-white px-2.5 py-1.5 text-[15px] text-spark-ink outline-none focus:border-spark-amber"
           >
             {Array.from({ length: 15 }, (_, i) => i + 6).map((h) => {
               const v = `${String(h).padStart(2, "0")}:00`;
               return <option key={v} value={v}>{h === 12 ? "12 PM" : h > 12 ? `${h - 12} PM` : `${h} AM`}</option>;
             })}
           </select>
-          {days.length !== 3 && <span className="text-[11px] text-spark-amber">Pick 3 days</span>}
+          {days.length !== 3 && <span className="text-[13px] text-spark-amber">Pick 3 days</span>}
         </div>
       )}
 
@@ -431,8 +434,8 @@ export default function AutopilotPage() {
             const hook = d.projects?.ai_script?.hook;
             return (
               <div key={d.id} className={`rounded-2xl border border-spark-rule bg-white p-4 ${d.status === "skipped" ? "opacity-50" : ""}`}>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-spark-ink-muted">
-                  <span className="font-bold text-spark-ink">{when}</span>
+                <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-spark-ink-muted">
+                  <span className="text-[15px] font-bold text-spark-ink">{when}</span>
                   <span className="flex items-center gap-1 rounded-full border border-spark-rule px-2 py-0.5">
                     {d.kind === "video" ? <><Video size={11} /> Video · Avatar in circle</> : <><FileText size={11} /> Blog post</>}
                   </span>

@@ -150,7 +150,8 @@ export async function loadHome(admin: Admin, userId: string): Promise<HomeData> 
 
   // ── Needs Your Approval ──
   const approvals: HomeApproval[] = [];
-  for (const d of drafts.filter((x) => x.status === "draft")) {
+  // Not one whose day has passed (2026-10-31): AutoSparks drops those too.
+  for (const d of drafts.filter((x) => x.status === "draft" && dayKey(new Date(x.slot_at), tz) >= today)) {
     const v = d.project_id ? vidByProject.get(d.project_id) : undefined;
     if (v && v.render_status !== "completed") continue; // being made: under Working
     const approvable = APPROVABLE.includes(d.source ?? "");
