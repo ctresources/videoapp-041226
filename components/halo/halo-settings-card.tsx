@@ -79,11 +79,13 @@ export function HaloSettingsCard() {
               Get Halo →
             </a>
           </div>
+          {/* Plain wording (2026-10-30, the owner's ask). Where it goes is
+              decided in lib/halo/get-halo.ts: the referring affiliate's Halo
+              link if they're a Halo affiliate and saved one, otherwise the
+              owner's sign-up page. */}
           <p className="mt-2 text-xs text-slate-400">
-            {getLink.url
-              ? <>Opens <strong>{getLink.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}</strong>, the Halo page of {getLink.referrer ? "the person who referred you to SparkReels" : "SparkReels' founder"}. </>
-              : <>Text <strong>{getLink.code} PRO</strong> to {getLink.phone} to sign up. </>}
-            They may earn a referral fee{getLink.referrer ? ", and will see your name and email when you press it" : ""}.
+            {getLink.url ? "Opens Halo's sign-up page." : <>Opens a text to Halo with <strong>{getLink.code} PRO</strong> to sign up.</>}
+            {getLink.referrer && " Shared by the person who referred you to SparkReels."}
           </p>
         </div>
       )}
