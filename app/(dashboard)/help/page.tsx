@@ -573,9 +573,9 @@ function FullGuide() {
             <Step n={12} title="Start With The Topic, Then Choose What To Make" icon={Sparkles}>
               <Link href="/create" className="text-primary-600 font-medium hover:underline">Spark Studio</Link>{" "}
               has two sections, then <strong>More options</strong>. <strong>1 · Topic</strong> — one card with
-              the mic and a box, <strong>Tell Sparklee what to make</strong>, where you say or type what
-              it&apos;s about (step 13). Under it, <strong>Not sure what to make? Tap an idea</strong> shows
-              four ideas with your town filled in; <strong>See all ideas</strong> opens the full list.{" "}
+              the mic and a box, <strong>What do you want to create?</strong>, where you say or type what
+              it&apos;s about (step 13). Right under the box, a row of four ideas with your town filled
+              in; <strong>More ideas</strong> opens the full list.{" "}
               <strong>2 · Create</strong> — four
               cards: <strong>Video / Reel</strong>, <strong>Camera/Teleprompter</strong>,{" "}
               <strong>Blog</strong> or <strong>Listings &amp; photos</strong>. Video / Reel stays on
@@ -670,7 +670,7 @@ function FullGuide() {
               {/* One card now: the mic and the box together, at the top, where
                   signing in lands. Example towns are generic on purpose. */}
               The Topic card at the top of Spark Studio reads{" "}
-              <strong>Tell Sparklee what to make</strong>. It has one mic and one box, and
+              <strong>What do you want to create?</strong> It has one mic and one box, and
               they are the same thing: what you say shows up in the box, and what you type goes in the
               same place. Tap
               the mic and say the whole thing in one sentence —{" "}
@@ -694,7 +694,10 @@ function FullGuide() {
                 do the whole video herself. Say it all at once, for example{" "}
                 <em>&ldquo;Make a market update for Springfield this week, horizontal, my twin, post it
                 Friday&rdquo;</em>. She asks only for what&apos;s missing (the topic, or the town). Then
-                she writes the script, blog, title and thumbnail and makes the video, which takes about
+                she shows <strong>I&apos;ll create:</strong> with what she&apos;ll make (who&apos;s on
+                screen and the voice, the town, the size, the length and the ending) and waits.{" "}
+                <strong>Change details</strong> takes you to the choices below the box instead. Press{" "}
+                <strong>Create it</strong> and she writes the script, blog, title and thumbnail and makes the video, which takes about
                 10 to 12 minutes. It comes back as a card under the box, and on AutoSparks under{" "}
                 <strong>From Sparklee</strong>: <strong>Watch</strong>, <strong>Edit thumbnail</strong>,{" "}
                 <strong>Edit title and caption</strong>, then <strong>Approve to post</strong>. Nothing

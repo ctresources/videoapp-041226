@@ -3022,6 +3022,38 @@ function CreatePageInner() {
               command={voiceCommand}
               onReply={() => setCommandPending(false)}
             />
+            {/* The idea chips, straight under the box on one line, with More
+                ideas opening the full list below (2026-10-31, the owner's
+                mockup). They were under the card before. */}
+            {!tabPage && (
+              <div className={`mt-2.5 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] ${topicOffClass}`} {...topicOffProps}>
+                {quickIdeas.map((idea) => (
+                  <button
+                    key={idea}
+                    type="button"
+                    onClick={() => {
+                      setLocCustomTopic(idea);
+                      setBriefWords(idea);
+                      setTopicTemplateRaw(null);
+                      setSparkSeed((x) => ({ text: idea, n: x.n + 1 }));
+                    }}
+                    className="shrink-0 whitespace-nowrap rounded-full border border-spark-rule bg-white px-3 py-1.5 text-[13.5px] text-spark-ink hover:border-spark-amber"
+                  >
+                    {idea}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowIdeas((v) => !v);
+                    setTimeout(() => document.getElementById("all-ideas")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+                  }}
+                  className="shrink-0 whitespace-nowrap rounded-full border border-spark-amber bg-spark-amber-tint px-3 py-1.5 text-[13.5px] font-semibold text-[#A3660F]"
+                >
+                  {showIdeas ? "Fewer ideas" : "More ideas →"}
+                </button>
+              </div>
+            )}
             {/* Sparklee makes it herself (2026-10-26, usability sweep #11). */}
             {!blogOnly && inputMode === "script" && (
               <div className="mt-3">
@@ -3051,36 +3083,10 @@ function CreatePageInner() {
               option A): the composer above is open at the bottom, -mt-3
               cancels the column's gap, and a thin line divides the two. */}
           <div className={`-mt-3 flex flex-col gap-3 rounded-b-[22px] border-[1.5px] border-t-0 border-spark-rule bg-white px-4 pb-4 shadow-[0_2px_14px_rgba(44,44,42,0.05)] lg:flex-1 ${topicOffClass} ${tabPage ? "hidden" : ""}`} {...topicOffProps}>
-          <div className="border-t border-spark-rule" />
-          {!showIdeas ? (
-            <div className="flex flex-col gap-2 lg:flex-1">
-              <p className="text-[14px] text-spark-ink-muted">Not sure what to make? Tap an idea:</p>
-              <div className="flex flex-wrap gap-1.5">
-                {quickIdeas.map((idea) => (
-                  <button
-                    key={idea}
-                    type="button"
-                    onClick={() => {
-                      setLocCustomTopic(idea);
-                      setBriefWords(idea);
-                      setTopicTemplateRaw(null);
-                      setSparkSeed((x) => ({ text: idea, n: x.n + 1 }));
-                    }}
-                    className="rounded-full border border-spark-rule bg-white px-3 py-1.5 text-[13.5px] text-spark-ink hover:border-spark-amber"
-                  >
-                    {idea}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setShowIdeas(true)}
-                  className="rounded-full border border-spark-amber bg-spark-amber-tint px-3 py-1.5 text-[13.5px] font-semibold text-[#A3660F]"
-                >
-                  See all ideas →
-                </button>
-              </div>
-            </div>
-          ) : (<>
+          {/* Folded: the chips are up under the box now, so this is just the
+              card's rounded foot. Open: every idea (More ideas). */}
+          {!showIdeas ? null : (<>
+          <div id="all-ideas" className="scroll-mt-24 border-t border-spark-rule" />
           <button type="button" onClick={() => setShowIdeas(false)} className="self-end text-[13px] font-medium text-spark-ink-muted underline">
             Fewer ideas
           </button>

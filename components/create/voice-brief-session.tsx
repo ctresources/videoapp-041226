@@ -393,10 +393,12 @@ export function VoiceBriefSession({
           {/* Sparklee's box (2026-10-26, usability sweep #11). */}
           <h2 className="flex items-center gap-2 text-[17px] font-semibold leading-snug text-spark-ink sm:text-[19px]">
             <Image src="/sparklee.webp" alt="" width={26} height={26} className="h-[26px] w-[26px] rounded-full" unoptimized />
-            Tell Sparklee what to make
+            {/* Mirrors Home's "What do you want to accomplish?" (2026-10-31):
+                Home plans goals, Spark Studio creates one Spark. */}
+            What do you want to create?
           </h2>
           <p className="text-[13.5px] leading-snug text-spark-ink-muted">
-            Just a topic, or the whole request
+            Speak or type your idea, topic, or full request.
           </p>
         </div>
         <button

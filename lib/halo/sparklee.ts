@@ -62,18 +62,18 @@ export interface SparkleeAsk {
  *
  * Returns the draft id and the work to finish in the background.
  */
-export async function startSparkleeDraft(
+/**
+ * What a Sparklee request would be made with: the look, size and accounts,
+ * and the day it posts. Shared by the "I'll create" check on Spark Studio
+ * (2026-10-31) and the real start, so the check shows exactly what is made.
+ */
+export async function sparkleeSetup(
   admin: Admin,
-  user: { id: string; email: string | null },
+  userId: string,
   profile: HaloProfile,
-  ask: SparkleeAsk,
-  /**
-   * From an approved Home plan (2026-10-29): the accounts the plan named, and
-   * no video yet. The draft is written and waits; the agent presses Make
-   * video, then Approve. Nothing is charged until then.
-   */
-  opts: { makeVideo?: boolean; platforms?: string[] } = {},
-): Promise<{ draftId: string; slotAt: string; platforms: string[]; work: Promise<void> } | null> {
+  ask: Pick<SparkleeAsk, "words" | "size" | "look" | "lookId">,
+  platforms?: string[],
+): Promise<{ setup: HaloSetup; slot: Date }> {
   const s = sanitizeSettings(profile.halo_settings);
   const tz = zoneOf(profile);
 
@@ -81,7 +81,7 @@ export async function startSparkleeDraft(
   const { data: last } = await admin
     .from("autopilot_drafts")
     .select("setup")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .in("source", ["sparklee", "halo", "email"])
     .order("created_at", { ascending: false })
     .limit(1)
@@ -95,11 +95,27 @@ export async function startSparkleeDraft(
     look: ask.look ?? base.look,
     lookId: ask.lookId ?? base.lookId,
     size: ask.size ?? base.size,
-    platforms: opts.platforms?.length
-      ? opts.platforms.filter((p) => HALO_PLATFORMS.includes(p))
+    platforms: platforms?.length
+      ? platforms.filter((p) => HALO_PLATFORMS.includes(p))
       : lastPlatforms.length ? lastPlatforms : base.platforms,
   };
-  const slot = sparkleeSlot(ask.words, tz, s.time);
+  return { setup, slot: sparkleeSlot(ask.words, tz, s.time) };
+}
+
+export async function startSparkleeDraft(
+  admin: Admin,
+  user: { id: string; email: string | null },
+  profile: HaloProfile,
+  ask: SparkleeAsk,
+  /**
+   * From an approved Home plan (2026-10-29): the accounts the plan named, and
+   * no video yet. The draft is written and waits; the agent presses Make
+   * video, then Approve. Nothing is charged until then.
+   */
+  opts: { makeVideo?: boolean; platforms?: string[] } = {},
+): Promise<{ draftId: string; slotAt: string; platforms: string[]; work: Promise<void> } | null> {
+  const tz = zoneOf(profile);
+  const { setup, slot } = await sparkleeSetup(admin, user.id, profile, ask, opts.platforms);
 
   const { data: row, error } = await admin
     .from("autopilot_drafts")
