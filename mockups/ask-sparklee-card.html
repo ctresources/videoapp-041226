@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask Sparklee Card</title>
+<style>
+  :root { --ink:#24221e; --soft:#4a463e; --muted:#77736a; --faint:#a29d92; --rule:#e8e3d8; --amber:#BA7517; --amber2:#A3660F; --tint:#fbf3e4; --paper:#f6f3ec; --cream:#fffcf6; --green:#0f7a52; --greenbg:#e8f5ee; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.45 -apple-system, "Segoe UI", Inter, sans-serif; padding:20px 16px 50px; }
+  .wrap { max-width:1300px; margin:0 auto; }
+  .state { font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--amber2); margin:26px 0 8px; }
+  .hello { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  h1 { font-size:24px; margin:0; }
+  .safe { font-size:13px; color:var(--green); background:var(--greenbg); border-radius:99px; padding:3px 11px; font-weight:600; }
+  .card { background:var(--cream); border:1px solid var(--rule); border-radius:20px; overflow:hidden; box-shadow:0 6px 24px rgba(36,34,30,.06); }
+  .strip { background:#0f0d0b; color:#ffe39a; display:flex; align-items:center; gap:10px; padding:9px 18px; }
+  .star { width:30px; height:30px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #ffe39a, #e7a92c 55%, #b9780f); display:flex; align-items:center; justify-content:center; color:#2a1c05; font-size:15px; }
+  .strip b { font-size:13px; letter-spacing:.08em; text-transform:uppercase; }
+  .body { padding:16px 18px 18px; }
+  h2 { font-size:22px; margin:0 0 10px; }
+  .input { display:flex; align-items:center; gap:10px; background:#fff; border:2px solid var(--rule); border-radius:16px; padding:8px; }
+  .input.on { border-color:#e7a92c; box-shadow:0 0 0 4px #fbeacc; }
+  .mic { width:46px; height:46px; border-radius:50%; background:linear-gradient(135deg,#BA7517,#1B5E82); color:#fff; display:flex; align-items:center; justify-content:center; font-size:19px; flex:none; }
+  .mic.live { background:#c2410c; animation:p 1.2s infinite; } @keyframes p { 50% { box-shadow:0 0 0 8px rgba(194,65,12,.15); } }
+  .input span.ph { flex:1; color:var(--faint); font-size:17px; } .input span.txt { flex:1; color:var(--ink); font-size:17px; }
+  .send { background:var(--amber); color:#fff; font-weight:700; border-radius:12px; padding:9px 16px; font-size:15px; }
+  .chips { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .chip { border:1px solid var(--rule); background:#fff; border-radius:99px; padding:7px 15px; font-size:15px; font-weight:500; color:var(--soft); }
+  .diy { margin-top:12px; font-size:14px; color:var(--muted); } .diy a { color:var(--amber2); font-weight:700; text-decoration:none; }
+  .empty { margin-top:14px; border:1.5px dashed var(--rule); border-radius:14px; padding:14px; color:var(--faint); font-size:14.5px; text-align:center; }
+  .conv { margin-top:16px; border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:12px; }
+  .you { align-self:flex-end; max-width:75%; background:#2a2219; color:#fff; border-radius:16px 16px 4px 16px; padding:9px 13px; font-size:15px; }
+  .you small { display:block; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#cdbf9f; }
+  .sp { display:flex; gap:10px; align-items:flex-start; }
+  .sp .star { width:34px; height:34px; flex:none; }
+  .bubble { flex:1; }
+  .bubble .who { font-size:13px; font-weight:800; color:var(--amber2); }
+  .bubble p { margin:2px 0 10px; font-size:15.5px; }
+  .status { display:flex; align-items:center; gap:8px; font-size:15px; color:var(--soft); }
+  .dots { display:inline-flex; gap:3px; } .dots i { width:6px; height:6px; border-radius:50%; background:var(--amber); animation:b 1s infinite; } .dots i:nth-child(2){animation-delay:.15s} .dots i:nth-child(3){animation-delay:.3s} @keyframes b { 50% { opacity:.25; } }
+  .plans { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; }
+  .pc { background:#fff; border:1px solid var(--rule); border-radius:14px; padding:12px; }
+  .pc .n { width:24px; height:24px; border-radius:50%; background:var(--amber); color:#fff; font-size:13px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; margin-bottom:6px; }
+  .pc b { display:block; font-size:15px; } .pc .t { font-size:14px; margin:3px 0; } .pc .m { font-size:12.5px; color:var(--muted); }
+  .usage { margin-top:10px; background:var(--tint); border-radius:10px; padding:7px 12px; font-size:14px; } .usage b { color:var(--amber2); }
+  .btns { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .btn { border:1px solid var(--rule); background:#fff; border-radius:11px; padding:8px 15px; font-size:14.5px; font-weight:650; }
+  .btn.gold { background:var(--amber); border-color:var(--amber); color:#fff; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; background:#fff; border:1px solid var(--rule); border-radius:14px; padding:8px 10px; align-items:center; }
+  .row span.l { font-size:14px; font-weight:600; color:var(--muted); margin-right:4px; }
+  .row .t { flex:1; min-width:120px; border:1px solid var(--rule); border-radius:10px; padding:6px 10px; background:var(--paper); font-size:14.5px; font-weight:650; }
+  @media (max-width:800px) { .plans { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hello"><h1>Good morning, Carmella</h1><span class="safe">✓ Nothing posts until you approve it</span></div>
+
+  <div class="state">1 · Before asking</div>
+  <div class="card">
+    <div class="strip"><span class="star">✦</span><b>Ask Sparklee</b></div>
+    <div class="body">
+      <h2>What do you want to accomplish?</h2>
+      <div class="input"><span class="mic">🎙</span><span class="ph">Speak or type your goal…</span><span class="send">Send</span></div>
+      <div class="chips"><span class="chip">Plan my week</span><span class="chip">Market my listing</span><span class="chip">Create a market update</span><span class="chip">What should I post this week?</span></div>
+      <div class="empty">✨ Sparklee's recommendation appears here after you ask.</div>
+      <p class="diy">Prefer to build it yourself? <a>Open Spark Studio →</a></p>
+    </div>
+  </div>
+
+  <div class="state">2 · Talking to Sparklee (mic tapped)</div>
+  <div class="card">
+    <div class="strip"><span class="star">✦</span><b>Ask Sparklee</b></div>
+    <div class="body">
+      <h2>What do you want to accomplish?</h2>
+      <div class="input on"><span class="mic live">■</span><span class="txt">Create a market update for Blue Bell…</span><span class="send">Send</span></div>
+      <div class="conv">
+        <div class="status"><span class="dots"><i></i><i></i><i></i></span> <b>Listening…</b> tap ■ when you're done</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="state">3 · After asking: the answer appears right below</div>
+  <div class="card">
+    <div class="strip"><span class="star">✦</span><b>Ask Sparklee</b></div>
+    <div class="body">
+      <h2>What do you want to accomplish?</h2>
+      <div class="input"><span class="mic">🎙</span><span class="ph">Ask a follow-up or something new…</span><span class="send">Send</span></div>
+      <div class="conv">
+        <div class="you"><small>You said</small>"Keep me visible to sellers in Blue Bell this week."</div>
+        <div class="sp"><span class="star">✦</span>
+          <div class="bubble">
+            <div class="who">Sparklee recommends</div>
+            <p>A seller-focused visibility plan for this week.</p>
+            <div class="plans">
+              <div class="pc"><span class="n">1</span><b>Seller video</b><div class="t">Why Overpricing Your Blue Bell Home Can Cost You</div><div class="m">Fri 9 AM · YouTube, Facebook, Instagram</div></div>
+              <div class="pc"><span class="n">2</span><b>LinkedIn post</b><div class="t">An educational version of the same topic</div><div class="m">Sat 9 AM · LinkedIn</div></div>
+              <div class="pc"><span class="n">3</span><b>Database follow-up</b><div class="t">Video email to past seller leads</div><div class="m">You finish this one in Email it</div></div>
+            </div>
+            <div class="usage">Uses <b>1 of your 3</b> remaining videos.</div>
+            <div class="btns"><span class="btn gold">Approve plan</span><span class="btn">Edit plan</span><span class="btn">Start over</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="diy">Prefer to build it yourself? <a>Open Spark Studio →</a></p>
+    </div>
+  </div>
+
+  <div class="row"><span class="l">Or create it yourself:</span><span class="t">🎬 Video / Reel</span><span class="t">📷 Camera</span><span class="t">📝 Blog</span><span class="t">🏡 Listing</span><span class="t">🧰 Spark Tools</span></div>
+  <p style="margin-top:16px;font-size:13px;color:var(--muted)">Mockup · sample plan. After "Listening…" it shows "I heard: …" then "Building your plan…", then the answer.</p>
+</div>
+</body>
+</html>

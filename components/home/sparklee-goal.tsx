@@ -4,17 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, Mic, Send, X } from "lucide-react";
+import { Check, Loader2, Mic, Send, Square, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSpeechRecognition, COMMAND_SILENCE_MS } from "@/lib/hooks/use-speech-recognition";
 
 /**
- * Ask Sparklee's goal box (2026-10-29, the owner's agentic Home): speak or
- * type what you want, see her plan with what it uses from your plan, then
- * Approve plan or Edit plan. Approving writes drafts only; nothing is made,
- * posted or sent until each is approved in Needs Your Approval.
- *
- * "hero" sits at the top of Home; "compact" is the header mic's pop-over.
+ * Ask Sparklee's goal card at the top of Home (2026-10-29, the owner's agentic
+ * Home; redesigned 2026-10-31 from her mockup): a cream conversation card with
+ * a thin dark header strip. Speak or type a goal and her answer appears right
+ * under the box: what you said, her plan as numbered cards, what it uses from
+ * your plan, then Approve plan / Edit plan / Start over. Approving writes
+ * drafts only; nothing is made, posted or sent until each is approved in
+ * Needs Your Approval.
  */
 
 interface PlanItem {
@@ -26,13 +27,13 @@ interface Plan {
   usageLine: string; overBudget: boolean; missing: { label: string; href: string }[]; paid: boolean;
 }
 
-export const TRY_SAYING = ["Plan my week", "Market my listing", "Create a market update", "Turn my blog into a video", "What should I post this week?"];
+/** Four examples, kept on one line (the owner's ask, 2026-10-31). */
+export const TRY_SAYING = ["Plan my week", "Market my listing", "Create a market update", "What should I post this week?"];
 const DAYS = ["today", "tomorrow", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const LABEL: Record<string, string> = { youtube: "YouTube", facebook: "Facebook", instagram: "Instagram", linkedin: "LinkedIn", tiktok: "TikTok", x: "X", threads: "Threads", google_business: "Google Business" };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export function SparkleeGoal({ variant = "hero", ask, onApproved }: {
-  variant?: "hero" | "compact";
+export function SparkleeGoal({ ask, onApproved }: {
   /** Set from outside (an opportunity's Make draft): asked straight away. */
   ask?: { text: string; n: number } | null;
   onApproved?: () => void;
@@ -44,26 +45,27 @@ export function SparkleeGoal({ variant = "hero", ask, onApproved }: {
   const [approving, setApproving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [done, setDone] = useState<number | null>(null);
-  /** What was asked, shown above Sparklee's answer (2026-10-30, the owner's ask). */
+  /** What was asked, shown above Sparklee's answer, and whether it was spoken. */
   const [asked, setAsked] = useState("");
+  const [byVoice, setByVoice] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  async function send(words: string) {
+  async function send(words: string, voice = false) {
     const said = words.trim();
     if (!said) { inputRef.current?.focus(); return; }
-    setText(said); setAsked(said); setPlanning(true); setPlan(null); setDone(null); setEditing(false);
+    setAsked(said); setByVoice(voice); setText("");
+    setPlanning(true); setPlan(null); setDone(null); setEditing(false);
     try {
       const res = await fetch("/api/sparklee/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ words: said }) });
       const out = await res.json().catch(() => ({}));
-      if (!res.ok) { toast.error(out.error || "Sparklee couldn't plan that. Try again."); return; }
+      if (!res.ok) { toast.error(out.error || "Sparklee couldn't plan that. Try again."); setText(said); setAsked(""); return; }
       setPlan(out as Plan);
-      setText("");
     } finally { setPlanning(false); }
   }
 
   const { listening, interim, toggle } = useSpeechRecognition({
     silenceMs: COMMAND_SILENCE_MS,
-    onSessionEnd: (said) => { if (said.trim()) void send(said); },
+    onSessionEnd: (said) => { if (said.trim()) void send(said, true); },
     onUnsupported: () => toast("This browser can't listen. Type it instead.", { icon: "⌨️" }),
   });
 
@@ -73,7 +75,7 @@ export function SparkleeGoal({ variant = "hero", ask, onApproved }: {
   async function approve() {
     if (!plan) return;
     const videos = plan.items.filter((i) => i.type === "video");
-    if (!videos.length) { setPlan(null); setText(""); return; }
+    if (!videos.length) { startOver(); return; }
     setApproving(true);
     try {
       const res = await fetch("/api/sparklee/plan/approve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: videos }) });
@@ -86,134 +88,168 @@ export function SparkleeGoal({ variant = "hero", ask, onApproved }: {
     } finally { setApproving(false); }
   }
 
+  function startOver() {
+    setPlan(null); setDone(null); setAsked(""); setText(""); setEditing(false);
+    inputRef.current?.focus();
+  }
+
   const removeItem = (n: number) => setPlan((p) => p && { ...p, items: p.items.filter((_, i) => i !== n), videos: p.items.filter((x, i) => i !== n && x.type === "video").length });
   const setDay = (n: number, day: string) => setPlan((p) => p && { ...p, items: p.items.map((x, i) => (i === n ? { ...x, day } : x)) });
 
-  const hero = variant === "hero";
-  const showing = listening ? interim || "Listening…" : text;
+  const answered = planning || plan !== null || done !== null;
+  const showing = listening ? interim : text;
 
   return (
-    <div className={hero && (planning || plan || done !== null) ? "grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]" : "flex flex-col gap-3"}>
-      <div className="min-w-0">
-        {hero && (
-          <div className="mb-3 flex items-center gap-3">
-            <span className="sparklee-badge block h-[54px] w-[54px] shrink-0">
-              <Image src="/sparklee.webp" alt="" width={54} height={54} className="h-full w-full" unoptimized />
-            </span>
-            <div>
-              <p className="text-[12.5px] font-extrabold uppercase tracking-[0.08em] text-[#e7a92c]">Ask Sparklee</p>
-              <h2 className="text-[24px] font-bold leading-tight text-white sm:text-[27px]">What do you want to accomplish?</h2>
-            </div>
-          </div>
-        )}
+    <section className="mt-3 overflow-hidden rounded-[20px] border border-spark-rule bg-[#fffcf6] shadow-[0_6px_24px_rgba(36,34,30,0.06)]">
+      {/* Thin dark header strip: Sparklee's black and gold as an accent. */}
+      <div className="flex items-center gap-2.5 bg-[#0f0d0b] px-5 py-2">
+        <span className="sparklee-badge block h-[32px] w-[32px] shrink-0">
+          <Image src="/sparklee.webp" alt="" width={32} height={32} className="h-full w-full" unoptimized />
+        </span>
+        <b className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[#ffe39a]">Ask Sparklee</b>
+      </div>
+
+      <div className="p-4 sm:p-5">
+        <h2 className="mb-3 text-[22px] font-bold leading-tight text-spark-ink sm:text-[24px]">What do you want to accomplish?</h2>
+
         <form
           onSubmit={(e) => { e.preventDefault(); void send(text); }}
-          className={`flex items-center gap-2 rounded-2xl border bg-[#1d1915] p-2 ${listening ? "border-[#e7a92c]" : "border-[#5a4826]"}`}
+          className={`flex items-center gap-2.5 rounded-2xl border-2 bg-white p-2 ${listening ? "border-[#e7a92c] shadow-[0_0_0_4px_#fbeacc]" : "border-spark-rule"}`}
         >
           <button type="button" onClick={toggle} aria-label={listening ? "Stop listening" : "Speak to Sparklee"}
-            className={`flex shrink-0 items-center justify-center rounded-full text-white ${hero ? "h-[56px] w-[56px]" : "h-[44px] w-[44px]"} ${listening ? "animate-pulse bg-red-600" : "spark-cta-gradient shadow-[0_0_0_6px_rgba(186,117,23,0.18)]"}`}>
-            <Mic size={hero ? 24 : 19} />
+            className={`flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full text-white ${listening ? "animate-pulse bg-[#c2410c]" : "spark-cta-gradient"}`}>
+            {listening ? <Square size={18} fill="currentColor" /> : <Mic size={22} />}
           </button>
           <input
             ref={inputRef}
             value={showing}
             onChange={(e) => setText(e.target.value)}
             readOnly={listening}
-            placeholder="Speak or type what you want Sparklee to do…"
-            className={`min-w-0 flex-1 bg-transparent text-white placeholder:text-[#9c8f78] outline-none ${hero ? "text-[17px]" : "text-[15px]"}`}
+            placeholder={listening ? "Listening…" : answered ? "Ask a follow-up or something new…" : "Speak or type your goal…"}
+            className="min-w-0 flex-1 bg-transparent text-[17px] text-spark-ink outline-none placeholder:text-[#a29d92]"
           />
           <button type="submit" disabled={planning || listening}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-spark-amber px-3.5 py-2 text-[14px] font-bold text-white disabled:opacity-60">
+            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-spark-amber px-4 py-2.5 text-[15px] font-bold text-white disabled:opacity-60">
             {planning ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />} <span className="hidden sm:inline">Send</span>
           </button>
         </form>
-        <p className="mt-3 text-[13.5px] text-[#cdbf9f]">Try saying:</p>
-        <div className="mt-1.5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-          {TRY_SAYING.slice(0, hero ? 5 : 4).map((t) => (
-            <button key={t} type="button" onClick={() => void send(t)}
-              className="shrink-0 whitespace-nowrap rounded-full border border-[#5a4826] bg-[#1d1915] px-4 py-2 text-[15.5px] font-medium text-[#f3e6cf] hover:border-[#e7a92c]">{t}</button>
-          ))}
-        </div>
-        {hero && (
-          <p className="mt-3 text-[13.5px] text-[#cdbf9f]">
-            Open <Link href="/create" className="font-semibold text-[#ffe39a] underline-offset-2 hover:underline">Spark Studio</Link> when you want control. <b className="text-[#ffe39a]">Ask Sparklee</b> when you just want it done.
+
+        {/* Examples: one line; scrolls sideways only on a narrow phone. */}
+        {!answered && !listening && (
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+            {TRY_SAYING.map((t) => (
+              <button key={t} type="button" onClick={() => void send(t)}
+                className="shrink-0 whitespace-nowrap rounded-full border border-spark-rule bg-white px-4 py-2 text-[15px] font-medium text-spark-ink hover:border-spark-amber">{t}</button>
+            ))}
+          </div>
+        )}
+
+        {listening && (
+          <p className="mt-4 flex items-center gap-2 border-t border-spark-rule pt-3.5 text-[15px] text-spark-ink">
+            <span className="flex gap-1">
+              {[0, 150, 300].map((d) => <i key={d} className="h-1.5 w-1.5 animate-pulse rounded-full bg-spark-amber" style={{ animationDelay: `${d}ms` }} />)}
+            </span>
+            <b>Listening…</b> <span className="text-spark-ink-muted">tap ■ when you&apos;re done</span>
           </p>
         )}
-      </div>
 
-      {(planning || plan || done !== null) && (
-        <div className="flex min-w-0 flex-col rounded-2xl border border-[#3b3226] bg-[#1d1915] p-3.5 text-[#f3e6cf]">
-          {asked && (
-            <div className="mb-3 self-end rounded-2xl rounded-br-sm bg-[#2a2219] px-3 py-2 text-[14px] text-white">
-              <span className="block text-[11.5px] font-bold uppercase tracking-wide text-[#cdbf9f]">You asked</span>
-              {asked}
-            </div>
-          )}
-          <p className="mb-1.5 text-[13px] font-bold text-[#ffe39a]">✦ Sparklee</p>
-          {planning && <p className="flex items-center gap-2 text-[14px]"><Loader2 size={15} className="animate-spin" /> Checking your plan, accounts and calendar…</p>}
+        {!answered && !listening && (
+          <p className="mt-3.5 rounded-2xl border-[1.5px] border-dashed border-spark-rule px-4 py-3.5 text-center text-[14.5px] text-[#a29d92]">
+            ✨ Sparklee&apos;s recommendation appears here after you ask.
+          </p>
+        )}
 
-          {done !== null && (
-            <div className="text-[14px]">
-              <p className="flex items-center gap-1.5 font-semibold text-[#9fe0bf]"><Check size={15} /> Plan approved.</p>
-              <p className="mt-1">{done} draft{done === 1 ? " is" : "s are"} being written. {done === 1 ? "It" : "They"}&apos;ll show in <b>Needs Your Approval</b>. No video is made and nothing posts until you approve.</p>
-              <button type="button" onClick={() => { setDone(null); setPlan(null); setText(""); }} className="mt-2 text-[13px] font-semibold text-[#ffe39a] underline">Ask something else</button>
-            </div>
-          )}
+        {/* The conversation: the answer sits right under the question. */}
+        {answered && !listening && (
+          <div className="mt-4 flex flex-col gap-3 border-t border-spark-rule pt-4">
+            {asked && (
+              <div className="max-w-[85%] self-end rounded-2xl rounded-br-sm bg-[#2a2219] px-3.5 py-2.5 text-[15px] text-white">
+                <span className="block text-[11px] font-extrabold uppercase tracking-wide text-[#cdbf9f]">{byVoice ? "I heard" : "You said"}</span>
+                &ldquo;{asked}&rdquo;
+              </div>
+            )}
 
-          {plan && done === null && (
-            <>
-              {plan.question ? (
-                <p className="text-[14.5px]">{plan.question}</p>
-              ) : (
-                <>
-                  <p className="text-[14px]">{plan.reply}</p>
-                  <ol className="mt-2 space-y-1.5 pl-5 text-[14px]">
-                    {plan.items.map((it, n) => (
-                      <li key={n} className="list-decimal">
-                        <div className="flex items-start gap-2">
-                          <div className="min-w-0 flex-1">
-                            <b>{it.title}</b>
-                            <span className="block text-[12.5px] text-[#cdbf9f]">
-                              {it.type === "video"
-                                ? [it.day && cap(it.day), it.size === "horizontal" ? "Wide" : "Vertical", it.platforms?.length ? it.platforms.map((p) => LABEL[p] ?? p).join(", ") : "No account picked yet", it.note].filter(Boolean).join(" · ")
-                                : <>{it.note ? `${it.note} · ` : ""}<Link href={it.href ?? "/create"} className="text-[#ffe39a] underline">Open</Link> (you finish this one)</>}
-                            </span>
-                            {editing && it.type === "video" && (
-                              <select value={DAYS.includes((it.day ?? "").toLowerCase()) ? it.day!.toLowerCase() : "tomorrow"} onChange={(e) => setDay(n, e.target.value)}
-                                className="mt-1 rounded-md border border-[#5a4826] bg-[#0f0d0b] px-2 py-0.5 text-[12.5px]">
-                                {DAYS.map((d) => <option key={d} value={d}>{cap(d)}</option>)}
-                              </select>
-                            )}
-                          </div>
+            <div className="flex items-start gap-2.5">
+              <span className="sparklee-badge block h-[34px] w-[34px] shrink-0">
+                <Image src="/sparklee.webp" alt="" width={34} height={34} className="h-full w-full" unoptimized />
+              </span>
+              <div className="min-w-0 flex-1">
+                {planning && (
+                  <p className="flex items-center gap-2 pt-1.5 text-[15px] text-spark-ink"><Loader2 size={15} className="animate-spin text-spark-amber" /> Building your plan…</p>
+                )}
+
+                {done !== null && (
+                  <div className="text-[15px] text-spark-ink">
+                    <p className="flex items-center gap-1.5 font-semibold text-[#0f7a52]"><Check size={16} /> Plan approved.</p>
+                    <p className="mt-1">{done} draft{done === 1 ? " is" : "s are"} being written. {done === 1 ? "It" : "They"}&apos;ll show in <b>Needs Your Approval</b>. No video is made and nothing posts until you approve.</p>
+                    <button type="button" onClick={startOver} className="mt-2.5 rounded-xl border border-spark-rule bg-white px-3.5 py-2 text-[14px] font-semibold text-spark-ink hover:border-spark-amber">Ask something else</button>
+                  </div>
+                )}
+
+                {plan && done === null && (plan.question ? (
+                  <>
+                    <p className="text-[13px] font-extrabold text-[#A3660F]">Sparklee</p>
+                    <p className="mt-0.5 text-[15.5px] text-spark-ink">{plan.question}</p>
+                    <p className="mt-1 text-[13px] text-spark-ink-muted">Answer in the box above.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[13px] font-extrabold text-[#A3660F]">Sparklee recommends</p>
+                    <p className="mb-2.5 mt-0.5 text-[15.5px] text-spark-ink">{plan.reply}</p>
+                    <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                      {plan.items.map((it, n) => (
+                        <div key={n} className="relative rounded-2xl border border-spark-rule bg-white p-3">
                           {editing && (
-                            <button type="button" onClick={() => removeItem(n)} aria-label="Remove" className="rounded p-0.5 text-[#cdbf9f] hover:text-white"><X size={14} /></button>
+                            <button type="button" onClick={() => removeItem(n)} aria-label="Remove"
+                              className="absolute right-2 top-2 rounded p-0.5 text-spark-ink-muted hover:text-spark-ink"><X size={15} /></button>
+                          )}
+                          <span className="mb-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-spark-amber text-[13px] font-extrabold text-white">{n + 1}</span>
+                          <b className="block text-[15px] text-spark-ink">{it.title}</b>
+                          <span className="mt-1 block text-[13px] text-spark-ink-muted">
+                            {it.type === "video"
+                              ? [it.day && cap(it.day), it.size === "horizontal" ? "Wide" : "Vertical", it.platforms?.length ? it.platforms.map((p) => LABEL[p] ?? p).join(", ") : "No account picked yet", it.note].filter(Boolean).join(" · ")
+                              : <>{it.note ? `${it.note} · ` : ""}<Link href={it.href ?? "/create"} className="font-semibold text-[#A3660F] underline">Open</Link> (you finish this one)</>}
+                          </span>
+                          {editing && it.type === "video" && (
+                            <select value={DAYS.includes((it.day ?? "").toLowerCase()) ? it.day!.toLowerCase() : "tomorrow"} onChange={(e) => setDay(n, e.target.value)}
+                              className="mt-1.5 rounded-md border border-spark-rule bg-white px-2 py-0.5 text-[13px] text-spark-ink">
+                              {DAYS.map((d) => <option key={d} value={d}>{cap(d)}</option>)}
+                            </select>
                           )}
                         </div>
-                      </li>
+                      ))}
+                    </div>
+                    {plan.missing.map((m) => (
+                      <Link key={m.label} href={m.href} className="mt-2 block text-[13.5px] font-semibold text-[#A3660F] underline">{m.label}</Link>
                     ))}
-                  </ol>
-                  {plan.missing.map((m) => (
-                    <Link key={m.label} href={m.href} className="mt-2 block text-[13px] text-[#ffe39a] underline">{m.label}</Link>
-                  ))}
-                  <p className={`mt-2.5 rounded-lg px-2.5 py-1.5 text-[13.5px] ${plan.overBudget ? "bg-red-900/40 text-red-100" : "bg-[#2a2219]"}`}>
-                    {plan.usageLine}{plan.overBudget && " Remove one, or buy more in Billing."}
-                  </p>
-                  <div className="mt-auto flex flex-wrap gap-2 pt-3">
-                    <button type="button" onClick={() => void approve()} disabled={approving || plan.overBudget || plan.items.length === 0}
-                      className="flex items-center gap-1.5 rounded-xl bg-spark-amber px-3.5 py-2 text-[14px] font-bold text-white disabled:opacity-50">
-                      {approving && <Loader2 size={14} className="animate-spin" />} Approve plan
-                    </button>
-                    <button type="button" onClick={() => setEditing((v) => !v)}
-                      className="rounded-xl border border-[#5a4826] px-3.5 py-2 text-[14px] font-semibold text-[#f3e6cf]">
-                      {editing ? "Done editing" : "Edit plan"}
-                    </button>
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </div>
+                    <p className={`mt-2.5 rounded-xl px-3 py-2 text-[14px] ${plan.overBudget ? "bg-red-50 text-red-700" : "bg-[#fbf3e4] text-spark-ink"}`}>
+                      {plan.usageLine}{plan.overBudget && " Remove one, or buy more in Billing."}
+                    </p>
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      <button type="button" onClick={() => void approve()} disabled={approving || plan.overBudget || plan.items.length === 0}
+                        className="flex items-center gap-1.5 rounded-xl bg-spark-amber px-4 py-2 text-[14.5px] font-bold text-white disabled:opacity-50">
+                        {approving && <Loader2 size={14} className="animate-spin" />} Approve plan
+                      </button>
+                      <button type="button" onClick={() => setEditing((v) => !v)}
+                        className="rounded-xl border border-spark-rule bg-white px-4 py-2 text-[14.5px] font-semibold text-spark-ink hover:border-spark-amber">
+                        {editing ? "Done editing" : "Edit plan"}
+                      </button>
+                      <button type="button" onClick={startOver}
+                        className="rounded-xl border border-spark-rule bg-white px-4 py-2 text-[14.5px] font-semibold text-spark-ink hover:border-spark-amber">
+                        Start over
+                      </button>
+                    </div>
+                  </>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <p className="mt-3.5 text-[14px] text-spark-ink-muted">
+          Prefer to build it yourself? <Link href="/create" className="font-bold text-[#A3660F] hover:underline">Open Spark Studio →</Link>
+        </p>
+      </div>
+    </section>
   );
 }

@@ -82,10 +82,7 @@ export function HomeDashboard({ checklist }: { checklist?: ReactNode }) {
       </div>
 
       {/* Ask Sparklee: the main way to work. */}
-      <section className="mt-3 rounded-[20px] p-5 shadow-[0_0_0_2px_#BA7517,0_14px_40px_rgba(186,117,23,0.22)] sm:p-6"
-        style={{ background: "radial-gradient(120% 140% at 0% 0%, #2a1f10 0%, #0f0d0b 55%)" }}>
-        <SparkleeGoal variant="hero" ask={ask} onApproved={() => { setTimeout(() => void load(), 2500); }} />
-      </section>
+      <SparkleeGoal ask={ask} onApproved={() => { setTimeout(() => void load(), 2500); }} />
 
       {/* For people who want control. */}
       <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-spark-rule bg-white px-3 py-2">
