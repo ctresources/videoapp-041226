@@ -33,6 +33,23 @@ const DAYS = ["today", "tomorrow", "monday", "tuesday", "wednesday", "thursday",
 const LABEL: Record<string, string> = { youtube: "YouTube", facebook: "Facebook", instagram: "Instagram", linkedin: "LinkedIn", tiktok: "TikTok", x: "X", threads: "Threads", google_business: "Google Business" };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+/** One line of the conversation on the card (2026-10-31, the owner's ask: read in order). */
+type Turn =
+  | { role: "you"; text: string; voice: boolean }
+  | { role: "sparklee"; text: string; question?: boolean; titles?: string[] };
+
+/** Sparklee's side of the conversation: her badge and a soft gold card. */
+function FromSparklee({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="sparklee-badge block h-[34px] w-[34px] shrink-0">
+        <Image src="/sparklee.webp" alt="" width={34} height={34} className="h-full w-full" unoptimized />
+      </span>
+      <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-[#f0dcb4] bg-[#fbf3e4] px-3.5 py-3">{children}</div>
+    </div>
+  );
+}
+
 export function SparkleeGoal({ ask, onApproved }: {
   /** Set from outside (an opportunity's Make draft): asked straight away. */
   ask?: { text: string; n: number } | null;
@@ -45,21 +62,29 @@ export function SparkleeGoal({ ask, onApproved }: {
   const [approving, setApproving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [done, setDone] = useState<number | null>(null);
-  /** What was asked, shown above Sparklee's answer, and whether it was spoken. */
-  const [asked, setAsked] = useState("");
-  const [byVoice, setByVoice] = useState(false);
+  /** The conversation so far; the latest plan (if any) is `plan`, shown after it. */
+  const [turns, setTurns] = useState<Turn[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  async function send(words: string, voice = false) {
+  async function send(words: string, voice = false, fresh = false) {
     const said = words.trim();
     if (!said) { inputRef.current?.focus(); return; }
-    setAsked(said); setByVoice(voice); setText("");
+    // The plan on screen becomes part of the conversation, so a reply like
+    // "make it two videos" or "123 Main St" keeps what it answers.
+    const before: Turn[] = fresh ? [] : [...turns, ...(plan ? [{ role: "sparklee" as const, text: plan.reply, titles: plan.items.map((i) => i.title) }] : [])];
+    const next: Turn[] = [...before, { role: "you", text: said, voice }];
+    setTurns(next); setText("");
     setPlanning(true); setPlan(null); setDone(null); setEditing(false);
+    const history = before.slice(-8).map((t) => t.role === "you"
+      ? { role: "user", content: t.text }
+      : { role: "assistant", content: [t.text, ...(t.titles ?? [])].join("\n") });
     try {
-      const res = await fetch("/api/sparklee/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ words: said }) });
+      const res = await fetch("/api/sparklee/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ words: said, history }) });
       const out = await res.json().catch(() => ({}));
-      if (!res.ok) { toast.error(out.error || "Sparklee couldn't plan that. Try again."); setText(said); setAsked(""); return; }
-      setPlan(out as Plan);
+      if (!res.ok) { toast.error(out.error || "Sparklee couldn't plan that. Try again."); setTurns(before); setText(said); return; }
+      const p = out as Plan;
+      if (p.question) setTurns([...next, { role: "sparklee", text: p.question, question: true }]);
+      else setPlan(p);
     } finally { setPlanning(false); }
   }
 
@@ -70,7 +95,7 @@ export function SparkleeGoal({ ask, onApproved }: {
   });
 
   const askN = ask?.n;
-  useEffect(() => { if (ask?.text) void send(ask.text); }, [askN]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (ask?.text) void send(ask.text, false, true); }, [askN]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function approve() {
     if (!plan) return;
@@ -89,14 +114,15 @@ export function SparkleeGoal({ ask, onApproved }: {
   }
 
   function startOver() {
-    setPlan(null); setDone(null); setAsked(""); setText(""); setEditing(false);
+    setPlan(null); setDone(null); setTurns([]); setText(""); setEditing(false);
     inputRef.current?.focus();
   }
 
   const removeItem = (n: number) => setPlan((p) => p && { ...p, items: p.items.filter((_, i) => i !== n), videos: p.items.filter((x, i) => i !== n && x.type === "video").length });
   const setDay = (n: number, day: string) => setPlan((p) => p && { ...p, items: p.items.map((x, i) => (i === n ? { ...x, day } : x)) });
 
-  const answered = planning || plan !== null || done !== null;
+  const answered = planning || plan !== null || turns.length > 0;
+  const last = turns[turns.length - 1];
   const showing = listening ? interim : text;
 
   return (
@@ -159,40 +185,41 @@ export function SparkleeGoal({ ask, onApproved }: {
           </p>
         )}
 
-        {/* The conversation: the answer sits right under the question. */}
+        {/* The conversation, in order, right under the box (2026-10-31). */}
         {answered && !listening && (
           <div className="mt-4 flex flex-col gap-1.5 border-t border-spark-rule pt-4">
-            {asked && (
-              <div className="max-w-[85%] self-end rounded-2xl rounded-br-sm bg-[#2a2219] px-3.5 py-2.5 text-[15px] text-white">
-                <span className="block text-[11px] font-extrabold uppercase tracking-wide text-[#cdbf9f]">{byVoice ? "I heard" : "You said"}</span>
-                &ldquo;{asked}&rdquo;
+            {turns.map((t, i) => t.role === "you" ? (
+              <div key={i} className="max-w-[85%] self-end rounded-2xl rounded-br-sm bg-[#2a2219] px-3.5 py-2.5 text-[15px] text-white">
+                <span className="block text-[11px] font-extrabold uppercase tracking-wide text-[#cdbf9f]">{t.voice ? "I heard" : "You said"}</span>
+                &ldquo;{t.text}&rdquo;
               </div>
+            ) : (
+              <FromSparklee key={i}>
+                <p className="text-[13px] font-extrabold text-[#A3660F]">Sparklee</p>
+                <p className="mt-0.5 text-[15.5px] text-spark-ink">{t.question ? <>&ldquo;{t.text}&rdquo;</> : t.text}</p>
+                {!!t.titles?.length && (
+                  <ol className="mt-1 list-decimal pl-5 text-[13.5px] text-spark-ink-muted">{t.titles.map((x, n) => <li key={n}>{x}</li>)}</ol>
+                )}
+                {t.question && t === last && !planning && (
+                  <p className="mt-1 text-[12px] text-[#a29d92]">Reply above, or say it out loud.</p>
+                )}
+              </FromSparklee>
+            ))}
+
+            {planning && (
+              <FromSparklee>
+                <p className="flex items-center gap-2 text-[15px] text-spark-ink"><Loader2 size={15} className="animate-spin text-spark-amber" /> Building your plan…</p>
+              </FromSparklee>
             )}
 
-            <div className="flex items-start gap-2.5">
-              <span className="sparklee-badge block h-[34px] w-[34px] shrink-0">
-                <Image src="/sparklee.webp" alt="" width={34} height={34} className="h-full w-full" unoptimized />
-              </span>
-              {/* Sparklee's answer in a soft gold card, so it stands out from the cream. */}
-              <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-[#f0dcb4] bg-[#fbf3e4] px-3.5 py-3">
-                {planning && (
-                  <p className="flex items-center gap-2 text-[15px] text-spark-ink"><Loader2 size={15} className="animate-spin text-spark-amber" /> Building your plan…</p>
-                )}
-
-                {done !== null && (
+            {plan && (
+              <FromSparklee>
+                {done !== null ? (
                   <div className="text-[15px] text-spark-ink">
                     <p className="flex items-center gap-1.5 font-semibold text-[#0f7a52]"><Check size={16} /> Plan approved.</p>
                     <p className="mt-1">{done} draft{done === 1 ? " is" : "s are"} being written. {done === 1 ? "It" : "They"}&apos;ll show in <b>Needs Your Approval</b>. No video is made and nothing posts until you approve.</p>
                     <button type="button" onClick={startOver} className="mt-2.5 rounded-xl border border-spark-rule bg-white px-3.5 py-2 text-[14px] font-semibold text-spark-ink hover:border-spark-amber">Ask something else</button>
                   </div>
-                )}
-
-                {plan && done === null && (plan.question ? (
-                  <>
-                    <p className="text-[13px] font-extrabold text-[#A3660F]">Sparklee</p>
-                    <p className="mt-0.5 text-[15.5px] text-spark-ink">{plan.question}</p>
-                    <p className="mt-1 text-[12px] text-[#a29d92]">Answer in the box above.</p>
-                  </>
                 ) : (
                   <>
                     <p className="text-[13px] font-extrabold text-[#A3660F]">Sparklee recommends</p>
@@ -241,9 +268,9 @@ export function SparkleeGoal({ ask, onApproved }: {
                       </button>
                     </div>
                   </>
-                ))}
-              </div>
-            </div>
+                )}
+              </FromSparklee>
+            )}
           </div>
         )}
 
