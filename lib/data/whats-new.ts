@@ -30,6 +30,20 @@ export type WhatsNewItem = {
 
 const ITEMS: WhatsNewItem[] = [
   {
+    id: "twin-photos-footage",
+    title: "Your Twin in Front of Your Footage",
+    description:
+      "In a horizontal Avatar video, your Digital Twin stands in front of your photos and clips as they play, at the side or in the corner.",
+    releaseDate: "2026-10-31",
+    howItWorksAnchor: "digital-twin-backgrounds",
+    badge: "NEW",
+    // A twin in Avatar video is paid plans only.
+    paidOnlyDetails: true,
+    // Hidden 2026-10-31: built, but no live video made with it yet. Set true
+    // once one has come back right.
+    published: false,
+  },
+  {
     id: "video-business-card",
     title: "Video Business Card",
     description:

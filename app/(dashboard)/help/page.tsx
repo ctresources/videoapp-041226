@@ -281,16 +281,29 @@ function FullGuide() {
                 approved on its own. With only an upright twin, a YouTube video shows you in a corner over
                 full-screen footage. On the free plan you have one twin: choose the shape you post most.
               </span>
-              {/* Digital Twin backgrounds (2026-10-24, the owner's mockup). */}
-              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="digital-twin-backgrounds">Backgrounds for your Agent Intro</span>
+              {/* Digital Twin backgrounds (2026-10-24, the owner's mockup; Photos & footage 2026-10-31). */}
+              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="digital-twin-backgrounds">Backgrounds for your twin</span>
               <span className="block mt-1">
-                Your twin is filmed upright, so in your horizontal <strong>Agent Intro</strong> your own
-                background is taken away and you stand <strong>full size in front of a new one</strong>. In{" "}
-                <strong>Settings → 4 · Digital Twin</strong>, <strong>Your backgrounds</strong> keeps them: a
+                Your twin is filmed upright, so in a horizontal video your own background can be taken away.
+                In video setup for a horizontal <strong>Avatar video</strong>, under <strong>Background</strong>,
+                press <strong>On my background</strong>, then pick:
+              </span>
+              <span className="block mt-1">
+                <strong>Photos &amp; footage</strong>: you stand in front of the video&apos;s own photos and
+                clips as they play. Under <strong>Where you stand</strong>, choose <strong>Side</strong> (full
+                height) or <strong>Corner</strong> (smaller). Short videos only.
+              </span>
+              <span className="block mt-1">
+                <strong>A saved background or a color</strong>: you stand full size in front of one picture.
+                Your <strong>Agent Intro</strong> always uses one of these.
+              </span>
+              <span className="block mt-1">
+                In <strong>Settings → 4 · Digital Twin</strong>, <strong>Wide videos</strong> sets what new
+                videos start on: <strong>Me on my footage</strong>, <strong>Me on my background</strong>, or{" "}
+                <strong>Avatar in circle</strong>. <strong>Your backgrounds</strong> keeps your pictures: a
                 color, a town photo, or press <strong>+ Describe</strong>, type or say a place and press{" "}
                 <strong>Make it</strong> (about 20 seconds). Tap one to make it your default. Up to 20 new
-                backgrounds a month. <strong>Avatar video</strong> with your twin is made by our video
-                agent, which sets its own scenes, so it doesn&apos;t use these.
+                backgrounds a month.
               </span>
               {/* Twin outfits (2026-10-28, the owner's ask). */}
               {/* Paid plans only (2026-10-28): data-paid-only keeps it out of a free account's Sparklee. */}
