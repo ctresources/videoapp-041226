@@ -125,7 +125,7 @@ export function SparkleeGoal({ ask, onApproved }: {
             value={showing}
             onChange={(e) => setText(e.target.value)}
             readOnly={listening}
-            placeholder={listening ? "Listening…" : answered ? "Ask a follow-up or something new…" : "Speak or type your goal…"}
+            placeholder={listening ? "Listening…" : answered ? "Reply to Sparklee or ask something new…" : "Speak or type your goal…"}
             className="min-w-0 flex-1 bg-transparent text-[17px] text-spark-ink outline-none placeholder:text-[#a29d92]"
           />
           <button type="submit" disabled={planning || listening}
@@ -161,7 +161,7 @@ export function SparkleeGoal({ ask, onApproved }: {
 
         {/* The conversation: the answer sits right under the question. */}
         {answered && !listening && (
-          <div className="mt-4 flex flex-col gap-3 border-t border-spark-rule pt-4">
+          <div className="mt-4 flex flex-col gap-1.5 border-t border-spark-rule pt-4">
             {asked && (
               <div className="max-w-[85%] self-end rounded-2xl rounded-br-sm bg-[#2a2219] px-3.5 py-2.5 text-[15px] text-white">
                 <span className="block text-[11px] font-extrabold uppercase tracking-wide text-[#cdbf9f]">{byVoice ? "I heard" : "You said"}</span>
@@ -173,9 +173,10 @@ export function SparkleeGoal({ ask, onApproved }: {
               <span className="sparklee-badge block h-[34px] w-[34px] shrink-0">
                 <Image src="/sparklee.webp" alt="" width={34} height={34} className="h-full w-full" unoptimized />
               </span>
-              <div className="min-w-0 flex-1">
+              {/* Sparklee's answer in a soft gold card, so it stands out from the cream. */}
+              <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-[#f0dcb4] bg-[#fbf3e4] px-3.5 py-3">
                 {planning && (
-                  <p className="flex items-center gap-2 pt-1.5 text-[15px] text-spark-ink"><Loader2 size={15} className="animate-spin text-spark-amber" /> Building your plan…</p>
+                  <p className="flex items-center gap-2 text-[15px] text-spark-ink"><Loader2 size={15} className="animate-spin text-spark-amber" /> Building your plan…</p>
                 )}
 
                 {done !== null && (
@@ -190,7 +191,7 @@ export function SparkleeGoal({ ask, onApproved }: {
                   <>
                     <p className="text-[13px] font-extrabold text-[#A3660F]">Sparklee</p>
                     <p className="mt-0.5 text-[15.5px] text-spark-ink">{plan.question}</p>
-                    <p className="mt-1 text-[13px] text-spark-ink-muted">Answer in the box above.</p>
+                    <p className="mt-1 text-[12px] text-[#a29d92]">Answer in the box above.</p>
                   </>
                 ) : (
                   <>
@@ -222,7 +223,7 @@ export function SparkleeGoal({ ask, onApproved }: {
                     {plan.missing.map((m) => (
                       <Link key={m.label} href={m.href} className="mt-2 block text-[13.5px] font-semibold text-[#A3660F] underline">{m.label}</Link>
                     ))}
-                    <p className={`mt-2.5 rounded-xl px-3 py-2 text-[14px] ${plan.overBudget ? "bg-red-50 text-red-700" : "bg-[#fbf3e4] text-spark-ink"}`}>
+                    <p className={`mt-2.5 rounded-xl px-3 py-2 text-[14px] ${plan.overBudget ? "bg-red-50 text-red-700" : "bg-white text-spark-ink"}`}>
                       {plan.usageLine}{plan.overBudget && " Remove one, or buy more in Billing."}
                     </p>
                     <div className="mt-2.5 flex flex-wrap gap-2">
