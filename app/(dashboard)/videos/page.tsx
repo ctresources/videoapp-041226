@@ -27,6 +27,7 @@ import { AutopilotBanner } from "@/components/autopilot/autopilot-banner";
 import { videoStatus, type PostRow } from "@/lib/utils/video-status";
 import { VideoStatusLine } from "@/components/ui/video-status-line";
 import { ThumbnailEditButton } from "@/components/social/thumbnail-edit-button";
+import { SendToWebsiteButton } from "@/components/website/send-to-website";
 import { OlderList, splitRecent, type OlderItem } from "@/components/videos/older-list";
 import { partnerPlatform } from "@/lib/utils/social-platforms";
 
@@ -1035,6 +1036,11 @@ function VideosContent() {
                       {s.key === "blogs" ? <FileText size={12} /> : <Pencil size={12} />} {s.cta}
                     </Button>
                   </Link>
+                  {/* Send to Website (2026-10-31). */}
+                  {s.key === "blogs" && (
+                    <SendToWebsiteButton projectId={d.id}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-spark-rule bg-white px-2 py-1.5 text-[12.5px] font-medium text-spark-ink hover:border-spark-amber hover:text-spark-amber" />
+                  )}
                   <Button
                     size="sm"
                     variant="ghost"
@@ -1405,6 +1411,11 @@ function VideosContent() {
                           onDone={() => void loadVideos()}
                           className="w-full"
                         />
+                      )}
+                      {/* Send to Website (2026-10-31): Halo by text, or copy for any site. */}
+                      {video.project_id && (
+                        <SendToWebsiteButton projectId={video.project_id}
+                          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-[13px] font-medium text-spark-ink hover:border-spark-amber hover:text-spark-amber" />
                       )}
                       {/* Emailed (2026-10-29, the owner's ask). */}
                       {emailed[video.id] && (

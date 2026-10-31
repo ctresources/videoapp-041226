@@ -30,6 +30,17 @@ export type WhatsNewItem = {
 
 const ITEMS: WhatsNewItem[] = [
   {
+    id: "send-to-website",
+    title: "Send to Website",
+    description:
+      "Get your article and video onto your website in a few taps: text it to your Halo site, or copy it ready to paste into any other site.",
+    releaseDate: "2026-10-31",
+    howItWorksAnchor: "send-to-website",
+    badge: "NEW",
+    freeHref: "/videos",
+    freeLabel: "Open My Sparks",
+  },
+  {
     id: "twin-photos-footage",
     title: "Your Twin in Front of Your Footage",
     description:

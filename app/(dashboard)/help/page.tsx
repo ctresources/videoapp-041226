@@ -1245,6 +1245,22 @@ function FullGuide() {
                 bar, and paste it into the email&apos;s link box, so <strong>Read more</strong> in your
                 emails and newsletters goes straight to it.
               </span>
+              {/* Send to Website (2026-10-31, the owner's spec). */}
+              <span id="send-to-website" className="block mt-1.5 scroll-mt-24">
+                <strong>Send to Website.</strong> At the top of your Share Kit, and on each video and article
+                in My Sparks, <strong>Send to Website</strong> gets an article, a video or both onto your
+                site. With a Halo website, pick <strong>My Halo website</strong>: <strong>Update a post</strong>{" "}
+                (the post a video was made from is picked for you) or <strong>New post</strong>, then{" "}
+                <strong>Text Halo</strong> opens your messages with the request filled in. For a new post,
+                press <strong>Copy article</strong> first and paste it into the same text. That only sends Halo
+                a text; open Send to Website again later and it shows <strong>✓ On your Halo post</strong>{" "}
+                once the video is on that page. For any other website, pick <strong>Another website</strong>:{" "}
+                <strong>Copy as HTML</strong> (with your video under the headline), <strong>Copy as text</strong>,
+                or the video&apos;s links, paste it into a new post on your site, and publish it there. Then
+                paste the post&apos;s address into <strong>Posted it?</strong> so your emails link to it.
+                SparkReels doesn&apos;t post to other websites for you. No website yet? It offers{" "}
+                <strong>Get Halo</strong>, which you can skip.
+              </span>
               <span className="block mt-1.5">
                 Coming from a camera recording or a pasted script, the article starts writing itself as
                 soon as the Share Kit opens — there is nothing to press. A take recorded with no script
