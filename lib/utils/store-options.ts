@@ -55,6 +55,8 @@ export async function buildStoreOptions(
     cachedSrt: typeof meta.srt === "string" ? meta.srt : null,
     // A Digital Twin moves; its circle follows it (2026-10-24).
     followSubject: meta.is_digital_twin === true,
+    // A see-through twin in front of the footage (2026-10-31).
+    cutout: meta.twin_cutout === "side" || meta.twin_cutout === "corner" ? meta.twin_cutout : null,
     opener: openerOf(meta.opener),
     endCard: cardOf(meta.contact_card),
   };

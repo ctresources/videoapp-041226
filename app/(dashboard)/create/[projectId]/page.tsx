@@ -3958,6 +3958,8 @@ export default function ProjectEditorPage() {
                     state={project?.location_state ?? null}
                     projectId={project?.id}
                     hasListing={((project as unknown as { listing_data?: { photoUrls?: unknown[] } } | null)?.listing_data?.photoUrls?.length ?? 0) > 0}
+                    // In front of the photos and footage: short videos only (2026-10-31).
+                    allowFootage={selectedVideoType !== "youtube_long"}
                   />
                 )}
               </div>

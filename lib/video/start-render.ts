@@ -33,7 +33,7 @@ import { dropDuplicateCta } from "@/lib/utils/script-assembly";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { NextResponse } from "next/server";
 import { joinLineIfBusy, joinLine } from "@/lib/video/render-queue";
-import { parseChoice, resolveTwinBackdrop } from "@/lib/twin-backgrounds";
+import { parseChoice, resolveTwinBackdrop, twinFootageLayout } from "@/lib/twin-backgrounds";
 import { isTwinLook, pickTwin } from "@/lib/utils/twin-looks";
 import { canAccessFeature, getAccessLevel, isPaidLevel } from "@/lib/access";
 import { friendlyRenderError } from "@/lib/utils/render-errors";
@@ -814,7 +814,7 @@ export async function startRender(
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall, twin_wide_mode, twin_default_bg, twin_consent_needed, twin_outfit_look_ids, twin_upright, heygen_twin2_look_id, twin2_upright, twin2_consent_needed")
+    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall, twin_wide_mode, twin_footage_layout, twin_default_bg,twin_consent_needed, twin_outfit_look_ids, twin_upright, heygen_twin2_look_id, twin2_upright, twin2_consent_needed")
     .eq("id", user.id)
     .single();
 
@@ -854,6 +854,8 @@ export async function startRender(
     first_video_generated_at: string | null;
     /** Horizontal twin videos: on a background (new) or in the circle (2026-10-24). */
     twin_wide_mode: string | null;
+    /** Where a see-through twin stands in front of the footage (2026-10-31). */
+    twin_footage_layout: string | null;
     twin_default_bg: unknown;
   } | null;
 
@@ -1405,10 +1407,20 @@ export async function startRender(
       const twinOnBackground = isTwinLook(directAvatarId, profile)
         && orientation === "landscape" && !voiceOnly
         && (wantsFull || isAgentIntro || (isLongForm && !!twinChoice && twinChoice.type !== "circle"));
-      const twinBackdrop = twinOnBackground
+      /**
+       * Or in front of this video's own photos and footage (2026-10-31, the
+       * owner's mockup): HeyGen sends the twin see-through and store-video
+       * lays them over the same b-roll a circle video gets, at the side or in
+       * the corner. So the photos, stock and scenes below stay on.
+       */
+      const twinFootage = twinOnBackground
+        ? twinFootageLayout(twinChoice, profile, { isLongForm, isAgentIntro })
+        : null;
+      const twinBackdrop = twinOnBackground && !twinFootage
         ? await resolveTwinBackdrop(admin, user.id, twinChoice, profile)
         : null;
       if (twinBackdrop) console.log(`[create-blog] project=${projectId} Digital Twin on a ${twinBackdrop.type} background`);
+      if (twinFootage) console.log(`[create-blog] project=${projectId} Digital Twin see-through, in front of the footage (${twinFootage})`);
 
       // Direct Video needs a HeyGen voice_id. Only the user's OWN clone, or a
       // neutral public voice — never another account's private clone. See the
@@ -1503,6 +1515,7 @@ export async function startRender(
             // photos stay the background they always were.
             ...(!isLongForm && !isAgentIntro && !twinBackdrop && { scene_script: safeScript.slice(0, 2000) }),
             ...(twinBackdrop && { twin_backdrop: twinBackdrop }),
+            ...(twinFootage && { twin_cutout: twinFootage }),
             // HeyGen returns a sidecar SRT for this path; we burn it ourselves
             // at a readable size. Recorded so the store step knows to.
             captions_enabled: captions !== false,
@@ -1609,6 +1622,7 @@ export async function startRender(
         captions: captions !== false,
         ...(directEngine && { engine: directEngine }),
         ...(twinBackdrop && { backdrop: twinBackdrop }),
+        ...(twinFootage && { transparent: true }),
       });
 
       // Accepted with the twin: any approval it was waiting for is done.

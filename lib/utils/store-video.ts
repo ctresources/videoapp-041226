@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getVideoStatus, estimateRenderCostUsd } from "@/lib/api/heygen";
 import { mixBackgroundMusic } from "@/lib/utils/mix-music";
-import { compositePhotos, burnSubtitles, prependClip, type BackgroundItem } from "@/lib/utils/composite-photos";
+import { compositePhotos, burnSubtitles, flattenCutout, prependClip, type BackgroundItem } from "@/lib/utils/composite-photos";
 import { makeAgentOpener, type OpenerStyle } from "@/lib/api/agent-opener";
 import { ensureFaststart } from "@/lib/utils/faststart";
 import { transcribeToSrt } from "@/lib/utils/srt";
@@ -87,6 +87,12 @@ export interface StoreOptions {
   cachedSrt?: string | null;
   /** A Digital Twin: the circle follows the speaker (2026-10-24). */
   followSubject?: boolean;
+  /**
+   * The render is a see-through WebM of the twin (2026-10-31), laid over the
+   * b-roll at the side or in the corner instead of in a circle. It is never
+   * published as it is: iPhones can't play WebM.
+   */
+  cutout?: "side" | "corner" | null;
   /** The contact card over the last seconds: headline first (2026-10-24). */
   endCard?: { lines: string[]; logoUrl?: string | null } | null;
   /** The agent in front of the home, put first (2026-10-24). */
@@ -225,12 +231,15 @@ export async function storeVideoDetailed(
    * fresh; a short cacheControl alone would not fix it, because the stale copy
    * is already in the browser by the time post-processing finishes.
    */
-  const store = async (buf: Buffer, version?: number): Promise<string> => {
+  const store = async (buf: Buffer, version?: number, seeThrough = false): Promise<string> => {
+    // A see-through twin (2026-10-31) is kept safe as what it is, a WebM,
+    // beside the MP4 path; the finished MP4 goes to the usual path.
+    const target = seeThrough ? `${userId}/${videoId}-cutout.webm` : path;
     const { error } = await admin.storage
       .from(BUCKET)
-      .upload(path, buf, { contentType: "video/mp4", upsert: true, cacheControl: "60" });
+      .upload(target, buf, { contentType: seeThrough ? "video/webm" : "video/mp4", upsert: true, cacheControl: "60" });
     if (error) throw error;
-    const { data: { publicUrl } } = admin.storage.from(BUCKET).getPublicUrl(path);
+    const { data: { publicUrl } } = admin.storage.from(BUCKET).getPublicUrl(target);
     return version ? `${publicUrl}?v=${version}` : publicUrl;
   };
 
@@ -244,7 +253,7 @@ export async function storeVideoDetailed(
     const res = await fetch(sourceUrl);
     if (!res.ok) throw new Error(`Download failed: ${res.status}`);
     buffer = Buffer.from(await res.arrayBuffer());
-    publicUrl = await store(buffer);
+    publicUrl = await store(buffer, undefined, !!opts.cutout);
     console.log(`[store-video] Stored raw ${videoId} → ${publicUrl}`);
   } catch (err) {
     console.error("[store-video] Failed for", videoId, err instanceof Error ? err.message : err);
@@ -260,6 +269,13 @@ export async function storeVideoDetailed(
   try {
     let processed = buffer;
     let changed = false;
+    /**
+     * Still the see-through WebM (2026-10-31). Nothing below that expects an
+     * MP4 may touch it, and it is never re-stored as the finished video: the
+     * layering turns it into an MP4, or failing that it is flattened onto the
+     * studio color.
+     */
+    let seeThrough = !!opts.cutout;
 
     // Get the captions up front — they feed either the composite pass or the
     // standalone burn below.
@@ -381,10 +397,20 @@ export async function storeVideoDetailed(
       // regardless, so burning them there costs essentially nothing.
       const withBroll = await compositePhotos(
         processed, broll, opts.dimension.width, opts.dimension.height, srtPath,
-        { followSubject: opts.followSubject === true, endCard: opts.endCard ?? null },
+        { followSubject: opts.followSubject === true, endCard: opts.endCard ?? null, cutout: opts.cutout ?? null },
       );
-      if (withBroll) { processed = withBroll; changed = true; brollApplied = true; }
+      if (withBroll) { processed = withBroll; changed = true; brollApplied = true; seeThrough = false; }
       else console.warn(`[store-video] ${videoId}: b-roll compositing skipped, keeping plain avatar video`);
+    }
+
+    // A see-through twin with nothing behind them (no b-roll, or the layering
+    // failed): onto the studio color, so it is still an MP4 every phone plays.
+    if (seeThrough && opts.dimension) {
+      const flat = await flattenCutout(processed, opts.dimension.width, opts.dimension.height);
+      if (flat) { processed = flat; changed = true; seeThrough = false; }
+    }
+    if (seeThrough) {
+      console.error(`[store-video] ${videoId}: see-through twin could not be made into an MP4 — publishing the WebM`);
     }
 
     // Captions only ride along when the b-roll pass actually ran. This was an
@@ -392,7 +418,7 @@ export async function storeVideoDetailed(
     // the captions down with it — one error costing the user two features, and
     // the video arriving as a bare talking head with no subtitles either. Keyed
     // on whether b-roll was applied, not on whether it was attempted.
-    if (!brollApplied && srtPath && opts.dimension) {
+    if (!brollApplied && !seeThrough && srtPath && opts.dimension) {
       const withSubs = await burnSubtitles(processed, srtPath, opts.dimension.width, opts.dimension.height);
       if (withSubs) { processed = withSubs; changed = true; }
     }
@@ -400,7 +426,7 @@ export async function storeVideoDetailed(
     // captions are made, so both stay in time with the speech, and before the
     // music, so the music runs under the opener too.
     const openerShot = await openerMaking;
-    if (openerShot) {
+    if (openerShot && !seeThrough) {
       const withOpener = await prependClip(processed, openerShot.url, openerShot.seconds);
       if (withOpener) {
         processed = withOpener;
@@ -409,7 +435,7 @@ export async function storeVideoDetailed(
         await discloseAnimatedPhotos(admin, videoId).catch(() => {});
       }
     }
-    if (opts.musicUrl) {
+    if (opts.musicUrl && !seeThrough) {
       const mixed = await mixBackgroundMusic(processed, opts.musicUrl);
       if (mixed) { processed = mixed; changed = true; }
     }
@@ -417,14 +443,14 @@ export async function storeVideoDetailed(
     // Last in the chain, deliberately. Every pass above writes its own MP4 and
     // ffmpeg parks the index at the end unless told not to, so a faststart done
     // any earlier would be undone by the next step that touched the file.
-    const fast = await ensureFaststart(processed, videoId);
+    const fast = seeThrough ? processed : await ensureFaststart(processed, videoId);
     // Kept apart from `changed`, which means "post-processing produced
     // something that was asked for". A remux is repair work nobody requested,
     // and folding it in would silence the did-nothing warning below.
     const remuxed = fast !== processed;
     if (remuxed) processed = fast;
 
-    if (changed || remuxed) {
+    if ((changed || remuxed) && !seeThrough) {
       // New URL, so anyone already holding the raw copy refetches the finished one.
       publicUrl = await store(processed, Date.now());
       console.log(`[store-video] Re-stored ${videoId} (processed=${changed}, faststart=${remuxed}) → ${publicUrl}`);

@@ -149,8 +149,38 @@ function fontReport(stderr: string[]): string {
   return line ? line.replace(/^\[[^\]]*\]\s*/, "").slice(0, 160) : "the filter did not say which font it used";
 }
 
+/**
+ * Where a see-through twin stands (2026-10-31), as fractions of the frame.
+ * The twin arrives centred in a full 16:9 frame of their own, body across
+ * roughly 27–76% of its width (measured on the owner's twin), so the frame
+ * is moved, not cropped: "side" is full height with the body ending near the
+ * right edge; "corner" is 58% size in the bottom right. `clearRight` is how
+ * much of the right edge captions keep clear of.
+ */
+const CUTOUT = {
+  side: { scale: 1, x: 0.22, clearRight: 0.52, cardWidth: 0.48 },
+  corner: { scale: 0.58, x: 0.54, clearRight: 0.33, cardWidth: 0.64 },
+} as const;
+
+/** The studio color a see-through twin is put on when there is nothing else. */
+const CUTOUT_FALLBACK_COLOR = "E9E3D6"; // DEFAULT_TWIN_COLOR in lib/twin-backgrounds.ts
+
+/**
+ * The twin's edge softened by a pixel: HeyGen's cut-out leaves a faint grey
+ * line round the hair, which shows over bright footage. Shrinking the
+ * see-through mask by one pixel and blurring it by one hides it (tested
+ * 2026-10-31 on the owner's twin).
+ */
+function softenedCutout(input: string, w: number, h: number, output: string): string[] {
+  return [
+    `${input}format=rgba,scale=${w}:${h},split[tc][ta]`,
+    `[ta]alphaextract,erosion,boxblur=1:1[tm]`,
+    `[tc][tm]alphamerge${output}`,
+  ];
+}
+
 /** ASS style string for burned captions at a readable size. */
-function captionStyle(outW: number, outH: number, hasPip: boolean): string {
+function captionStyle(outW: number, outH: number, hasPip: boolean, clearRight?: number): string {
   /**
    * Sizes are worked out in pixels and then converted, because the filter
    * does not take pixels.
@@ -168,7 +198,10 @@ function captionStyle(outW: number, outH: number, hasPip: boolean): string {
   const sidePx = outW * 0.04;
   let bottomPx = outH * CAPTION_MARGIN;
   let rightPx = sidePx;
-  if (hasPip) {
+  if (clearRight !== undefined) {
+    // A see-through twin standing on the right: captions on the open side.
+    rightPx = outW * clearRight;
+  } else if (hasPip) {
     // The speaker's circle is in the bottom right corner: 30% of the width,
     // 3% in from the edges (see pass 2). On a wide frame the captions sit
     // beside it; on a tall one there is no room beside, so they sit above.
@@ -259,6 +292,11 @@ export async function compositePhotos(
     followSubject?: boolean;
     /** The contact card over the last seconds: headline first (2026-10-24). */
     endCard?: { lines: string[]; logoUrl?: string | null } | null;
+    /**
+     * The video is a see-through WebM of the twin (2026-10-31): laid over
+     * the background where they stand, not cut into a circle.
+     */
+    cutout?: "side" | "corner" | null;
   } = {},
 ): Promise<Buffer | null> {
   const sources = items.filter((it) => it?.url).slice(0, MAX_SOURCES);
@@ -270,7 +308,8 @@ export async function compositePhotos(
   const dir = join(tmpdir(), `broll-${randomUUID()}`);
   try {
     await fs.mkdir(dir, { recursive: true });
-    const videoPath = join(dir, "avatar.mp4");
+    const cut = opts.cutout ? CUTOUT[opts.cutout] : null;
+    const videoPath = join(dir, cut ? "avatar.webm" : "avatar.mp4");
     const slidePath = join(dir, "slideshow.mp4");
     const outPath = join(dir, "out.mp4");
     await fs.writeFile(videoPath, videoBuffer);
@@ -428,7 +467,7 @@ export async function compositePhotos(
      * "not in circle most of the time"). Anything it can't read keeps the middle.
      */
     let squareCut = `[0:v]scale=${pipW}:${pipW}:force_original_aspect_ratio=increase,crop=${pipW}:${pipW},format=rgba[sq]`;
-    if (opts.followSubject) {
+    if (opts.followSubject && !cut) {
       try {
         const { width: sw, height: sh } = await probeVideoSize(videoPath);
         const centres = sw > sh * 1.05 ? await trackSubjectX(videoPath) : null;
@@ -460,7 +499,7 @@ export async function compositePhotos(
           const from = Math.max(0, total - CARD_SECONDS).toFixed(3);
           const when = `enable='between(t\\,${from}\\,${total.toFixed(3)})'`;
           const S = Math.min(outW, outH);
-          const areaW = Math.round(outW * 0.64);
+          const areaW = Math.round(outW * (cut?.cardWidth ?? 0.64));
           const headSize = Math.round(S * 0.062);
           const bodySize = Math.round(S * 0.042);
           let y = Math.round(outH * 0.3);
@@ -504,9 +543,29 @@ export async function compositePhotos(
     }
     const afterCaptions = cardParts.length ? "[base]" : "[outv]";
 
+    /**
+     * The speaker: a circle cut from the video, or a see-through twin where
+     * they stand (2026-10-31). The WebM's see-through layer is only read by
+     * the libvpx decoder; ffmpeg's own VP9 decoder drops it and the twin
+     * would arrive on black.
+     */
+    let speaker: string[];
+    let placed: string;
+    if (cut) {
+      const tw = Math.round((outW * cut.scale) / 2) * 2;
+      const th = Math.round((outH * cut.scale) / 2) * 2;
+      speaker = softenedCutout("[0:v]", tw, th, "[av]");
+      placed = `${Math.round(outW * cut.x)}:${outH - th}`;
+    } else {
+      // Square-crop the avatar, then punch it to a circle with the mask.
+      speaker = [squareCut, `[sq][2:v]alphamerge[av]`];
+      placed = `main_w-overlay_w-${margin}:main_h-overlay_h-${margin}`;
+    }
+
     await new Promise<void>((resolve, reject) => {
-      const cmd = ffmpeg()
-        .input(videoPath)
+      const cmd = ffmpeg().input(videoPath);
+      if (cut) cmd.inputOptions(["-c:v", "libvpx-vp9"]);
+      cmd
         .input(slidePath)
         .inputOptions(["-stream_loop", "-1"]) // applies to slidePath (2nd input)
         .input(maskPath)
@@ -515,13 +574,11 @@ export async function compositePhotos(
       if (cardLogoPath) cmd.input(cardLogoPath).inputOptions(["-loop", "1"]);
       cmd
         .complexFilter([
-          // Square-crop the avatar, then punch it to a circle with the mask.
-          squareCut,
-          `[sq][2:v]alphamerge[av]`,
+          ...speaker,
           // Captions burn last so they sit over the avatar inset, not under it.
-          `[1:v][av]overlay=main_w-overlay_w-${margin}:main_h-overlay_h-${margin}:shortest=1` +
+          `[1:v][av]overlay=${placed}:shortest=1` +
             (srtPath
-              ? `[comp];[comp]${subtitlesFilter(srtPath, fontsDir, captionStyle(outW, outH, true))}${afterCaptions}`
+              ? `[comp];[comp]${subtitlesFilter(srtPath, fontsDir, captionStyle(outW, outH, true, cut?.clearRight))}${afterCaptions}`
               : afterCaptions),
           ...cardParts,
         ])
@@ -583,6 +640,56 @@ export async function compositePhotos(
  *
  * Returns null on any failure so the caller keeps the un-captioned video.
  */
+/**
+ * A see-through twin (a WebM) put full height on the studio color as an MP4
+ * (2026-10-31). The fallback when there is nothing to stand in front of, or
+ * the layering failed: a WebM is never the finished video, because iPhones
+ * can't play it. Captions are burned afterwards by burnSubtitles, as for any
+ * video with no b-roll. Returns null on failure.
+ */
+export async function flattenCutout(
+  videoBuffer: Buffer,
+  width: number,
+  height: number,
+): Promise<Buffer | null> {
+  const startedAt = Date.now();
+  const dir = join(tmpdir(), `flatten-${randomUUID()}`);
+  const { w: outW, h: outH } = outputSize(width, height);
+  try {
+    await fs.mkdir(dir, { recursive: true });
+    const inPath = join(dir, "in.webm");
+    const outPath = join(dir, "out.mp4");
+    await fs.writeFile(inPath, videoBuffer);
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg()
+        .input(inPath)
+        .inputOptions(["-c:v", "libvpx-vp9"])
+        .input(`color=c=0x${CUTOUT_FALLBACK_COLOR}:s=${outW}x${outH}:r=25`)
+        .inputFormat("lavfi")
+        .complexFilter([
+          ...softenedCutout("[0:v]", outW, outH, "[tw]"),
+          `[1:v][tw]overlay=0:0:shortest=1,format=yuv420p[outv]`,
+        ])
+        .outputOptions([
+          "-map", "[outv]", "-map", "0:a?",
+          "-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-pix_fmt", "yuv420p", "-threads", "0",
+          "-c:a", "aac", "-b:a", "192k",
+        ])
+        .on("end", () => resolve())
+        .on("error", (err) => reject(err))
+        .save(outPath);
+    });
+    const out = await fs.readFile(outPath);
+    console.log(`[composite-photos] See-through twin put on the studio color in ${Math.round((Date.now() - startedAt) / 1000)}s`);
+    return out;
+  } catch (err) {
+    console.error("[composite-photos] Couldn't flatten the see-through twin:", err instanceof Error ? err.message : err);
+    return null;
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 export async function prependClip(
   videoBuffer: Buffer,
   /** A silent opening shot (its own sound is dropped), downloaded straight away. */

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateTwinBackdrop } from "@/lib/api/openai-image";
 import {
-  DEFAULT_TWIN_COLOR, TWIN_BACKGROUNDS_PER_MONTH, parseChoice, saveTwinBackground,
+  DEFAULT_TWIN_COLOR, TWIN_BACKGROUNDS_PER_MONTH, parseChoice, parseLayout, saveTwinBackground,
 } from "@/lib/twin-backgrounds";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,8 @@ export const maxDuration = 120;
  *   describe { prompt, orientation }   an AI picture of a place they describe
  *   town     { city, state, orientation } an AI picture of their town
  *   listing  { projectId }             the listing's front photo
- *   settings { mode?, defaultBg? }     Wide videos, and the default background
+ *   settings { mode?, footageLayout?, defaultBg? }  Wide videos, where a see-through
+ *                                      twin stands, and the default background
  *   rename   { id, name } · delete { id }
  * Up to 20 new backgrounds a month: each AI picture costs a few cents.
  */
@@ -33,12 +34,13 @@ export async function GET() {
   const admin = createAdminClient();
   const [{ data: rows }, { data: prof }] = await Promise.all([
     admin.from("twin_backgrounds").select("id, name, kind, prompt, wide_url, tall_url, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
-    admin.from("profiles").select("twin_wide_mode, twin_default_bg").eq("id", user.id).single(),
+    admin.from("profiles").select("twin_wide_mode, twin_footage_layout, twin_default_bg").eq("id", user.id).single(),
   ]);
-  const p = prof as { twin_wide_mode: string | null; twin_default_bg: unknown } | null;
+  const p = prof as { twin_wide_mode: string | null; twin_footage_layout: string | null; twin_default_bg: unknown } | null;
   return NextResponse.json({
     backgrounds: rows ?? [],
-    mode: p?.twin_wide_mode === "circle" ? "circle" : "background",
+    mode: p?.twin_wide_mode === "circle" || p?.twin_wide_mode === "footage" ? p.twin_wide_mode : "background",
+    footageLayout: parseLayout(p?.twin_footage_layout),
     defaultBg: parseChoice(p?.twin_default_bg) ?? { type: "color", value: DEFAULT_TWIN_COLOR },
   });
 }
@@ -97,10 +99,12 @@ export async function POST(req: NextRequest) {
 
       case "settings": {
         const patch: Record<string, unknown> = {};
-        if (body.mode === "background" || body.mode === "circle") patch.twin_wide_mode = body.mode;
+        if (body.mode === "background" || body.mode === "circle" || body.mode === "footage") patch.twin_wide_mode = body.mode;
+        if (body.footageLayout === "side" || body.footageLayout === "corner") patch.twin_footage_layout = body.footageLayout;
         if (body.defaultBg !== undefined) {
           const choice = parseChoice(body.defaultBg);
-          if (!choice || choice.type === "circle") return NextResponse.json({ error: "Unknown background." }, { status: 400 });
+          // The default background is a picture or a color; footage and the circle are Wide videos choices.
+          if (!choice || choice.type === "circle" || choice.type === "footage") return NextResponse.json({ error: "Unknown background." }, { status: 400 });
           patch.twin_default_bg = choice;
         }
         if (!Object.keys(patch).length) return NextResponse.json({ error: "Nothing to change." }, { status: 400 });
