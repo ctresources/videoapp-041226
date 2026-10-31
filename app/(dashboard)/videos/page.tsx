@@ -804,7 +804,7 @@ function VideosContent() {
 
   if (loading) {
     return (
-      <div className="mx-auto w-full max-w-[1400px]">
+      <div className="w-full">
         <div className="flex items-center justify-between mb-6">
           <Skeleton className="h-8 w-32" />
           <Skeleton className="h-10 w-36" />
@@ -828,7 +828,7 @@ function VideosContent() {
      * Capped here and given a fourth column below, so a card stays the size of
      * a card and the extra width buys more of them instead.
      */
-    <div className="mx-auto w-full max-w-[1400px]">
+    <div className="w-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>

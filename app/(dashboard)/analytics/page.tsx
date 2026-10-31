@@ -129,7 +129,7 @@ export default async function AnalyticsPage() {
   const recentPosts  = posts.filter((p: { created_at: string }) => new Date(p.created_at) > thirtyDaysAgo).length;
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="w-full space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-brand-text flex items-center gap-2">

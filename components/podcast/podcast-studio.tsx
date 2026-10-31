@@ -107,7 +107,7 @@ export function PodcastStudio() {
   const market = [setup.city, setup.state].filter(Boolean).join(", ");
 
   return (
-    <div className="mx-auto w-full max-w-[1300px]">
+    <div className="w-full">
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <h1 className="text-[24px] font-bold text-spark-ink">🎙 Spark Podcast</h1>
         <span className="rounded-full bg-[#eee9de] px-2.5 py-0.5 text-[12px] font-bold text-spark-ink-soft">Only on your account for now</span>

@@ -262,7 +262,7 @@ export default function AutopilotPage() {
 
   return (
     // Room at the bottom for the Back / Done bar (2026-10-24).
-    <div className="mx-auto flex max-w-2xl flex-col gap-4 pb-28">
+    <div className="flex w-full flex-col gap-4 pb-28">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-[28px] font-bold leading-tight text-[#A3660F]">Your week</h1>

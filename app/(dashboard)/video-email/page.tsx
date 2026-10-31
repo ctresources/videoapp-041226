@@ -159,7 +159,7 @@ export default function VideoEmailPage() {
   const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
   return (
-    <div className="mx-auto w-full max-w-[1240px] px-4 pb-10 pt-5 sm:px-6">
+    <div className="w-full px-4 pb-10 pt-5 sm:px-6">
       <Link href="/videos" className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-spark-ink-muted hover:text-spark-ink">
         <ArrowLeft size={15} /> My Sparks
       </Link>

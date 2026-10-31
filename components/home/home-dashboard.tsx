@@ -75,7 +75,7 @@ export function HomeDashboard({ checklist }: { checklist?: ReactNode }) {
   const paid = data ? data.paid : account?.paid ?? true;
 
   return (
-    <div className="mx-auto w-full max-w-[1400px]">
+    <div className="w-full">
       <div className="flex flex-wrap items-center gap-2.5">
         <h1 className="text-[23px] font-bold text-spark-ink">{greet}{first ? `, ${first}` : ""}</h1>
         <span className="rounded-full bg-[#e8f5ee] px-2.5 py-0.5 text-[12.5px] font-semibold text-[#0f7a52]">✓ Nothing posts until you approve it</span>

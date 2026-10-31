@@ -3302,7 +3302,7 @@ export default function ToolsPage() {
   }, []);
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
+    <div className="w-full px-4 py-6 sm:px-6">
       {/* Header */}
       <div className="mb-6 p-6 rounded-2xl spark-banner-gradient text-white">
         <div className="flex items-center justify-between gap-3">

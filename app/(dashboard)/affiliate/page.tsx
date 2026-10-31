@@ -92,7 +92,7 @@ export default function AffiliatePage() {
   );
 
   if (loading) {
-    return <div className="max-w-4xl mx-auto">{header}<Card><p className="text-sm text-slate-400 py-6 text-center">Loading…</p></Card></div>;
+    return <div className="w-full">{header}<Card><p className="text-sm text-slate-400 py-6 text-center">Loading…</p></Card></div>;
   }
 
   const aff = data?.affiliate;
@@ -100,7 +100,7 @@ export default function AffiliatePage() {
   // Not an affiliate yet → apply CTA
   if (!aff) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full">
         {header}
         <Card className="text-center py-10">
           <h3 className="text-lg font-bold text-brand-text mb-2">Join the SparkReels affiliate program</h3>
@@ -116,7 +116,7 @@ export default function AffiliatePage() {
 
   if (aff.status === "pending") {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full">
         {header}
         <Card className="text-center py-10">
           <Clock className="w-10 h-10 text-amber-500 mx-auto mb-3" />
@@ -129,7 +129,7 @@ export default function AffiliatePage() {
 
   if (aff.status === "rejected") {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full">
         {header}
         <Card className="text-center py-10">
           <h3 className="text-lg font-bold text-brand-text mb-1">Application not approved</h3>
@@ -158,7 +158,7 @@ export default function AffiliatePage() {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="w-full">
       {header}
 
       {/* Referral link */}
