@@ -13,7 +13,7 @@ import { announceVideoReady } from "@/lib/video/ready-notice";
  * also the video's length — the photos are spread across whatever it turns out
  * to be, rather than the other way round.
  */
-import { hasAdminPerks } from "@/lib/utils/roles";
+import { hasAdminPerks, staffCapMessage } from "@/lib/utils/roles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSparkFor } from "@/lib/utils/ensure-spark";
@@ -189,6 +189,11 @@ export async function POST(req: NextRequest) {
    * takes nothing and there is no refund to get right.
    */
   const isAdmin = hasAdminPerks(p.role);
+  // A staff account's monthly cap, for the reels a plan pays for (2026-10-30).
+  if (cinematic || scenes) {
+    const capMsg = await staffCapMessage(admin, user.id, p.role);
+    if (capMsg) return NextResponse.json({ error: capMsg, code: "staff_cap" }, { status: 402 });
+  }
   if ((cinematic || scenes) && !isAdmin && !chargeFor((profile ?? {}) as Partial<AllowanceColumns>, "short")) {
     return NextResponse.json(
       {

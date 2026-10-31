@@ -10,7 +10,7 @@ import { buildCallbackUrl } from "@/lib/utils/webhook-callback";
 import { getAvatarLooks } from "@/lib/api/heygen";
 import { isTwinLook, twinLookIds, type TwinLookFields } from "@/lib/utils/twin-looks";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
-import { hasAdminPerks } from "@/lib/utils/roles";
+import { hasAdminPerks, staffCapMessage } from "@/lib/utils/roles";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -49,6 +49,9 @@ export async function POST(req: NextRequest) {
   } | null;
   if (!p) return NextResponse.json({ error: "Profile not found." }, { status: 400 });
   const isAdmin = hasAdminPerks(p.role);
+  // A staff account's monthly cap (an episode counts as two).
+  const capMsg = await staffCapMessage(s.admin, s.user.id, p.role);
+  if (capMsg) return NextResponse.json({ error: capMsg, code: "staff_cap" }, { status: 402 });
 
   if (!isAdmin && availableFor(p as never, "short") < PODCAST_SHORT_VIDEOS) {
     return NextResponse.json({ error: `An episode uses ${PODCAST_SHORT_VIDEOS} short videos, and you don't have enough left.`, code: "out_of_videos" }, { status: 402 });

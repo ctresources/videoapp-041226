@@ -32,13 +32,24 @@ function monthStartIso(): string {
  * against its cap. Admin client required: it counts generated_videos.
  */
 export async function staffVideosThisMonth(admin: SupabaseClient, userId: string): Promise<number> {
-  const { count } = await admin
+  // Only what a plan would pay for (2026-10-30, the owner's "5 short
+  // videos"): camera recordings and Classic photo reels are free, so they
+  // don't use up a staff month. A podcast episode counts as the two it costs.
+  const { data } = await admin
     .from("generated_videos")
-    .select("id", { count: "exact", head: true })
+    .select("render_provider, metadata")
     .eq("user_id", userId)
     .gte("created_at", monthStartIso())
-    .neq("render_status", "failed");
-  return count ?? 0;
+    .neq("render_status", "failed")
+    .neq("render_provider", "camera")
+    .limit(500);
+  let n = 0;
+  for (const r of (data ?? []) as { render_provider: string | null; metadata: Record<string, unknown> | null }[]) {
+    const m = r.metadata ?? {};
+    if (r.render_provider === "ffmpeg" && !m.motion && m.source !== "scenes-reel") continue;
+    n += m.is_podcast ? 2 : 1;
+  }
+  return n;
 }
 
 /** The refusal for a staff account at its cap, or null when it may go on. */
