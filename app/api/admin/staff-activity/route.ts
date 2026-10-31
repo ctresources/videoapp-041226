@@ -74,6 +74,12 @@ export async function GET(req: NextRequest) {
       admin.from("autopilot_drafts").select("id", { count: "exact", head: true }).eq("user_id", s.id).gte("approved_at", fromIso).lt("approved_at", toIso),
       staffVideosThisMonth(admin as never, s.id),
     ]);
+    const { data: timeRows } = await admin.from("app_time_daily").select("seconds, last_seen")
+      .eq("user_id", s.id).gte("day", fromIso.slice(0, 10)).lt("day", toIso.slice(0, 10));
+    const tr = (timeRows ?? []) as { seconds: number; last_seen: string }[];
+    const minutesInApp = Math.round(tr.reduce((n, r) => n + r.seconds, 0) / 60);
+    const daysInApp = tr.filter((r) => r.seconds > 0).length;
+    const lastSeen = tr.map((r) => r.last_seen).sort().pop() ?? null;
 
     // Account names for "Posted to".
     const names: Record<string, string> = {};
@@ -139,7 +145,8 @@ export async function GET(req: NextRequest) {
 
     const cards = count((cardEvents.data ?? []) as { kind: string }[], (r) => r.kind);
     return {
-      id: s.id, name: s.full_name || s.email || "Staff", email: s.email, timeZone: s.time_zone, lastActive: s.last_active_at,
+      id: s.id, name: s.full_name || s.email || "Staff", email: s.email, timeZone: s.time_zone,
+      lastActive: [lastSeen, s.last_active_at].filter(Boolean).sort().pop() ?? null, minutesInApp, daysInApp,
       cap, used, permissions: perms, accounts: Object.entries(names).map(([platform, account]) => ({ platform, label: label(platform), account })),
       totals: { videos: videos.length, posts: postRows.filter((p) => p.post_status !== "failed").length, emails: emailsByKind.length, approvals: autoApproved.count ?? 0 },
       everything: {

@@ -79,6 +79,22 @@ interface AffiliateRow {
   reviewed_at: string | null;
 }
 
+/** "5 min ago", "3 h ago", "Oct 12". */
+function agoText(iso: string): string {
+  const m = Math.round((Date.now() - Date.parse(iso)) / 60_000);
+  if (m < 2) return "Now";
+  if (m < 60) return `${m} min ago`;
+  if (m < 24 * 60) return `${Math.round(m / 60)} h ago`;
+  if (m < 7 * 24 * 60) return `${Math.round(m / 1440)} days ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+/** "0", "45 min", "3 h 20 min". */
+function minutesText(min: number): string {
+  if (!min) return "0";
+  if (min < 60) return `${min} min`;
+  return `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60} min` : ""}`;
+}
+
 interface UserRow {
   id: string;
   email: string;
@@ -90,6 +106,10 @@ interface UserRow {
   onboarding_done: boolean;
   created_at: string;
   video_count?: number;
+  /** Time in the app (2026-10-30). */
+  last_sign_in_at?: string | null;
+  last_seen_at?: string | null;
+  minutes_30d?: number;
   /** Its own column now — it used to be the string "suspended" in role,
    *  which destroyed the role and which nothing in the app ever read. */
   suspended?: boolean;
@@ -938,7 +958,7 @@ export default function AdminPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
-                  {["User", "Plan", "Credits", "Videos", "Status", "Welcome email", "Follow-up", "Affiliate", "Joined", ""].map((h) => (
+                  {["User", "Plan", "Credits", "Videos", "Last active", "Time in app (30 days)", "Status", "Welcome email", "Follow-up", "Affiliate", "Joined", ""].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -964,6 +984,12 @@ export default function AdminPage() {
                       </td>
                       <td className="px-4 py-3 font-medium text-slate-700">{user.credits_remaining}</td>
                       <td className="px-4 py-3 text-slate-600">{user.video_count ?? 0}</td>
+                      {/* Time in the app (2026-10-30, the owner's ask). */}
+                      <td className="px-4 py-3 text-xs whitespace-nowrap text-slate-600" title={user.last_sign_in_at ? `Last signed in ${new Date(user.last_sign_in_at).toLocaleString()}` : "Never signed in"}>
+                        {user.last_seen_at ? agoText(user.last_seen_at) : <span className="text-slate-300">—</span>}
+                        {user.last_sign_in_at && <span className="block text-[11px] text-slate-400">Signed in {new Date(user.last_sign_in_at).toLocaleDateString()}</span>}
+                      </td>
+                      <td className="px-4 py-3 text-xs whitespace-nowrap text-slate-600">{minutesText(user.minutes_30d ?? 0)}</td>
                       <td className="px-4 py-3">
                         {isSuspended(user)
                           ? <Badge variant="error">Suspended</Badge>
@@ -1025,7 +1051,7 @@ export default function AdminPage() {
                     {/* Expanded actions row */}
                     {expandedId === user.id && (
                       <tr key={`${user.id}-expand`} className="bg-slate-50/80">
-                        <td colSpan={10} className="px-4 py-4">
+                        <td colSpan={12} className="px-4 py-4">
                           <div className="flex flex-wrap gap-6">
 
                             {/* Plan */}
@@ -1223,7 +1249,7 @@ export default function AdminPage() {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-4 py-12 text-center text-slate-400 text-sm">
+                    <td colSpan={12} className="px-4 py-12 text-center text-slate-400 text-sm">
                       No users match your search
                     </td>
                   </tr>

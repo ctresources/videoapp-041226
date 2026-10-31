@@ -6,6 +6,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { GlobalVoiceShortcut } from "@/components/layout/global-voice-shortcut";
 import { CreateProgressProvider } from "@/components/layout/create-progress";
 import { VideoReadyPopup } from "@/components/layout/video-ready-popup";
+import { AppHeartbeat } from "@/components/layout/app-heartbeat";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
@@ -61,6 +62,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <ScheduleMeetDialog />
       {/* "Your video is ready!" from Sparklee, on any page (2026-10-26). */}
       <VideoReadyPopup />
+      {/* Time in the app, for Admin (2026-10-30). */}
+      <AppHeartbeat />
       {/* Mobile overlay */}
       {mobileOpen && (
         <div

@@ -16,7 +16,7 @@ interface Perm { publish: Publish; approved: string[]; emails: boolean; autospar
 interface Post { platform: string; account: string; status: string; url: string | null; approved: boolean | null; platformId: string }
 interface Vid { id: string; title: string; kind: string; at: string; url: string | null; status: string | null; counted: boolean; posts: Post[]; emailed: boolean }
 interface Person {
-  id: string; name: string; email: string | null; timeZone: string | null; lastActive: string | null;
+  id: string; name: string; email: string | null; timeZone: string | null; lastActive: string | null; minutesInApp: number; daysInApp: number;
   cap: number; used: number; permissions: Perm; accounts: { platform: string; label: string; account: string }[];
   totals: { videos: number; posts: number; emails: number; approvals: number };
   everything: Record<string, Record<string, number>>;
@@ -123,7 +123,7 @@ export function StaffTab() {
                     : <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-bold text-green-700">OK</span>}
                 </div>
                 <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100"><i className="block h-full bg-amber-500" style={{ width: `${Math.min(100, (s.used / Math.max(1, s.cap)) * 100)}%` }} /></div>
-                <p className="mt-1 text-xs text-slate-500">{s.used} of {s.cap} videos this month</p>
+                <p className="mt-1 text-xs text-slate-500">{s.used} of {s.cap} videos this month · in the app {s.minutesInApp < 60 ? `${s.minutesInApp} min` : `${Math.floor(s.minutesInApp / 60)} h ${s.minutesInApp % 60} min`} over {s.daysInApp} day{s.daysInApp === 1 ? "" : "s"}</p>
                 <div className="mt-2 grid grid-cols-4 gap-1.5 text-center">
                   {([["Videos", s.totals.videos], ["Posts", s.totals.posts], ["Emails", s.totals.emails], ["Approvals", s.totals.approvals]] as const).map(([l, n]) => (
                     <div key={l} className="rounded-lg bg-slate-50 py-1"><b className="block text-sm">{n}</b><span className="text-[11px] text-slate-500">{l}</span></div>

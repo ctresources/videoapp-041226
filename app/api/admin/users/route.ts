@@ -48,8 +48,28 @@ export async function GET() {
     if (a.email) affByEmail[a.email.toLowerCase()] = a.status;
   }
 
+  // Time in the app (2026-10-30): last sign-in from auth, last active and
+  // minutes over the last 30 days from the heartbeat (app_time_daily).
+  const lastSignIn: Record<string, string> = {};
+  for (let page = 1; page <= 20; page++) {
+    const { data: au } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    for (const x of au?.users ?? []) if (x.last_sign_in_at) lastSignIn[x.id] = x.last_sign_in_at;
+    if ((au?.users ?? []).length < 1000) break;
+  }
+  const since30 = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const { data: timeRows } = await admin.from("app_time_daily").select("user_id, day, seconds, last_seen").gte("day", since30).limit(20000);
+  const mins30: Record<string, number> = {};
+  const seen: Record<string, string> = {};
+  for (const r of (timeRows ?? []) as { user_id: string; seconds: number; last_seen: string }[]) {
+    mins30[r.user_id] = (mins30[r.user_id] ?? 0) + Math.round(r.seconds / 60);
+    if (!seen[r.user_id] || r.last_seen > seen[r.user_id]) seen[r.user_id] = r.last_seen;
+  }
+
   const enriched = users.map((u) => ({
     ...u,
+    last_sign_in_at: lastSignIn[u.id as string] ?? null,
+    last_seen_at: seen[u.id as string] ?? (u.last_active_at as string | null) ?? null,
+    minutes_30d: mins30[u.id as string] ?? 0,
     video_count: countMap[u.id as string] || 0,
     affiliate_status:
       affByUser[u.id as string]
