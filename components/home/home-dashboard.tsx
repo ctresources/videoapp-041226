@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Check, FileText, Film, Loader2, Play, X } from "lucide-react";
 import toast from "react-hot-toast";
-import { SparkleeGoal } from "@/components/home/sparklee-goal";
+import { SparkleeGoal, TRY_SAYING, TRY_SAYING_SPARKREELS } from "@/components/home/sparklee-goal";
 import { LockedFeature } from "@/components/access/locked-feature";
 import { useAccount } from "@/lib/hooks/use-account";
 import type { HomeData, HomeApproval } from "@/lib/home/data";
@@ -76,7 +76,7 @@ export function HomeDashboard({ checklist }: { checklist?: ReactNode }) {
     <div className="w-full">
       {/* Ask Sparklee: the main way to work. The greeting moved into its
           heading, "…today, Carmella?" (2026-10-31, the owner's ask). */}
-      <SparkleeGoal name={first} ask={ask} onApproved={() => { setTimeout(() => void load(), 2500); }} />
+      <SparkleeGoal name={first} chips={account?.sparkreelsMode ? TRY_SAYING_SPARKREELS : TRY_SAYING} ask={ask} onApproved={() => { setTimeout(() => void load(), 2500); }} />
 
       {/* For people who want control: the one "do it yourself" line on Home. */}
       <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-spark-rule bg-white px-3 py-2">

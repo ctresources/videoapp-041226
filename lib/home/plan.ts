@@ -3,6 +3,7 @@ import { openaiChatJson } from "@/lib/api/openai-chat";
 import { chatJson, type ChatTurn } from "@/lib/api/perplexity-chat";
 import { HALO_PLATFORMS } from "@/lib/halo";
 import { loadHome, platformLabel, type HomeData } from "@/lib/home/data";
+import { featureTopics, isSparkreelsMode } from "@/lib/sparkreels-mode";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -53,8 +54,13 @@ export interface Plan {
   paid: boolean;
 }
 
-const SYSTEM = (h: HomeData, today: string, listings: string[], found: string | null) => `You are Sparklee, the planner inside SparkReels, an AI video and content app for real estate agents.
-The agent tells you a goal in their own words. Propose a short, practical plan using ONLY what SparkReels can do.
+/** SparkReels mode (2026-11-01): the account promotes SparkReels itself, to agents. */
+const PROMO_INTRO = (features: string[]) => `You are Sparklee, the planner inside SparkReels. This account is SparkReels' own: its videos and posts promote SparkReels to real estate agents, one real feature at a time.
+The owner tells you a goal. Propose a short plan of videos, each about one SparkReels feature from this list (newest first; favor the newest), from an agent's point of view. Never invent a feature. Videos need no town; leave listings, sellers and reviews out.
+${features.slice(0, 30).join("\n")}`;
+
+const SYSTEM = (h: HomeData, today: string, listings: string[], found: string | null, promo: string | null = null) => `${promo ?? `You are Sparklee, the planner inside SparkReels, an AI video and content app for real estate agents.
+The agent tells you a goal in their own words. Propose a short, practical plan using ONLY what SparkReels can do.`}
 
 What SparkReels can make for you to plan:
 - "video": a short video draft. Writing it also writes a matching blog article, title, caption and thumbnail. Once the agent makes and approves it, it posts by itself on its day to the accounts you list. One video can go to several accounts (that covers "Facebook + Instagram post", "YouTube", "LinkedIn"); do not list the same video twice for different accounts.
@@ -110,11 +116,11 @@ async function savedListings(admin: Admin, userId: string): Promise<string[]> {
 }
 
 export async function planFor(admin: Admin, userId: string, words: string, history: ChatTurn[] = []): Promise<Plan> {
-  const [h, listings] = await Promise.all([loadHome(admin, userId), savedListings(admin, userId)]);
+  const [h, listings, promoMode] = await Promise.all([loadHome(admin, userId), savedListings(admin, userId), isSparkreelsMode(userId)]);
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: h.timeZone });
   const saidAll = [...history.filter((t) => t.role === "user").map((t) => t.content), words].join(" ");
   const found = matchListing(listings, saidAll);
-  const system = SYSTEM(h, today, listings, found);
+  const system = SYSTEM(h, today, listings, found, promoMode ? PROMO_INTRO(featureTopics().map((f) => `- ${f.title}: ${f.blurb}`)) : null);
   const turn: ChatTurn[] = [...history.slice(-8), { role: "user", content: words.slice(0, 1500) }];
   const raw = (await openaiChatJson(system, turn, { label: "sparklee-plan", maxTokens: 1600, timeoutMs: 45_000 }))
     ?? (await chatJson(system, turn, { label: "sparklee-plan", maxTokens: 900 }));

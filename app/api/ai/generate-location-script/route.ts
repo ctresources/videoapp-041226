@@ -16,6 +16,7 @@ import { freeBlogAvailable, freeTrialLocked, isPreVideoAccount, markFreeBlog } f
 import { NextRequest, NextResponse } from "next/server";
 import { isPlaceholderTitle } from "@/lib/utils/article-headline";
 import { closingLineWords, shortScriptBudget } from "@/lib/utils/script-budget";
+import { isSparkreelsMode, sparkreelsFacts } from "@/lib/sparkreels-mode";
 
 /**
  * The heaviest route in the app and, until now, the only script route that
@@ -164,7 +165,10 @@ export async function POST(req: NextRequest) {
   if (!profile) {
     return NextResponse.json({ error: "Profile not found." }, { status: 400 });
   }
-  if ((!city || !state) && (profile as { role?: string | null }).role !== "admin") {
+  // SparkReels mode (2026-11-01): a custom topic is a video promoting
+  // SparkReels to agents, written from the product facts, with no town.
+  const promo = videoType === "custom" && (await isSparkreelsMode(user.id)) ? sparkreelsFacts() : undefined;
+  if ((!city || !state) && (profile as { role?: string | null }).role !== "admin" && !promo) {
     return NextResponse.json({ error: "videoType, city, and state are required" }, { status: 400 });
   }
 
@@ -218,7 +222,9 @@ export async function POST(req: NextRequest) {
     city, state, zip, month, year, customTopic,
     sourceText: typeof sourceText === "string" ? sourceText : undefined,
     sourceIsOwn: sourceIsOwn === true,
-    audience, tone, ctaPreference, purpose,
+    // In SparkReels mode the audience is always agents, said in the prompt.
+    audience: promo ? undefined : audience, tone, ctaPreference, purpose,
+    promo,
     targetWords: words,
     maxWords: cap,
   };

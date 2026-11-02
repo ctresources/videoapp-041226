@@ -1,3 +1,4 @@
+import { isSparkreelsMode } from "@/lib/sparkreels-mode";
 import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { createClient } from "@/lib/supabase/server";
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
   const p = s.profile as unknown as { location_city?: string | null; location_state?: string | null };
   const city = p.location_city?.trim() || "";
   const state = p.location_state?.trim() || "";
-  if (!city || !state) return NextResponse.json({ error: "Add your town and state in Settings first.", href: "/settings" }, { status: 400 });
+  if ((!city || !state) && !(await isSparkreelsMode(s.user.id))) return NextResponse.json({ error: "Add your town and state in Settings first.", href: "/settings" }, { status: 400 });
 
   // Only accounts that are really connected, checked again here.
   const { data: prof } = await s.admin.from("profiles")

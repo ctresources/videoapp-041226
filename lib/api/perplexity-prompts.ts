@@ -51,6 +51,13 @@ export interface LocationParams {
    * kept wherever it already works.
    */
   sourceIsOwn?: boolean;
+  /**
+   * SparkReels mode (2026-11-01, lib/sparkreels-mode.ts): the product facts.
+   * When set, a custom topic is written as a video promoting SparkReels to
+   * real estate agents, from these facts only, instead of a local real
+   * estate video.
+   */
+  promo?: string;
   audience?: string;      // e.g. "Buyers", "Sellers", "Investors", "First-Time Buyers", "Luxury", "Mixed"
   tone?: string;          // e.g. "Friendly", "Modern", "Luxury", "High-Energy", "Educational"
   ctaPreference?: string; // e.g. "call", "text", "website", "consultation"
@@ -397,9 +404,68 @@ Search Eventbrite, Ticketmaster, and Meetup specifically for events listed in ${
   };
 }
 
+// ─── SparkReels mode: a video promoting SparkReels (2026-11-01) ──────────────
+
+function buildPromoRequest(params: LocationParams): Record<string, unknown> {
+  const len = lengthSpec(params.targetWords, params.maxWords);
+  return {
+    model: "sonar-pro",
+    messages: [
+      {
+        role: "system",
+        content: `You are the content writer for SparkReels.ai, an AI video and content studio for real estate agents. You write short social videos and blog posts that show real estate agents what SparkReels does for them and why it matters to their business.
+
+The audience is real estate agents: busy, often camera-shy, who know they should post video and blogs every week and rarely do. Speak to their real problems: time, consistency, being found by buyers and sellers (including in AI answers), and looking professional.
+
+REQUIRED OUTPUT FORMAT — return exactly this structure:
+
+HOOK: [One opening sentence that would stop a real estate agent scrolling — a specific problem or result, not hype]
+
+MAIN CONTENT:
+[Flowing spoken narration — the exact words the presenter says aloud, in short conversational paragraphs. ${len.instruction} Show how the feature works in plain steps and what the agent gets. NO bullet points, NO numbered lists, NO headers — narration prose only.]
+
+KEY TAKEAWAY: [One sentence: the single benefit an agent should remember]
+
+CALL TO ACTION: [One sentence]
+
+VIDEO TITLE OPTIONS:
+1. [Option 1 — direct and informative]
+2. [Option 2 — the question an agent would actually ask]
+3. [Option 3 — a result or "how I" angle]
+
+BLOG POST INTRO: [100-150 words stating plainly what the feature is and who it is for, in sentences an AI assistant could quote as an answer.]
+
+BLOG POST BODY: [600-900 words in 4-6 sections, each heading on its own line prefixed exactly "H2: " and written as the question an agent would ask ("H2: How do I post a video every week without filming?"). Answer each heading in its first sentence. Then a section with the heading "H2: Frequently Asked Questions" and 4-6 questions, each on its own line prefixed exactly "H3: " with a 2-3 sentence answer under it. Plain text only — no markdown, asterisks, bullets or emoji.]
+
+BLOG POST CONCLUSION: [80-120 words: the practical takeaway and the next step, which is trying SparkReels free at SparkReels.ai.]
+
+PRIMARY LOCATION: [leave empty]
+
+SOURCES USED: [SparkReels.ai]
+
+Rules:
+- Use ONLY the facts below about SparkReels: its features, what each does, its plans and prices. Never invent a feature, a number, a price, a customer, a result or a statistic. If the topic asks about something not in the facts, write about the closest real feature instead.
+- Never promise views, leads, rankings or income.
+- Do not name the vendors behind SparkReels (no AI model or video company names).
+- Conversational, confident, specific. Written as the founder of SparkReels talking to fellow agents.
+${NARRATION_STYLE_RULE}
+
+${params.promo}`,
+      },
+      {
+        role: "user",
+        content: `Create a short social video script and blog post about: "${params.customTopic}". It is for real estate agents and promotes SparkReels.ai.`,
+      },
+    ],
+    temperature: 0.4,
+    max_tokens: len.maxTokens,
+  };
+}
+
 // ─── VIDEO TYPE 4: Custom Topic ──────────────────────────────────────────────
 
 function buildCustomRequest(params: LocationParams): Record<string, unknown> {
+  if (params.promo) return buildPromoRequest(params);
   const { city, state, zip, customTopic } = params;
   const source = (params.sourceText ?? "").trim().slice(0, SOURCE_CHAR_LIMIT);
   // The home market is a fallback here, not the subject. On a custom topic the
@@ -657,7 +723,10 @@ export async function generateLocationScript(
     const preferenceGuidance = !skipCta && params.ctaPreference && CTA_PREFERENCE_GUIDANCE[params.ctaPreference]
       ? ` ${CTA_PREFERENCE_GUIDANCE[params.ctaPreference]}`
       : "";
-    const nameClause = skipCta
+    const nameClause = params.promo
+      // SparkReels mode: the ask is to try SparkReels, not to call the agent.
+      ? `The CALL TO ACTION invites real estate agents to try SparkReels free at SparkReels.ai.`
+      : skipCta
       ? `Do NOT include a CALL TO ACTION section — leave it out entirely, or return it empty if the format requires the heading. This video is informational only; it should not ask the viewer to do anything.`
       : agentName
         ? `Agent name: "${agentName}". The CALL TO ACTION must use "${agentName}" by name — e.g. "Contact ${agentName} today". Never use generic phrases like "contact a local agent".${preferenceGuidance}`

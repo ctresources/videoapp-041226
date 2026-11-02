@@ -29,6 +29,8 @@ interface Plan {
 
 /** Four examples, kept on one line (the owner's ask, 2026-10-31). */
 export const TRY_SAYING = ["Plan my week", "Market my listing", "Create a market update", "What should I post this week?"];
+/** SparkReels mode (2026-11-01): the demo account promotes SparkReels itself. */
+export const TRY_SAYING_SPARKREELS = ["Plan my week", "A video about our newest feature", "Show agents the Digital Twin", "What should I post this week?"];
 const DAYS = ["today", "tomorrow", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const LABEL: Record<string, string> = { youtube: "YouTube", facebook: "Facebook", instagram: "Instagram", linkedin: "LinkedIn", tiktok: "TikTok", x: "X", threads: "Threads", google_business: "Google Business" };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -50,7 +52,9 @@ function FromSparklee({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function SparkleeGoal({ name, ask, onApproved }: {
+export function SparkleeGoal({ name, ask, onApproved, chips = TRY_SAYING }: {
+  /** The examples under the box. */
+  chips?: string[];
   /** First name, for "What do you want to accomplish today, Carmella?". */
   name?: string;
   /** Set from outside (an opportunity's Make draft): asked straight away. */
@@ -166,7 +170,7 @@ export function SparkleeGoal({ name, ask, onApproved }: {
         {/* Examples: one line; scrolls sideways only on a narrow phone. */}
         {!answered && !listening && (
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-            {TRY_SAYING.map((t) => (
+            {chips.map((t) => (
               <button key={t} type="button" onClick={() => void send(t)}
                 className="shrink-0 whitespace-nowrap rounded-full border border-spark-rule bg-white px-4 py-2 text-[15px] font-medium text-spark-ink hover:border-spark-amber">{t}</button>
             ))}

@@ -21,6 +21,8 @@ export interface Account {
   campaignCalendar: boolean;
   /** Spark Podcast, while it's switched on for a few accounts (2026-10-30). */
   sparkPodcast: boolean;
+  /** SparkReels mode: the account promotes SparkReels itself (2026-11-01). */
+  sparkreelsMode: boolean;
   level: AccessLevel;
   paid: boolean;
   /** Affiliate Program: paid, or canceled but paid through the period. */
@@ -44,6 +46,7 @@ function load(): Promise<Account | null> {
         tier: a.tier ?? "free",
         campaignCalendar: !!a.campaignCalendar,
         sparkPodcast: !!a.sparkPodcast,
+        sparkreelsMode: !!a.sparkreelsMode,
         level,
         paid: isPaidLevel(level),
         affiliateEligible: !!a.affiliateEligible,

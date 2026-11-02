@@ -1,3 +1,4 @@
+import { featureTopics, isSparkreelsMode } from "@/lib/sparkreels-mode";
 import { hasAdminPerks } from "@/lib/utils/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { perplexityChat } from "@/lib/api/perplexity";
@@ -87,6 +88,8 @@ interface TopicIdea { topic: string; reason: string; kind: "video" | "blog" }
 async function pickTopics(opts: {
   city: string; state: string; monthName: string; year: number;
   recent: string[]; request?: string; count: number;
+  /** SparkReels mode (2026-11-01): the features to promote, newest first. */
+  features?: string[];
   /** How many are videos; the rest are blog posts. */
   videos: number;
 }): Promise<TopicIdea[]> {
@@ -94,7 +97,23 @@ async function pickTopics(opts: {
   const ask = opts.request?.trim()
     ? `The agent asked for: "${opts.request.trim().slice(0, 300)}". Every idea must follow that request.`
     : `Mix them: one about the local market right now, one seasonal for ${opts.monthName}, one answering a question buyers or sellers in ${place} ask AI assistants.`;
-  const content = await perplexityChat([
+  const content = opts.features ? await perplexityChat([
+    {
+      role: "system",
+      content:
+        "You plan SparkReels.ai's own short videos and blog posts, which show real estate agents what SparkReels does for them. Reply with ONLY a JSON array, no prose. " +
+        'Each item: {"topic": a specific video topic in under 14 words, "reason": why now in under 10 words, "kind": "video" or "blog"}. ' +
+        "Every topic is about one real SparkReels feature from the list given, from an agent's point of view (a problem it solves, a how-to, a result). Never invent a feature.",
+    },
+    {
+      role: "user",
+      content:
+        `SparkReels features, newest first:\n${opts.features.slice(0, 30).join("\n")}\n\nGive ${opts.count} ideas. ` +
+        (opts.request?.trim() ? `The owner asked for: "${opts.request.trim().slice(0, 300)}". Every idea must follow that request. ` : "Favor the newest features. ") +
+        `Make the first ${opts.videos} "video" and the other ${opts.count - opts.videos} "blog". ` +
+        (opts.recent.length ? `Do not repeat these recent topics: ${opts.recent.slice(0, 15).join(" | ")}.` : ""),
+    },
+  ]) : await perplexityChat([
     {
       role: "system",
       content:
@@ -199,8 +218,10 @@ export async function startDrafts(
     : /\bvideos?\b|\breels?\b/i.test(asked) && !/\bblogs?\b|\barticles?\b/i.test(asked)
       ? count
       : Math.round((weekly / AUTOPILOT_PER_WEEK) * count);
+  // SparkReels mode: ideas promote SparkReels' features instead.
+  const features = (await isSparkreelsMode(profile.id)) ? featureTopics().map((f) => `- ${f.title}: ${f.blurb}`) : undefined;
   const ideas = await pickTopics({
-    videos,
+    videos, features,
     city, state,
     monthName: now.toLocaleString("en-US", { month: "long", timeZone: tz }),
     year: now.getFullYear(),

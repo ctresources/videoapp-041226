@@ -49,6 +49,7 @@ import { BuyerQuestions } from "@/components/create/buyer-questions";
 import { FirstSparkBanner } from "@/components/create/first-spark-banner";
 import { PAGE_MIC_SLOT } from "@/components/ui/voice-pick-mic";
 import { SparkleeAgent } from "@/components/create/sparklee-agent";
+import { SPARKREELS_CHIPS } from "@/lib/sparkreels-chips";
 import { StepFooter } from "@/components/create/step-footer";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { toStateAbbr } from "@/lib/utils/us-states";
@@ -2361,7 +2362,8 @@ function CreatePageInner() {
   /** Four ideas for the folded ideas row, with the town filled in. */
   const ideaTown = locCity.trim() || ctaProfile?.location_city || "";
   const ideaSeason = (() => { const m = new Date().getMonth(); return m < 2 || m === 11 ? "Winter" : m < 5 ? "Spring" : m < 8 ? "Summer" : "Fall"; })();
-  const quickIdeas = [
+  // SparkReels mode (2026-11-01): the demo account's ideas are SparkReels topics.
+  const quickIdeas = account?.sparkreelsMode ? SPARKREELS_CHIPS : [
     ideaTown ? `${ideaTown} market this month` : "My market this month",
     `3 questions buyers ask AI${ideaTown ? ` in ${ideaTown}` : " in my town"}`,
     "My open house this weekend",

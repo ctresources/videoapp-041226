@@ -19,6 +19,8 @@ import { useHalo } from "@/components/halo/use-halo";
 import { HaloDrafts, SparkleeDrafts } from "@/components/halo/halo-drafts";
 import { SellerAutoSection } from "@/components/seller/seller-auto-section";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
+import { FeatureVideos } from "@/components/autosparks/feature-videos";
+import { useAccount } from "@/lib/hooks/use-account";
 
 /**
  * Weekly Autopilot's review screen (2026-10-21, the owner's plan and mockup).
@@ -80,6 +82,7 @@ export default function AutopilotPage() {
   const monday = thisMonday();
   // Halo sites and their drafts (2026-10-24), shown on this page with their own list.
   const halo = useHalo(user?.id);
+  const account = useAccount();
   // Videos left this month, and the Upgrade / Buy popup (2026-10-24, the owner's ask).
   const [allowance, setAllowance] = useState<{
     unlimited: boolean; short: number; tier: string;
@@ -410,6 +413,9 @@ export default function AutopilotPage() {
         </div>
         <p className="mt-1.5 text-[11px] text-spark-ink-faint">Up to 3 drafts each time, written in about a minute.</p>
       </div>
+
+      {/* SparkReels mode (2026-11-01): the demo account's feature list. */}
+      {account?.sparkreelsMode && <FeatureVideos onMade={() => setTimeout(() => void halo.reloadDrafts(), 1500)} />}
 
       <SparkleeDrafts halo={halo} needsVideo={needsVideo} onOutOfVideos={() => setOutOfVideos(true)} />
       <HaloDrafts halo={halo} needsVideo={needsVideo} onOutOfVideos={() => setOutOfVideos(true)} />

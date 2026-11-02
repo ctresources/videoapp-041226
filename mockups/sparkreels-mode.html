@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SparkReels Mode</title>
+<style>
+  :root { --ink:#24221e; --soft:#4a463e; --muted:#77736a; --faint:#a29d92; --rule:#e8e3d8; --amber:#BA7517; --amber2:#A3660F; --tint:#fbf3e4; --paper:#f6f3ec; --green:#0f7a52; --greenbg:#e8f5ee; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.45 -apple-system, "Segoe UI", Inter, sans-serif; padding:20px 16px 50px; }
+  .wrap { max-width:1180px; margin:0 auto; }
+  .state { font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--amber2); margin:26px 0 8px; }
+  .card { background:#fff; border:1px solid var(--rule); border-radius:20px; padding:16px 18px; }
+  h3 { margin:0 0 4px; font-size:18px; }
+  .muted { color:var(--muted); font-size:14px; margin:0; }
+  .seg { display:inline-flex; border:1.5px solid var(--rule); border-radius:12px; overflow:hidden; margin-top:10px; }
+  .seg span { padding:8px 16px; font-size:14.5px; font-weight:600; }
+  .seg span.on { background:var(--tint); color:var(--amber2); }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .tag { font-size:12.5px; font-weight:700; border-radius:99px; padding:2px 10px; background:#2a2219; color:#ffe39a; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .chip { border:1px solid var(--rule); border-radius:99px; padding:6px 13px; font-size:14px; background:#fff; }
+  .chip.more { border-color:var(--amber); background:var(--tint); color:var(--amber2); font-weight:600; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:860px) { .two { grid-template-columns:1fr; } }
+  .feat { display:flex; align-items:center; gap:10px; border-top:1px solid var(--rule); padding:10px 0; }
+  .feat:first-of-type { border-top:0; }
+  .feat .t { flex:1; min-width:0; }
+  .feat b { display:block; font-size:15px; }
+  .feat small { color:var(--muted); font-size:13px; }
+  .btn { border:1px solid var(--rule); background:#fff; border-radius:10px; padding:6px 12px; font-size:13.5px; font-weight:650; white-space:nowrap; }
+  .btn.gold { background:var(--amber); border-color:var(--amber); color:#fff; }
+  .done { color:var(--green); font-weight:700; font-size:13.5px; white-space:nowrap; }
+  .new { font-size:11px; font-weight:800; color:#fff; background:#c2410c; border-radius:99px; padding:1px 7px; margin-left:6px; vertical-align:2px; }
+  .you { margin-left:auto; max-width:80%; background:#2a2219; color:#fff; border-radius:16px 16px 4px 16px; padding:9px 13px; font-size:15px; }
+  .you small { display:block; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#cdbf9f; }
+  .gold { background:var(--tint); border:1px solid #f0dcb4; border-radius:4px 16px 16px 16px; padding:12px 14px; margin-top:6px; }
+  .who { font-size:13px; font-weight:800; color:var(--amber2); }
+  .plans { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; }
+  @media (max-width:700px) { .plans { grid-template-columns:1fr; } }
+  .pc { background:#fff; border:1px solid var(--rule); border-radius:12px; padding:10px; font-size:13.5px; }
+  .pc b { display:block; font-size:14.5px; }
+  .foot { margin-top:18px; font-size:13.5px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="state">1 · Admin → the support@sparkreels.ai account (only you can change it)</div>
+  <div class="card">
+    <h3>What this account promotes</h3>
+    <p class="muted">Changes what Sparklee, AutoSparks, the idea chips and the writers make. Videos, twin, posting and billing work the same.</p>
+    <div class="seg"><span>Real estate</span><span class="on">SparkReels</span></div>
+  </div>
+
+  <div class="state">2 · Spark Studio on that account</div>
+  <div class="card">
+    <div class="row"><h3 style="margin:0">What do you want to create?</h3><span class="tag">SparkReels mode</span></div>
+    <div class="chips">
+      <span class="chip">How Sparklee plans your week</span>
+      <span class="chip">Your Digital Twin in 3 steps</span>
+      <span class="chip">AutoSparks: 3 posts a week, hands-off</span>
+      <span class="chip">What's new in SparkReels</span>
+      <span class="chip more">More ideas →</span>
+    </div>
+    <p class="muted" style="margin-top:10px">Every script: for real estate agents, only real features and real prices, ends with "Try SparkReels free at SparkReels.ai." No town needed.</p>
+  </div>
+
+  <div class="two">
+    <div>
+      <div class="state">3 · AutoSparks → Feature videos</div>
+      <div class="card">
+        <h3>Feature videos</h3>
+        <p class="muted">One for each SparkReels feature. New features from What's New are added here.</p>
+        <div style="margin-top:8px">
+          <div class="feat"><div class="t"><b>Send to Website <span class="new">NEW</span></b><small>Get your article and video onto your site in a few taps</small></div><span class="btn gold">Make draft</span></div>
+          <div class="feat"><div class="t"><b>AI video for real estate agents</b><small>Hit the mic, Spark it, Share it</small></div><span class="done">✓ Made Oct 30</span></div>
+          <div class="feat"><div class="t"><b>Digital Twin</b><small>Record a clip, train it, use it everywhere</small></div><span class="btn gold">Make draft</span></div>
+          <div class="feat"><div class="t"><b>Teleprompter</b><small>Your script scrolls at your pace</small></div><span class="btn gold">Make draft</span></div>
+          <div class="feat"><div class="t"><b>Blog writer</b><small>1,000–1,500 words with six FAQs</small></div><span class="btn gold">Make draft</span></div>
+          <div class="feat"><div class="t"><b>AutoSparks</b><small>Sunday it writes, Monday you approve</small></div><span class="btn gold">Make draft</span></div>
+          <div class="feat"><div class="t"><b>Listing video generator</b><small>Link, address or photos to a video</small></div><span class="btn gold">Make draft</span></div>
+        </div>
+        <p class="muted" style="margin-top:8px">Make draft writes the script and blog, then waits in Needs Your Approval like any draft. Nothing is made or posted until you approve.</p>
+      </div>
+    </div>
+    <div>
+      <div class="state">4 · Home → Ask Sparklee on that account</div>
+      <div class="card">
+        <div style="display:flex"><div class="you"><small>You said</small>"Plan my week"</div></div>
+        <div class="gold">
+          <div class="who">Sparklee recommends</div>
+          <div style="font-size:15px">Three videos to show agents what SparkReels does.</div>
+          <div class="plans">
+            <div class="pc"><b>1 · Send to Website</b>Tue 9 AM · YouTube</div>
+            <div class="pc"><b>2 · Your Digital Twin</b>Thu 9 AM · YouTube</div>
+            <div class="pc"><b>3 · Agent tip: 3 posts a week on autopilot</b>Sat 9 AM · YouTube</div>
+          </div>
+        </div>
+        <p class="muted" style="margin-top:8px">The weekly AutoSparks drafts follow the same rules: features first, newest features before older ones, no repeats of recent videos.</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="foot">Real estate accounts see nothing new. Sample titles and dates only; the real list comes from your website's feature pages and What's New.</p>
+</div>
+</body>
+</html>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmailsTab } from "@/components/admin/emails-tab";
 import { StaffTab } from "@/components/admin/staff-tab";
+import { SparkreelsModeCard } from "@/components/admin/sparkreels-mode-card";
 import { HaloTab } from "@/components/admin/halo-tab";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -915,6 +916,7 @@ export default function AdminPage() {
       )}
 
       {adminTab === "users" && (<>
+      <SparkreelsModeCard />
       {/* Filters */}
       <Card className="mb-4">
         <div className="flex flex-col sm:flex-row gap-3">

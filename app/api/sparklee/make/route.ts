@@ -4,6 +4,7 @@ import { haloSession } from "@/lib/halo/session";
 import { sparkleeSetup, startSparkleeDraft } from "@/lib/halo/sparklee";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
 import { hasAdminPerks } from "@/lib/utils/roles";
+import { isSparkreelsMode } from "@/lib/sparkreels-mode";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 800;
@@ -48,7 +49,9 @@ export async function POST(req: NextRequest) {
   const p = s.profile as unknown as { location_city?: string | null; location_state?: string | null };
   const city = slots.city?.trim() || p.location_city?.trim() || "";
   const state = slots.state?.trim() || p.location_state?.trim() || "";
-  if (!city || !state) return NextResponse.json({ ask: "Which town and state is it for?" });
+  // SparkReels mode (2026-11-01): a video about SparkReels has no town.
+  const promoMode = await isSparkreelsMode(s.user.id);
+  if ((!city || !state) && !promoMode) return NextResponse.json({ ask: "Which town and state is it for?" });
 
   const t = words.toLowerCase();
   const size = slots.platform === "reel" || /\bvertical\b|\btall\b/.test(t) ? "vertical"
@@ -77,7 +80,7 @@ export async function POST(req: NextRequest) {
         items: [
           { label: "Spark", value: "Video / Reel" },
           { label: "On screen", value: `${face} + ${voice}` },
-          { label: "Place", value: `${city}, ${state}` },
+          promoMode ? { label: "About", value: "SparkReels, for agents" } : { label: "Place", value: `${city}, ${state}` },
           { label: "Size", value: setup.size === "vertical" ? "Vertical 9:16" : "Horizontal 16:9" },
           { label: "Length", value: "Up to 2 minutes" },
           { label: "Ending", value: "Your closing line from Settings" },
