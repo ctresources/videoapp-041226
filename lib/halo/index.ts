@@ -100,6 +100,8 @@ export function sanitizeSettings(raw: unknown): HaloSettings {
 export interface HaloSetup {
   look: HaloLook;
   lookId: string | null;
+  /** No avatar: the script read over clips, nobody on screen (2026-11-01, Edit plan). */
+  voiceOnly?: boolean;
   size: "vertical" | "horizontal";
   /** The thumbnail's picture: the post's photo, an AI picture, or their own upload. */
   picture: "post" | "ai" | "upload";
@@ -126,7 +128,9 @@ export interface HaloSetup {
 export function sanitizeSetupPatch(raw: unknown, current: HaloSetup): HaloSetup {
   const r = (raw && typeof raw === "object" ? raw : {}) as Partial<Record<keyof HaloSetup, unknown>>;
   const next = { ...current };
-  if (r.look === "circle" || r.look === "full") next.look = r.look;
+  // Picking an avatar look turns "No avatar" off again.
+  if (r.look === "circle" || r.look === "full") { next.look = r.look; next.voiceOnly = false; }
+  if (r.voiceOnly === true) next.voiceOnly = true;
   if (r.lookId === null || (typeof r.lookId === "string" && r.lookId.length < 200)) next.lookId = r.lookId as string | null;
   if (r.size === "vertical" || r.size === "horizontal") next.size = r.size;
   if (r.onScreen === "stock" || (r.onScreen === "post" && current.photos.length > 0)) next.onScreen = r.onScreen;

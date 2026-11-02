@@ -116,7 +116,7 @@ function Chips({ d }: { d: HaloDraft }) {
   const chip = "rounded-lg border border-spark-rule bg-[#faf9f5] px-2 py-0.5 text-[12.5px] text-spark-ink-soft";
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">
-      <span className={`${chip} font-semibold text-spark-ink`}>{d.setup.look === "full" ? "Avatar video" : "Avatar in circle"}</span>
+      <span className={`${chip} font-semibold text-spark-ink`}>{d.setup.voiceOnly ? "No avatar" : d.setup.look === "full" ? "Avatar video" : "Avatar in circle"}</span>
       <span className={chip}>{d.setup.size === "horizontal" ? "Horizontal 16:9" : "Vertical 9:16"}</span>
       {town && d.source !== "halo_promo" && <span className={chip}>📍 {town}</span>}
       {len && <span className={chip}>{len}</span>}
@@ -151,12 +151,13 @@ function Setup({ d, halo, onClose }: { d: HaloDraft; halo: Halo; onClose: () => 
             onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void pic("upload", f); }} />
         </Row>
         <Row label="Look">
-          <button type="button" className={tile(d.setup.look === "circle")} onClick={() => void halo.patchSetup(d, { look: "circle" })}>Avatar in circle</button>
-          <button type="button" className={tile(d.setup.look === "full")} onClick={() => void halo.patchSetup(d, { look: "full" })}>Avatar video</button>
+          <button type="button" className={tile(!d.setup.voiceOnly && d.setup.look === "circle")} onClick={() => void halo.patchSetup(d, { look: "circle" })}>Avatar in circle</button>
+          <button type="button" className={tile(!d.setup.voiceOnly && d.setup.look === "full")} onClick={() => void halo.patchSetup(d, { look: "full" })}>Avatar video</button>
+          <button type="button" className={tile(!!d.setup.voiceOnly)} onClick={() => void halo.patchSetup(d, { voiceOnly: true })}>No avatar</button>
         </Row>
-        <Row label="Avatar">
+        {!d.setup.voiceOnly && <Row label="Avatar">
           <LookPicker looks={halo.looks} twinLookId={halo.twinLookId} twinLookIds={halo.twinLookIds} fitShape={d.setup.size === "horizontal" ? "landscape" : "portrait"} value={d.setup.lookId} onChange={(id) => void halo.patchSetup(d, { lookId: id })} />
-        </Row>
+        </Row>}
         <Row label="Size">
           <button type="button" className={tile(d.setup.size !== "horizontal")} onClick={() => void halo.patchSetup(d, { size: "vertical" })}>Vertical 9:16</button>
           <button type="button" className={tile(d.setup.size === "horizontal")} onClick={() => void halo.patchSetup(d, { size: "horizontal" })}>Horizontal 16:9</button>

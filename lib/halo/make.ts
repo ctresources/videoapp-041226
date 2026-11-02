@@ -31,7 +31,8 @@ export async function makeDraftVideo(
 
   const setup = d.setup;
   const vertical = setup.size !== "horizontal";
-  const circle = setup.look === "circle";
+  const voiceOnly = setup.voiceOnly === true;
+  const circle = !voiceOnly && setup.look === "circle";
 
   // The avatar: the one chosen, else the headshot copy shaped for this video.
   let lookId = setup.lookId;
@@ -61,8 +62,8 @@ export async function makeDraftVideo(
     hook,
     ...(circle && { engine: "direct" }),
     avatarStyle: circle ? "circle" : "full",
-    renderMode: "avatar_voice",
-    ...(lookId && { lookId }),
+    renderMode: voiceOnly ? "voice_only" : "avatar_voice",
+    ...(lookId && !voiceOnly && { lookId }),
     ...(setup.onScreen === "post" && setup.photos?.length && { extraPhotoUrls: setup.photos }),
     ...(opts.remake && { remake: true }),
   });

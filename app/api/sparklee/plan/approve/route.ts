@@ -52,6 +52,9 @@ export async function POST(req: NextRequest) {
     const r = await startSparkleeDraft(s.admin, s.user, s.profile, {
       words: String(i.day || "tomorrow"), topic, city, state,
       size: i.size === "horizontal" ? "horizontal" : "vertical",
+      // Edit plan's avatar choice; unset keeps their usual look.
+      ...(i.look === "full" || i.look === "circle" ? { look: i.look } : {}),
+      ...(i.look === "none" && { voiceOnly: true }),
     }, {
       makeVideo: false,
       platforms: (i.platforms ?? []).filter((x) => connected.has(x)),

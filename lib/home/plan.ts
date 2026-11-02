@@ -1,7 +1,7 @@
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { openaiChatJson } from "@/lib/api/openai-chat";
 import { chatJson, type ChatTurn } from "@/lib/api/perplexity-chat";
-import { HALO_PLATFORMS } from "@/lib/halo";
+import { HALO_PLATFORMS, sanitizeSettings, setupFor } from "@/lib/halo";
 import { loadHome, platformLabel, type HomeData } from "@/lib/home/data";
 import { featureTopics, isSparkreelsMode } from "@/lib/sparkreels-mode";
 
@@ -37,6 +37,8 @@ export interface PlanItem {
   /** "today", "tomorrow", "friday", "next monday"… */
   day?: string;
   size?: "vertical" | "horizontal";
+  /** Avatar video, avatar in circle, or no avatar (voice over); set on Edit plan (2026-11-01). */
+  look?: "full" | "circle" | "none";
   platforms?: string[];
   note?: string;
   /** For tool items: one of PLAN_TOOLS. */
@@ -52,6 +54,8 @@ export interface Plan {
   overBudget: boolean;
   missing: { label: string; href: string }[];
   paid: boolean;
+  /** Accounts that are connected, for the account picker on Edit plan. */
+  connected: string[];
 }
 
 /** SparkReels mode (2026-11-01): the account promotes SparkReels itself, to agents. */
@@ -90,12 +94,12 @@ Return ONLY JSON:
 {"reply":"one short sentence","question":"","items":[{"type":"video","title":"","topic":"the full topic for the writer, naming the town","day":"friday","size":"vertical|horizontal","platforms":["facebook","instagram"],"note":"short detail"},{"type":"tool","tool":"seller_update","title":"","note":""}],"needs":["linkedin"]}`;
 
 /** "123 Main St, Blue Bell" → "123 main": the number and street name, for matching what was said. */
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/s+/g, " ").trim();
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
 function matchListing(addresses: string[], said: string): string | null {
   const text = ` ${norm(said)} `;
   for (const a of addresses) {
     const [num, street] = norm(a).split(" ");
-    if (num && /^d+$/.test(num) && street && text.includes(` ${num} ${street}`)) return a;
+    if (num && /^\d+$/.test(num) && street && text.includes(` ${num} ${street}`)) return a;
   }
   return null;
 }
@@ -116,7 +120,12 @@ async function savedListings(admin: Admin, userId: string): Promise<string[]> {
 }
 
 export async function planFor(admin: Admin, userId: string, words: string, history: ChatTurn[] = []): Promise<Plan> {
-  const [h, listings, promoMode] = await Promise.all([loadHome(admin, userId), savedListings(admin, userId), isSparkreelsMode(userId)]);
+  const [h, listings, promoMode, prof] = await Promise.all([
+    loadHome(admin, userId), savedListings(admin, userId), isSparkreelsMode(userId),
+    admin.from("profiles").select("halo_settings").eq("id", userId).single(),
+  ]);
+  // The look a Sparklee draft gets unless changed on Edit plan (as sparkleeSetup does).
+  const usualLook = setupFor(sanitizeSettings((prof.data as { halo_settings?: unknown } | null)?.halo_settings), "other").look;
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: h.timeZone });
   const saidAll = [...history.filter((t) => t.role === "user").map((t) => t.content), words].join(" ");
   const found = matchListing(listings, saidAll);
@@ -148,6 +157,7 @@ export async function planFor(admin: Admin, userId: string, words: string, histo
       topic: String(r.topic ?? title).slice(0, 300),
       day: String(r.day ?? "").slice(0, 30) || "tomorrow",
       size: r.size === "horizontal" ? "horizontal" : "vertical",
+      look: usualLook,
       platforms: asked.filter((p) => connected.has(p)),
       note: String(r.note ?? "").slice(0, 140),
     });
@@ -167,7 +177,7 @@ export async function planFor(admin: Admin, userId: string, words: string, histo
   return {
     reply: String(raw.reply || "Here's what I recommend.").slice(0, 240),
     question: typeof raw.question === "string" && raw.question.trim() && items.length === 0 ? raw.question.trim().slice(0, 200) : undefined,
-    items, videos, usageLine, overBudget, paid: h.paid,
+    items, videos, usageLine, overBudget, paid: h.paid, connected: h.connected,
     missing: Array.from(needs).map((p) => ({ label: `Connect ${platformLabel(p)} to post there`, href: "/settings/social" })),
   };
 }

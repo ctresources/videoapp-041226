@@ -20,12 +20,15 @@ import { useSpeechRecognition, COMMAND_SILENCE_MS } from "@/lib/hooks/use-speech
 
 interface PlanItem {
   type: "video" | "tool"; title: string; topic?: string; day?: string;
-  size?: "vertical" | "horizontal"; platforms?: string[]; note?: string; tool?: string; href?: string;
+  size?: "vertical" | "horizontal"; look?: "full" | "circle" | "none";
+  platforms?: string[]; note?: string; tool?: string; href?: string;
 }
 interface Plan {
   reply: string; question?: string; items: PlanItem[]; videos: number;
   usageLine: string; overBudget: boolean; missing: { label: string; href: string }[]; paid: boolean;
+  connected?: string[];
 }
+const LOOKS = { full: "Avatar video", circle: "Avatar in circle", none: "No avatar" } as const;
 
 /** Four examples, kept on one line (the owner's ask, 2026-10-31). */
 export const TRY_SAYING = ["Plan my week", "Market my listing", "Create a market update", "What should I post this week?"];
@@ -125,7 +128,13 @@ export function SparkleeGoal({ name, ask, onApproved, chips = TRY_SAYING }: {
   }
 
   const removeItem = (n: number) => setPlan((p) => p && { ...p, items: p.items.filter((_, i) => i !== n), videos: p.items.filter((x, i) => i !== n && x.type === "video").length });
-  const setDay = (n: number, day: string) => setPlan((p) => p && { ...p, items: p.items.map((x, i) => (i === n ? { ...x, day } : x)) });
+  const change = (n: number, patch: Partial<PlanItem>) => setPlan((p) => p && { ...p, items: p.items.map((x, i) => (i === n ? { ...x, ...patch } : x)) });
+  const toggleAccount = (n: number, acct: string) => setPlan((p) => p && { ...p, items: p.items.map((x, i) => {
+    if (i !== n) return x;
+    const on = x.platforms ?? [];
+    return { ...x, platforms: on.includes(acct) ? on.filter((a) => a !== acct) : [...on, acct] };
+  }) });
+  const pick = "rounded-md border border-spark-rule bg-white px-2 py-1 text-[13.5px] text-spark-ink";
 
   const answered = planning || plan !== null || turns.length > 0;
   const last = turns[turns.length - 1];
@@ -242,14 +251,40 @@ export function SparkleeGoal({ name, ask, onApproved, chips = TRY_SAYING }: {
                           <b className="block text-[15px] text-spark-ink">{it.title}</b>
                           <span className="mt-1 block text-[13px] text-spark-ink-muted">
                             {it.type === "video"
-                              ? [it.day && cap(it.day), it.size === "horizontal" ? "Wide" : "Vertical", it.platforms?.length ? it.platforms.map((p) => LABEL[p] ?? p).join(", ") : "No account picked yet", it.note].filter(Boolean).join(" · ")
+                              ? [it.day && cap(it.day), it.size === "horizontal" ? "Horizontal" : "Vertical", it.look && LOOKS[it.look], it.platforms?.length ? it.platforms.map((p) => LABEL[p] ?? p).join(", ") : "No account picked yet", it.note].filter(Boolean).join(" · ")
                               : <>{it.note ? `${it.note} · ` : ""}<Link href={it.href ?? "/create"} className="font-semibold text-[#A3660F] underline">Open</Link> (you finish this one)</>}
                           </span>
+                          {/* Edit plan (2026-11-01): day, shape, avatar and accounts per video. */}
                           {editing && it.type === "video" && (
-                            <select value={DAYS.includes((it.day ?? "").toLowerCase()) ? it.day!.toLowerCase() : "tomorrow"} onChange={(e) => setDay(n, e.target.value)}
-                              className="mt-1.5 rounded-md border border-spark-rule bg-white px-2 py-0.5 text-[13px] text-spark-ink">
-                              {DAYS.map((d) => <option key={d} value={d}>{cap(d)}</option>)}
-                            </select>
+                            <div className="mt-2 flex flex-col gap-2">
+                              <div className="flex flex-wrap gap-1.5">
+                                <select aria-label="Day" value={DAYS.includes((it.day ?? "").toLowerCase()) ? it.day!.toLowerCase() : "tomorrow"} onChange={(e) => change(n, { day: e.target.value })} className={pick}>
+                                  {DAYS.map((d) => <option key={d} value={d}>{cap(d)}</option>)}
+                                </select>
+                                <select aria-label="Shape" value={it.size === "horizontal" ? "horizontal" : "vertical"} onChange={(e) => change(n, { size: e.target.value as "vertical" | "horizontal" })} className={pick}>
+                                  <option value="vertical">Vertical</option>
+                                  <option value="horizontal">Horizontal</option>
+                                </select>
+                                <select aria-label="Avatar" value={it.look ?? "circle"} onChange={(e) => change(n, { look: e.target.value as "full" | "circle" | "none" })} className={pick}>
+                                  {(Object.keys(LOOKS) as (keyof typeof LOOKS)[]).map((k) => <option key={k} value={k}>{LOOKS[k]}</option>)}
+                                </select>
+                              </div>
+                              {plan.connected?.length ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {plan.connected.map((acct) => {
+                                    const on = it.platforms?.includes(acct);
+                                    return (
+                                      <button key={acct} type="button" onClick={() => toggleAccount(n, acct)} aria-pressed={on}
+                                        className={`rounded-full border px-2.5 py-1 text-[13px] font-medium ${on ? "border-spark-amber bg-[#fbeacc] text-spark-ink" : "border-spark-rule bg-white text-spark-ink-muted"}`}>
+                                        {on ? "✓ " : ""}{LABEL[acct] ?? acct}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <Link href="/settings/social" className="text-[13px] font-semibold text-[#A3660F] underline">Connect an account to post</Link>
+                              )}
+                            </div>
                           )}
                         </div>
                       ))}

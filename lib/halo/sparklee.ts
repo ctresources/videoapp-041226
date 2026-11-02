@@ -48,6 +48,8 @@ export interface SparkleeAsk {
   look?: "circle" | "full" | null;
   /** A particular look (the Digital Twin), when one was asked for. */
   lookId?: string | null;
+  /** No avatar: voice over only (Edit plan, 2026-11-01). */
+  voiceOnly?: boolean;
   audience?: string | null;
   tone?: string | null;
 }
@@ -71,7 +73,7 @@ export async function sparkleeSetup(
   admin: Admin,
   userId: string,
   profile: HaloProfile,
-  ask: Pick<SparkleeAsk, "words" | "size" | "look" | "lookId">,
+  ask: Pick<SparkleeAsk, "words" | "size" | "look" | "lookId" | "voiceOnly">,
   platforms?: string[],
 ): Promise<{ setup: HaloSetup; slot: Date }> {
   const s = sanitizeSettings(profile.halo_settings);
@@ -95,7 +97,9 @@ export async function sparkleeSetup(
     look: ask.look ?? base.look,
     lookId: ask.lookId ?? base.lookId,
     size: ask.size ?? base.size,
-    platforms: platforms?.length
+    ...(ask.voiceOnly && { voiceOnly: true }),
+    // An approved plan names its accounts exactly, even none (Edit plan, 2026-11-01).
+    platforms: platforms !== undefined
       ? platforms.filter((p) => HALO_PLATFORMS.includes(p))
       : lastPlatforms.length ? lastPlatforms : base.platforms,
   };
@@ -154,8 +158,8 @@ export async function startSparkleeDraft(
         videoLength: "standard",
         shortScript: vertical,
         videoPlatform: vertical ? "reel" : "youtube",
-        renderMode: "avatar_voice",
-        ...(setup.look === "circle" && { avatarStyle: "circle" }),
+        renderMode: setup.voiceOnly ? "voice_only" : "avatar_voice",
+        ...(setup.look === "circle" && !setup.voiceOnly && { avatarStyle: "circle" }),
       });
       // Still "writing" until the video has started, so the card never offers
       // Make video while this is already making one (no second charge).
