@@ -9,3 +9,11 @@ export const SPARKREELS_CHIPS = [
   "AutoSparks: 3 posts a week, hands-off",
   "What's new in SparkReels",
 ];
+
+/** The box's rotating "Try: …" line on a SparkReels account. */
+export const SPARKREELS_TRY = [
+  "Show agents how to post a video every week without filming",
+  "How the Digital Twin works, in 60 seconds",
+  "Why agents need to show up in AI answers, and how SparkReels helps",
+  "A day of content from one spoken sentence",
+];

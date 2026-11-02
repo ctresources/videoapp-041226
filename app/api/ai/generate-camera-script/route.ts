@@ -9,6 +9,7 @@ import {
   type CameraLength, type RenderedScriptLength,
 } from "@/lib/utils/video-length";
 import { closingLineWords, shortScriptBudget } from "@/lib/utils/script-budget";
+import { isSparkreelsMode, sparkreelsFacts } from "@/lib/sparkreels-mode";
 
 const PERPLEXITY_API = "https://api.perplexity.ai";
 
@@ -91,7 +92,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Script generation is not configured" }, { status: 500 });
   }
 
-  const systemPrompt = `You are a real estate video scriptwriter creating teleprompter-ready scripts for real estate agents. Write in a warm, conversational, first-person voice as the agent speaking directly to camera. Write ${lengthRule}. Getting close to that length matters — the agent is reading this off a teleprompter and expects it to run that long. No stage directions, no headers, no formatting — only the spoken words the agent will read.${briefGuidance ? `\n${briefGuidance}` : ""}
+  // SparkReels mode (2026-11-01): the owner on camera, promoting SparkReels
+  // to agents from the product facts. Not for an unbranded cut.
+  const promo = !isUnbranded && (await isSparkreelsMode(user.id)) ? sparkreelsFacts() : null;
+  const promoSystem = promo ? `You write teleprompter scripts for the founder of SparkReels.ai, speaking to camera to real estate agents about SparkReels, an AI video and content studio for agents. First person, warm, confident, conversational: a fellow agent who built the tool. Write ${lengthRule}. Getting close to that length matters. No stage directions, no headers, no formatting — only the spoken words.
+- Use ONLY the facts below about SparkReels: its features, plans and prices. Never invent a feature, number, price, customer or result, and never promise views, leads or income.
+- Do not name the vendors behind SparkReels.
+- End by inviting agents to try SparkReels free at SparkReels.ai.
+
+${promo}` : null;
+  const systemPrompt = promoSystem ?? `You are a real estate video scriptwriter creating teleprompter-ready scripts for real estate agents. Write in a warm, conversational, first-person voice as the agent speaking directly to camera. Write ${lengthRule}. Getting close to that length matters — the agent is reading this off a teleprompter and expects it to run that long. No stage directions, no headers, no formatting — only the spoken words the agent will read.${briefGuidance ? `\n${briefGuidance}` : ""}
 ${isUnbranded ? `
 This script is for an UNBRANDED video and must contain no agent identification of any kind: no names, no brokerage, no team, no licence number, no phone number, no email, no website, and no invitation to contact anyone. This is a compliance requirement, not a style preference — it outranks any instruction elsewhere in this request about how to close the script.
 ` : ""}
@@ -116,7 +126,14 @@ Rules:
 - ${lengthRule}${depthRule}
 - Return ONLY the script text — no title, no labels, no markdown`;
   } else {
-    userPrompt = `Write a ${mins}-minute teleprompter script for a real estate agent video about: "${topic}"
+    userPrompt = promo ? `Write a ${mins}-minute teleprompter script about: "${topic}". It shows real estate agents what SparkReels does for them.
+
+Rules:
+- Open with a strong hook sentence an agent would stop for
+- Natural spoken language, short punchy sentences
+- Show how it works in plain steps and what the agent gets
+- ${lengthRule}${depthRule}
+- Return ONLY the script text — no title, no labels, no markdown` : `Write a ${mins}-minute teleprompter script for a real estate agent video about: "${topic}"
 
 Rules:
 - Open with a strong hook sentence that grabs attention immediately${marketRule}

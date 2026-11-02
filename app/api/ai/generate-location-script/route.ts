@@ -241,6 +241,11 @@ export async function POST(req: NextRequest) {
 
   // ── Parse into structured ai_script ────────────────────────────────────────
   const parsed = parseLocationScript(raw, videoType, city, state, agentName, ctaPreference);
+  // SparkReels mode: tags and keywords about SparkReels, not a town's real estate.
+  if (promo) {
+    parsed.hashtags = ["SparkReels", "AIVideo", "RealEstateMarketing", "RealtorTips", "RealEstateAgent", "VideoMarketing", "AIForRealtors"];
+    parsed.keywords = ["SparkReels", "AI video for real estate agents", "real estate video marketing", "AI avatar for realtors", "real estate content marketing"];
+  }
 
   // The prompt states the cap, but a model overshooting it is not a
   // hypothetical — one real generation came back 594 words against a
@@ -322,6 +327,7 @@ export async function POST(req: NextRequest) {
       keywords: parsed.keywords,
       website: prof.website || undefined,
       phone: prof.phone || prof.company_phone || undefined,
+      promo: !!promo,
     }),
     new Promise<null>((resolve) => setTimeout(() => resolve(null), YT_META_TIMEOUT_MS)),
   ]).catch((err) => {

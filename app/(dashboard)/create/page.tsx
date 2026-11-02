@@ -49,7 +49,8 @@ import { BuyerQuestions } from "@/components/create/buyer-questions";
 import { FirstSparkBanner } from "@/components/create/first-spark-banner";
 import { PAGE_MIC_SLOT } from "@/components/ui/voice-pick-mic";
 import { SparkleeAgent } from "@/components/create/sparklee-agent";
-import { SPARKREELS_CHIPS } from "@/lib/sparkreels-chips";
+import { SPARKREELS_CHIPS, SPARKREELS_TRY } from "@/lib/sparkreels-chips";
+import { SparkreelsIdeas } from "@/components/create/sparkreels-ideas";
 import { StepFooter } from "@/components/create/step-footer";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { toStateAbbr } from "@/lib/utils/us-states";
@@ -2856,7 +2857,7 @@ function CreatePageInner() {
                 the box and can be corrected before it is sent. */}
             <VoiceBriefSession
               // The Try examples, inside the box now (2026-10-15).
-              tryLines={TRY_LINES}
+              tryLines={account?.sparkreelsMode ? SPARKREELS_TRY : TRY_LINES}
               // Held while the next page is open, so closing it frees the box again.
               disabled={locGenerating || cameraScriptGenerating || scenesWriting}
               // Asked for when a video has none: its script's length follows it.
@@ -3083,7 +3084,19 @@ function CreatePageInner() {
           <div className={`-mt-3 flex flex-col gap-3 rounded-b-[22px] border-[1.5px] border-t-0 border-spark-rule bg-white px-4 pb-4 shadow-[0_2px_14px_rgba(44,44,42,0.05)] lg:flex-1 ${topicOffClass} ${tabPage ? "hidden" : ""}`} {...topicOffProps}>
           {/* Folded: the chips are up under the box now, so this is just the
               card's rounded foot. Open: every idea (More ideas). */}
-          {!showIdeas ? null : (<>
+          {/* SparkReels mode (2026-11-01): every feature as an idea instead. */}
+          {showIdeas && account?.sparkreelsMode && (
+            <SparkreelsIdeas
+              onClose={() => setShowIdeas(false)}
+              onPick={(idea) => {
+                setLocCustomTopic(idea);
+                setBriefWords(idea);
+                setTopicTemplateRaw(null);
+                setSparkSeed((x) => ({ text: idea, n: x.n + 1 }));
+              }}
+            />
+          )}
+          {!showIdeas || account?.sparkreelsMode ? null : (<>
           <div id="all-ideas" className="scroll-mt-24 border-t border-spark-rule" />
           <button type="button" onClick={() => setShowIdeas(false)} className="self-end text-[13px] font-medium text-spark-ink-muted underline">
             Fewer ideas

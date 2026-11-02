@@ -225,7 +225,10 @@ export async function generateYoutubeMetadata(params: {
   keywords?: string[];
   website?: string;
   phone?: string;
+  /** SparkReels mode (2026-11-01): a video promoting SparkReels to agents. */
+  promo?: boolean;
 }): Promise<YoutubeMetadata> {
+  if (params.promo) return promoYoutubeMetadata(params);
   const location = [params.city, params.state].filter(Boolean).join(", ");
   const contactLine = [
     params.agentName,
@@ -294,6 +297,39 @@ Return ONLY valid JSON:
   ], "sonar");
 
   return parseJson<YoutubeMetadata>(raw, "generateYoutubeMetadata");
+}
+
+/** YouTube copy for a SparkReels mode video: for agents, about SparkReels, no town. */
+async function promoYoutubeMetadata(params: { title: string; script: string; agentName?: string }): Promise<YoutubeMetadata> {
+  const systemPrompt = `You write YouTube titles and descriptions for SparkReels.ai, an AI video and content studio for real estate agents. The viewers are real estate agents looking for easier ways to market themselves with video, blogs and AI. Optimise for YouTube and Google search, for AI assistants that quote clear factual sentences, and for spoken questions. Never invent features, prices, results or statistics: use only what the script says. Do not name AI or video vendors. Always respond with valid JSON only.`;
+  const userPrompt = `Generate a YouTube title and description for this SparkReels video.
+
+Title: "${params.title}"
+Script: """${params.script.slice(0, 1500)}"""
+
+DESCRIPTION STRUCTURE (plain text, no markdown):
+Paragraph 1 (first 150 characters matter most): what the video shows a real estate agent, front-loading the phrase an agent would search for (for example "AI video for real estate agents").
+Paragraph 2 (3-4 sentences): what the feature does and why it matters to an agent's marketing, using only the script's facts.
+IN THIS VIDEO:
+- 4-6 bullets, each starting with a verb
+FREQUENTLY ASKED QUESTIONS:
+Q/A pairs (3-4) phrased the way an agent would ask them out loud, each answered in 1-2 sentences from the script.
+TRY IT FREE:
+Start free at https://www.sparkreels.ai, no credit card needed.
+${params.agentName ? `Made by ${params.agentName}, founder of SparkReels.ai.` : ""}
+Subscribe for weekly tips on AI video and marketing for real estate agents.
+
+Return ONLY valid JSON:
+{
+  "youtube_title": "Under 70 characters, for agents, the main search phrase first",
+  "youtube_description": "The description above, 200-350 words, with real newlines (\\n) between sections",
+  "hashtags": ["#SparkReels", "#RealEstateMarketing", "#AIVideo", "#RealtorTips", "#RealEstateAgent", "#VideoMarketing"]
+}`;
+  const raw = await perplexityChat([
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt },
+  ], "sonar");
+  return parseJson<YoutubeMetadata>(raw, "promoYoutubeMetadata");
 }
 
 export async function generateSeoData(
