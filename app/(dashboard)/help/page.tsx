@@ -3,6 +3,8 @@ import Link from "next/link";
 import { canAccessFeature } from "@/lib/access";
 import { getServerAccess } from "@/lib/access-server";
 import { FreeOverview } from "@/components/help/free-overview";
+import { WatchVideo } from "@/components/help/watch-video";
+import { HOW_TO_VIDEOS } from "@/lib/help/how-to-videos";
 import {
   Mic, Sparkles, Video, MonitorPlay, Wand2, PlayCircle, FileText,
   MapPin, User, Megaphone, Camera, Upload, Rocket, Bot,
@@ -39,13 +41,18 @@ function StepNumber({ n }: { n: number }) {
 function Step({ n, title, icon: Icon, anchor, children }: {
   n: number; title: string; icon: React.ElementType; anchor?: string; children: React.ReactNode;
 }) {
+  // Each step's how-to video, beside its title (2026-11-01).
+  const video = HOW_TO_VIDEOS[n];
   return (
     <div id={anchor ?? `step-${n}`} className="flex scroll-mt-20 items-start gap-3">
       <StepNumber n={n} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-brand-text flex items-center gap-1.5">
-          <Icon size={14} className="text-primary-500" /> {title}
-        </p>
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <p className="text-sm font-bold text-brand-text flex items-center gap-1.5">
+            <Icon size={14} className="text-primary-500" /> {title}
+          </p>
+          {video && <WatchVideo video={video} />}
+        </div>
         <div className="text-sm text-slate-600 leading-relaxed mt-1">{children}</div>
       </div>
     </div>

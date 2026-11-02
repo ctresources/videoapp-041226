@@ -1,0 +1,83 @@
+[
+  {
+    "id": "voice",
+    "step": 2,
+    "title": "Create Your AI Voice",
+    "scenes": [
+      {
+        "say": "To make your videos speak in your own voice, open Settings."
+      },
+      {
+        "say": "Scroll down to the AI Voice Clone card."
+      },
+      {
+        "say": "Choose Record my voice. You'll see a short script to read aloud, and you can change it to your own words."
+      },
+      {
+        "say": "Press Start recording, and talk naturally for at least thirty seconds."
+      },
+      {
+        "say": "Then press Stop recording, and Use this recording."
+      },
+      {
+        "say": "Already have a recording? Choose Upload a file instead."
+      },
+      {
+        "say": "That's it. Every AI video you make now speaks in your voice."
+      }
+    ]
+  },
+  {
+    "id": "speak",
+    "step": 13,
+    "title": "Speak It Or Type It",
+    "scenes": [
+      {
+        "say": "In Spark Studio, everything starts with one question: what do you want to create?"
+      },
+      {
+        "say": "Tap the mic and say it all in one sentence, or type it in the same box."
+      },
+      {
+        "say": "For example: make a vertical video about why first-time buyers should get pre-approved in Springfield, Illinois."
+      },
+      {
+        "say": "A moment later, the page fills itself in from what you said: the kind of video, the town, and the shape."
+      },
+      {
+        "say": "Check it, change anything you like, and press Next."
+      },
+      {
+        "say": "Or just say, Spark it, and Sparklee presses Next for you."
+      }
+    ]
+  },
+  {
+    "id": "publish",
+    "step": 21,
+    "title": "Publish To YouTube",
+    "scenes": [
+      {
+        "say": "When your video is ready, open My Sparks."
+      },
+      {
+        "say": "Find the video, and press Publish."
+      },
+      {
+        "say": "Your title, description and hashtags are already written for you."
+      },
+      {
+        "say": "Pick your YouTube channel, and any other accounts you connected."
+      },
+      {
+        "say": "Post it now, or schedule it for later."
+      },
+      {
+        "say": "Choose public, unlisted or private, then publish. You're live, without leaving SparkReels."
+      },
+      {
+        "say": "If a post ever fails, open Publish again to see why, and press Retry."
+      }
+    ]
+  }
+]
