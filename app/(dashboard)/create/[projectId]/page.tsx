@@ -1745,9 +1745,51 @@ export default function ProjectEditorPage() {
     setEditorStep(3);
   }, []);
 
+  /**
+   * Rewrites the script to fit a 2-minute video, closing line included, about
+   * 10% under so a closing line changed later doesn't tip it back over.
+   */
+  async function shortenToFit() {
+    setFitting(true);
+    try {
+      const ctaWords = activeCta.split(/\s+/).filter(Boolean).length;
+      const res = await fetch("/api/ai/shorten-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ script: editedScript, length: "rendered_short", budget: Math.round(standardMaxWords() * 0.9) - ctaWords }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (showTrialLock(data)) return;
+        throw new Error(data?.error || "Couldn't shorten the script.");
+      }
+      setEditedScript(data.script as string);
+      toast.success(`Script shortened to ${data.words} words.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't shorten the script.");
+    } finally {
+      setFitting(false);
+    }
+  }
+
   // ── Ready check (2026-10-26) ────────────────────────────────────────────
   const readyItems: ReadyItem[] = (() => {
     const items: ReadyItem[] = [];
+    // A short video holds 2 minutes (2026-11-02, the owner's ask): a script
+    // written long, then given a short shape, used to go ahead with its ending
+    // cut off. Not for You on camera, which has its own lengths.
+    if (selectedVideoType !== "youtube_long" && !selfRecord) {
+      const total = [editedScript, activeCta].join(" ").trim().split(/\s+/).filter(Boolean).length;
+      const cap = standardMaxWords();
+      items.push({
+        label: "Script fits a short video",
+        ok: total <= cap,
+        okText: `${total} of ${cap} words`,
+        badText: `${(total / 145).toFixed(1)} min, too long`,
+        blocks: true,
+        fix: { label: fitting ? "Shortening…" : "Shorten to fit", onClick: () => { if (!fitting) void shortenToFit(); } },
+      });
+    }
     items.push({
       label: "Your voice",
       ok: hasVoice, okText: "Ready", badText: "Stock voice for now", blocks: false,
@@ -2287,29 +2329,7 @@ export default function ProjectEditorPage() {
               <button
                 type="button"
                 disabled={fitting}
-                onClick={async () => {
-                  setFitting(true);
-                  try {
-                    const res = await fetch("/api/ai/shorten-script", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      // About 10% under, so a closing line changed later
-                      // doesn't tip it back over.
-                      body: JSON.stringify({ script: editedScript, length: "rendered_short", budget: Math.round(standardMaxWords() * 0.9) - ctaWords }),
-                    });
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok) {
-                      if (showTrialLock(data)) return;
-                      throw new Error(data?.error || "Couldn't shorten the script.");
-                    }
-                    setEditedScript(data.script as string);
-                    toast.success(`Script shortened to ${data.words} words. Avatar video is available.`);
-                  } catch (err) {
-                    toast.error(err instanceof Error ? err.message : "Couldn't shorten the script.");
-                  } finally {
-                    setFitting(false);
-                  }
-                }}
+                onClick={() => void shortenToFit()}
                 className="flex items-center gap-1.5 rounded-lg bg-spark-ink px-3 py-1.5 text-[12.5px] font-semibold text-white disabled:opacity-60"
               >
                 {fitting && <Loader2 size={12} className="animate-spin" />} Shorten to fit
