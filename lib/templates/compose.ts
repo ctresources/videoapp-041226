@@ -6,6 +6,7 @@ import ffmpegPath from "@ffmpeg-installer/ffmpeg";
 import sharp from "sharp";
 import type { Circle, Shape } from "@/lib/templates/designs";
 import { SIZE } from "@/lib/templates/designs";
+import { fitImageBuffer } from "@/lib/utils/fit-frame";
 
 const run = promisify(execFile);
 
@@ -46,15 +47,37 @@ export async function composeClean(o: {
   const total = Math.max(3, a.dur);
 
   // The background: each photo for an equal share of the video (3 to 7 seconds), repeated if needed.
+  // Since 2026-11-03 (owner's ask): a photo of the other shape is shown whole over a blurred copy,
+  // each one slowly zooms, and each fades into the next.
   let bg: string;
   if (o.photos.length) {
     const per = Math.min(7, Math.max(3, total / o.photos.length));
     const count = Math.max(o.photos.length, Math.ceil(total / per));
-    const seq = Array.from({ length: count }, (_, i) => o.photos[i % o.photos.length]);
-    const inputs = seq.flatMap((p) => ["-loop", "1", "-t", per.toFixed(3), "-i", p]);
-    const graph = seq.map((_, i) => `[${i}:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,fps=25,format=yuv420p[p${i}]`).join(";")
-      + `;${seq.map((_, i) => `[p${i}]`).join("")}concat=n=${seq.length}:v=1:a=0[bg]`;
-    await ff(o.workDir, ["-threads", t, ...inputs, "-filter_complex", graph, "-map", "[bg]", "-t", total.toFixed(3), "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26", "bg.mp4"]);
+    // Fitted once per photo, a little bigger than the frame so the zoom stays sharp.
+    const fitted: string[] = [];
+    for (let i = 0; i < o.photos.length; i++) {
+      const buf = await fitImageBuffer(fs.readFileSync(o.photos[i]), Math.round(W * 1.5), Math.round(H * 1.5));
+      const f = `fit${i}.jpg`;
+      fs.writeFileSync(path.join(o.workDir, f), buf);
+      fitted.push(f);
+    }
+    const FADE = 0.8, FPS = 25;
+    const seq = Array.from({ length: count }, (_, i) => fitted[i % fitted.length]);
+    const inputs = seq.flatMap((p) => ["-i", p]);
+    const parts = seq.map((_, i) => {
+      const start = i * per;
+      const len = Math.max(0.5, Math.min(per + FADE, total - start + FADE));
+      const frames = Math.ceil(len * FPS);
+      // Alternate zooming in and out, about 10% over the photo's time.
+      const step = (0.1 / frames).toFixed(6);
+      const z = i % 2 === 0 ? `min(1+${step}*on,1.1)` : `max(1.1-${step}*on,1)`;
+      const fade = i === 0 ? "" : `,fade=t=in:st=0:d=${FADE}:alpha=1`;
+      return `[${i}:v]zoompan=z='${z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${FPS},setsar=1,format=yuva420p${fade},setpts=PTS-STARTPTS+${start.toFixed(3)}/TB[p${i}]`;
+    });
+    let chain = `color=c=black:s=${W}x${H}:r=${FPS}:d=${total.toFixed(3)}[b0]`;
+    seq.forEach((_, i) => { chain += `;[b${i}][p${i}]overlay=0:0:eof_action=pass[b${i + 1}]`; });
+    const graph = `${parts.join(";")};${chain};[b${seq.length}]format=yuv420p[bg]`;
+    await ff(o.workDir, ["-threads", t, ...inputs, "-filter_complex", graph, "-map", "[bg]", "-t", total.toFixed(3), "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24", "bg.mp4"]);
     bg = "bg.mp4";
   } else {
     bg = o.still ?? "";
