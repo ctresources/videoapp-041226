@@ -27,20 +27,29 @@ export interface Design {
   fields: Field[];
 }
 
+/**
+ * The agent's name, brokerage and both phones on every design (2026-11-03,
+ * the owner's ask): real estate ads have to show the brokerage.
+ */
+const CONTACT: Field[] = [
+  { key: "agent", label: "Your name and brokerage", placeholder: "Jane Smith · Smith Realty Group" },
+  { key: "phones", label: "Phones", placeholder: "Mobile (555) 010-2030 · Office (555) 010-9000" },
+];
+
 export const DESIGNS: Design[] = [
   { id: "just_listed", name: "Just Listed", blurb: "Agent in a circle, gold label, address and price over the photos.", photos: "listing",
-    fields: [{ key: "headline", label: "Headline" }, { key: "address", label: "Address" }, { key: "price", label: "Price" }, { key: "details", label: "Details", placeholder: "3 beds · 2.5 baths · 2,140 sq ft" }, { key: "agent", label: "Your name and phone" }] },
+    fields: [{ key: "headline", label: "Headline" }, { key: "address", label: "Address" }, { key: "price", label: "Price" }, { key: "details", label: "Details", placeholder: "3 beds · 2.5 baths · 2,140 sq ft" }, ...CONTACT] },
   { id: "luxury", name: "Luxury Listing", blurb: "Cinema bars, elegant type, gold accents.", photos: "listing",
-    fields: [{ key: "headline", label: "Headline" }, { key: "address", label: "Address" }, { key: "price", label: "Price line" }, { key: "details", label: "Details" }] },
+    fields: [{ key: "headline", label: "Headline" }, { key: "address", label: "Address" }, { key: "price", label: "Price line" }, { key: "details", label: "Details" }, ...CONTACT] },
   { id: "market_update", name: "Market Update", blurb: "Three numbers on screen while the agent explains them.", photos: "place",
     fields: [{ key: "headline", label: "Label" }, { key: "title", label: "Title" },
       { key: "s1", label: "Number 1", placeholder: "$412K" }, { key: "s1l", label: "What it is", placeholder: "Median price" }, { key: "s1c", label: "Change", placeholder: "Up 4%" },
       { key: "s2", label: "Number 2" }, { key: "s2l", label: "What it is" }, { key: "s2c", label: "Change" },
-      { key: "s3", label: "Number 3" }, { key: "s3l", label: "What it is" }, { key: "s3c", label: "Change" }] },
+      { key: "s3", label: "Number 3" }, { key: "s3l", label: "What it is" }, { key: "s3c", label: "Change" }, ...CONTACT] },
   { id: "neighborhood", name: "Neighborhood Spotlight", blurb: "The place name big, three highlights, agent in the corner.", photos: "place",
-    fields: [{ key: "headline", label: "Label" }, { key: "name", label: "Neighborhood" }, { key: "highlights", label: "Highlights (comma between)", placeholder: "Walkable, Top schools, Riverfront park" }] },
-  { id: "agent_intro", name: "Agent Introduction", blurb: "Big portrait, name, brokerage, phone and website, with their logo.", photos: "none",
-    fields: [{ key: "headline", label: "Label" }, { key: "name", label: "Your name" }, { key: "role", label: "Title and brokerage" }, { key: "phone", label: "Phone" }, { key: "website", label: "Website" }] },
+    fields: [{ key: "headline", label: "Label" }, { key: "name", label: "Neighborhood" }, { key: "highlights", label: "Highlights (comma between)", placeholder: "Walkable, Top schools, Riverfront park" }, ...CONTACT] },
+  { id: "agent_intro", name: "Agent Introduction", blurb: "Big portrait, name, brokerage, phones and website, with their logo.", photos: "none",
+    fields: [{ key: "headline", label: "Label" }, { key: "name", label: "Your name" }, { key: "role", label: "Title and brokerage" }, { key: "phones", label: "Phones" }, { key: "website", label: "Website" }] },
 ];
 export const designById = (id: string) => DESIGNS.find((d) => d.id === id) ?? null;
 
@@ -119,6 +128,13 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
   let circle: Circle;
   let ring = accent;
   const defs: string[] = [];
+  /** Name · brokerage, then the phones underneath, at (x, y). */
+  const contact = (x: number, y: number, anchor: "start" | "middle" | "end", maxW: number, size: number) => {
+    let yy = y;
+    const a = g("agent"), p = g("phones");
+    if (a) { const s = fit(a, maxW, size, 12, "text"); parts.push(line(a, x, yy, s, "#ffffff", "text", anchor)); yy += s * 1.4; }
+    if (p) { const s = fit(p, maxW, size * 0.9, 11, "text"); parts.push(line(p, x, yy, s, "#e6dfd2", "text", anchor)); }
+  };
 
   if (id === "just_listed") {
     // Gold label top-left.
@@ -144,16 +160,15 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
       parts.push(line(g("price"), x, y, ps, accent, "display", "middle"));
       const ds = fit(g("details"), maxW, 26, 16, "text");
       if (g("details")) { y += ds * 1.7; parts.push(line(g("details"), x, y, ds, "#f1ece2", "text", "middle")); }
-      const as = fit(g("agent"), maxW, 22, 14, "text");
-      if (g("agent")) { y += as * 1.75; parts.push(line(g("agent"), x, Math.min(y, H * 0.975), as, "#d9d2c3", "text", "middle")); }
+      contact(x, Math.min(y + 40, H * 0.945), "middle", maxW, 22);
     } else {
       parts.push(`<rect x="0" y="${H * 0.56}" width="${W}" height="${H * 0.44}" fill="url(#fade)"/>`);
       circle = { cx: W * 0.135, cy: H - W * 0.03 - W * 0.095, d: W * 0.19 };
       const x0 = W * 0.27, maxW = W - x0 - W * 0.04;
       parts.push(line(g("address"), x0, H * 0.79, fit(g("address"), maxW, 54, 28, "display"), "#fff", "display"));
       parts.push(line(g("price"), x0, H * 0.895, fit(g("price"), maxW, 72, 36, "display"), accent, "display"));
-      parts.push(line(g("details"), x0, H * 0.955, fit(g("details"), maxW * 0.62, 26, 16, "text"), "#f1ece2", "text"));
-      parts.push(line(g("agent"), W * 0.96, H * 0.955, fit(g("agent"), maxW * 0.36, 22, 14, "text"), "#d9d2c3", "text", "end"));
+      parts.push(line(g("details"), x0, H * 0.955, fit(g("details"), maxW * 0.56, 26, 16, "text"), "#f1ece2", "text"));
+      contact(W * 0.96, H * 0.918, "end", maxW * 0.42, 20);
     }
   } else if (id === "luxury") {
     const bar = v ? H * 0.1 : H * 0.16;
@@ -169,7 +184,8 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
     const p = g("price").toUpperCase();
     parts.push(line(p, W / 2, ay + a.lines.length * a.size * 1.15 + (v ? 40 : 34), fit(p, W * 0.86, v ? 28 : 30, 16, "text", 8), "#fff", "text", "middle", 8));
     const d = g("details").toUpperCase();
-    parts.push(line(d, W / 2, H - bar * 0.4, fit(d, W * 0.9, v ? 22 : 24, 14, "text", 5), "#d8cdb8", "text", "middle", 5));
+    parts.push(line(d, W / 2, H - bar + bar * 0.32, fit(d, W * 0.9, v ? 22 : 22, 13, "text", 5), "#d8cdb8", "text", "middle", 5));
+    contact(W / 2, H - bar + bar * (v ? 0.6 : 0.6), "middle", W * 0.9, v ? 19 : 17);
     const cd = v ? W * 0.34 : W * 0.14;
     circle = { cx: W - W * 0.04 - cd / 2, cy: H - bar - W * 0.025 - cd / 2, d: cd };
   } else if (id === "market_update") {
@@ -191,7 +207,10 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
         parts.push(line(s.l, sx + 14, ty + 100, fit(s.l, tw - 28, 20, 12, "text"), "#c9cfdb", "text"));
         parts.push(line(s.c, sx + 14, ty + 132, fit(s.c, tw - 28, 20, 12, "text"), changeColor(s.c), "text"));
       });
-      circle = { cx: W / 2, cy: H * 0.76, d: W * 0.5 };
+      circle = { cx: W / 2, cy: H * 0.73, d: W * 0.46 };
+      defs.push(`<linearGradient id="foot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.8"/></linearGradient>`);
+      parts.push(`<rect x="0" y="${H * 0.84}" width="${W}" height="${H * 0.16}" fill="url(#foot)"/>`);
+      contact(W / 2, H * 0.93, "middle", W * 0.88, 24);
     } else {
       defs.push(`<linearGradient id="pan" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0e121a" stop-opacity="0.96"/><stop offset="0.72" stop-color="#0e121a" stop-opacity="0.92"/><stop offset="1" stop-color="#0e121a" stop-opacity="0"/></linearGradient>`);
       parts.push(`<rect x="0" y="0" width="${W * 0.62}" height="${H}" fill="url(#pan)"/>`);
@@ -209,10 +228,14 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
         parts.push(line(s.c, sx + 14, ty + 140, fit(s.c, tw - 28, 19, 12, "text"), changeColor(s.c), "text"));
       });
       circle = { cx: W * 0.8, cy: H * 0.6, d: W * 0.3 };
+      contact(x, H * 0.885, "start", maxW, 20);
     }
   } else if (id === "neighborhood") {
     defs.push(`<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.8"/></linearGradient>`);
     parts.push(`<rect x="0" y="${H * 0.45}" width="${W}" height="${H * 0.55}" fill="url(#fade)"/>`);
+    // A soft dark top for the contact block.
+    defs.push(`<linearGradient id="top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0.6"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>`);
+    parts.push(`<rect x="0" y="0" width="${W}" height="${H * (v ? 0.2 : 0.26)}" fill="url(#top)"/>`);
     const kt = (g("headline") || "Neighborhood Spotlight").toUpperCase();
     const ks = v ? 24 : 22;
     const kw = width(kt, ks, "text", 3) + ks * 1.6;
@@ -231,7 +254,9 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
         parts.push(line(h, cx + cs * 0.8, cy + cs * 1.3, cs, "#fff", "text"));
         cx += cw + 10;
       }
-      circle = { cx: W * 0.74, cy: H * 0.2, d: W * 0.4 };
+      // Lower than the contact lines, so they never run under it.
+      circle = { cx: W * 0.72, cy: H * 0.36, d: W * 0.42 };
+      contact(W * 0.06, H * 0.115, "start", W * 0.88, 22);
     } else {
       parts.push(line(g("name"), W * 0.045, H * 0.8, fit(g("name"), W * 0.68, 104, 40, "display"), "#fff", "display"));
       let cx = W * 0.045;
@@ -243,6 +268,7 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
       }
       const cd = W * 0.18;
       circle = { cx: W - W * 0.04 - cd / 2, cy: H - W * 0.04 - cd / 2, d: cd };
+      contact(W * 0.96, H * 0.085, "end", W * 0.45, 20);
     }
     ring = "#ffffff";
   } else {
@@ -254,7 +280,7 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
       parts.push(line(g("name"), x, H * 0.65, fit(g("name"), W * 0.9, 76, 36, "display"), "#fff", "display", "middle"));
       const r = wrap(g("role"), W * 0.86, 30, 18, 2, "text");
       r.lines.forEach((l, i) => parts.push(line(l, x, H * 0.705 + i * r.size * 1.3, r.size, "#e9dcc3", "text", "middle")));
-      parts.push(line(g("phone"), x, H * 0.81, fit(g("phone"), W * 0.86, 34, 18, "text"), "#fff", "text", "middle"));
+      parts.push(line(g("phones"), x, H * 0.81, fit(g("phones"), W * 0.88, 30, 16, "text"), "#fff", "text", "middle"));
       parts.push(line(g("website"), x, H * 0.86, fit(g("website"), W * 0.86, 28, 16, "text"), "#fff", "text", "middle"));
     } else {
       circle = { cx: W * 0.24, cy: H * 0.5, d: W * 0.34 };
@@ -263,7 +289,7 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
       parts.push(line(g("name"), x, H * 0.43, fit(g("name"), maxW, 80, 34, "display"), "#fff", "display"));
       const r = wrap(g("role"), maxW, 30, 16, 2, "text");
       r.lines.forEach((l, i) => parts.push(line(l, x, H * 0.52 + i * r.size * 1.3, r.size, "#e9dcc3", "text")));
-      parts.push(line(g("phone"), x, H * 0.7, fit(g("phone"), maxW, 32, 16, "text"), "#fff", "text"));
+      parts.push(line(g("phones"), x, H * 0.7, fit(g("phones"), maxW, 28, 14, "text"), "#fff", "text"));
       parts.push(line(g("website"), x, H * 0.78, fit(g("website"), maxW, 28, 14, "text"), "#fff", "text"));
     }
   }
@@ -298,20 +324,31 @@ export async function introBackground(shape: Shape, accent = "#e7b84a"): Promise
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
+/** (610) 457-8698 from any way a 10-digit US number was typed; anything else as typed. */
+export function formatPhone(raw: string | null | undefined): string {
+  const t = (raw ?? "").trim();
+  const d = t.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
+  return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : t;
+}
+
 /** Sensible starting words from the agent's profile and (optionally) a listing. */
 export function defaultFields(id: DesignId, p: {
-  name?: string | null; phone?: string | null; company?: string | null; website?: string | null; city?: string | null; state?: string | null;
+  name?: string | null; mobile?: string | null; office?: string | null; company?: string | null; website?: string | null; city?: string | null; state?: string | null;
 }, listing?: { address?: string; price?: string | number; beds?: string | number; baths?: string | number; sqft?: string | number } | null): Record<string, string> {
   const town = p.city || "Springfield";
   const price = listing?.price ? (typeof listing.price === "number" ? `$${listing.price.toLocaleString("en-US")}` : String(listing.price)) : "";
   const details = [listing?.beds && `${listing.beds} beds`, listing?.baths && `${listing.baths} baths`, listing?.sqft && `${Number(listing.sqft).toLocaleString("en-US")} sq ft`].filter(Boolean).join(" · ");
-  const agent = [p.name, p.phone].filter(Boolean).join(" · ");
+  // Name and brokerage, then both phones (2026-11-03, the owner's ask).
+  const agent = [p.name, p.company].filter(Boolean).join(" · ");
+  const mobile = formatPhone(p.mobile), office = formatPhone(p.office);
+  const phones = [mobile && `Mobile ${mobile}`, office && office !== mobile && `Office ${office}`].filter(Boolean).join(" · ");
+  const contact = { agent, phones };
   const month = new Date().toLocaleString("en-US", { month: "long" });
   switch (id) {
-    case "just_listed": return { headline: "JUST LISTED", address: listing?.address ?? "", price, details, agent };
-    case "luxury": return { headline: "Luxury Listing", address: listing?.address ?? "", price: price ? `Offered at ${price}` : "", details };
-    case "market_update": return { headline: `Market Update · ${month}`, title: `${town} Housing Market`, s1: "", s1l: "Median price", s1c: "", s2: "", s2l: "Days on market", s2c: "", s3: "", s3l: "Homes sold", s3c: "" };
-    case "neighborhood": return { headline: "Neighborhood Spotlight", name: town, highlights: "" };
-    default: return { headline: "Meet your agent", name: p.name ?? "", role: [p.city ? `Your ${p.city} REALTOR®` : "REALTOR®", p.company].filter(Boolean).join(" · "), phone: p.phone ?? "", website: (p.website ?? "").replace(/^https?:\/\//, "").replace(/\/$/, "") };
+    case "just_listed": return { headline: "JUST LISTED", address: listing?.address ?? "", price, details, ...contact };
+    case "luxury": return { headline: "Luxury Listing", address: listing?.address ?? "", price: price ? `Offered at ${price}` : "", details, ...contact };
+    case "market_update": return { headline: `Market Update · ${month}`, title: `${town} Housing Market`, s1: "", s1l: "Median price", s1c: "", s2: "", s2l: "Days on market", s2c: "", s3: "", s3l: "Homes sold", s3c: "", ...contact };
+    case "neighborhood": return { headline: "Neighborhood Spotlight", name: town, highlights: "", ...contact };
+    default: return { headline: "Meet your agent", name: p.name ?? "", role: [p.city ? `Your ${p.city} REALTOR®` : "REALTOR®", p.company].filter(Boolean).join(" · "), phones, website: (p.website ?? "").replace(/^https?:\/\//, "").replace(/\/$/, "") };
   }
 }

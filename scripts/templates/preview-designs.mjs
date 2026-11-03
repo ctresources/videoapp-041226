@@ -15,12 +15,13 @@ const photos = {
   market_update: "https://images.unsplash.com/photo-1449844908441-8829872d2607?w=1280&q=70",
   neighborhood: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=1280&q=70",
 };
+const contact = { agent: "Jane Smith · Smith Realty Group", phones: "Mobile (555) 010-2030 · Office (555) 010-9000" };
 const sample = {
-  just_listed: { headline: "JUST LISTED", address: "42 Maple Lane, Springfield", price: "$749,000", details: "3 beds · 2.5 baths · 2,140 sq ft", agent: "Jane Smith · (555) 010-2030" },
-  luxury: { headline: "Luxury Listing", address: "18 Harbor View Drive", price: "Offered at $2,450,000", details: "5 beds · 6 baths · Waterfront" },
-  market_update: { headline: "Market Update · November", title: "Springfield Housing Market", s1: "$412K", s1l: "Median price", s1c: "Up 4%", s2: "18", s2l: "Days on market", s2c: "Down 3 days", s3: "126", s3l: "Homes sold", s3c: "Up 9%" },
-  neighborhood: { headline: "Neighborhood Spotlight", name: "Riverside", highlights: "Walkable, Top schools, Riverfront park" },
-  agent_intro: { headline: "Meet your agent", name: "Jane Smith", role: "Your Springfield REALTOR® · Smith Realty Group", phone: "(555) 010-2030", website: "janesmithhomes.com" },
+  just_listed: { headline: "JUST LISTED", address: "42 Maple Lane, Springfield", price: "$749000", details: "3 beds · 2.5 baths · 2,140 sq ft", ...contact },
+  luxury: { headline: "Luxury Listing", address: "18 Harbor View Drive", price: "Offered at $2,450,000", details: "5 beds · 6 baths · Waterfront", ...contact },
+  market_update: { headline: "Market Update · November", title: "Springfield Housing Market", s1: "$412K", s1l: "Median price", s1c: "Up 4%", s2: "18", s2l: "Days on market", s2c: "Down 3 days", s3: "126", s3l: "Homes sold", s3c: "Up 9%", ...contact },
+  neighborhood: { headline: "Neighborhood Spotlight", name: "Riverside", highlights: "Walkable, Top schools, Riverfront park", ...contact },
+  agent_intro: { headline: "Meet your agent", name: "Jane Smith", role: "Your Springfield REALTOR® · Smith Realty Group", phones: contact.phones, website: "janesmithhomes.com" },
 };
 const tiles = [];
 for (const shape of ["horizontal", "vertical"]) {

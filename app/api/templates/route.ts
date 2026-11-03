@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { templateSession } from "@/lib/templates/session";
 import { DESIGNS, defaultFields, designById, type DesignId, type Shape } from "@/lib/templates/designs";
-import { accentOf, makeTemplateVideo, phoneOf, previewImage, rewordTemplateVideo, templateProfile, writeTemplateScript } from "@/lib/templates/make";
+import { accentOf, makeTemplateVideo, previewImage, rewordTemplateVideo, templateProfile, writeTemplateScript } from "@/lib/templates/make";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
 import { hasAdminPerks } from "@/lib/utils/roles";
 
@@ -29,7 +29,8 @@ export async function GET() {
   const listings = ((projects ?? []) as { id: string; listing_data: L | null }[])
     .filter((x) => x.listing_data?.address)
     .map((x) => ({ id: x.id, address: x.listing_data!.address!, price: x.listing_data!.price ?? "", beds: x.listing_data!.beds ?? "", baths: x.listing_data!.baths ?? "", sqft: x.listing_data!.sqft ?? "", photos: (x.listing_data!.photoUrls ?? []).filter((u) => /^https:\/\//.test(u)).slice(0, 12) }));
-  const prof = { name: p?.full_name, phone: phoneOf(p), company: p?.company_name, website: p?.website, city: p?.location_city, state: p?.location_state };
+  // Both phones (2026-11-03): mobile, and the office line.
+  const prof = { name: p?.full_name, mobile: p?.mobile_phone || p?.phone, office: p?.company_phone, company: p?.company_name, website: p?.website, city: p?.location_city, state: p?.location_state };
   const { data: allow } = await s.admin.from("profiles").select(ALLOWANCE_SELECT).eq("id", s.user.id).single();
   return NextResponse.json({
     designs: DESIGNS.map((d) => ({ ...d, defaults: defaultFields(d.id, prof) })),
