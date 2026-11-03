@@ -113,7 +113,8 @@ export interface Layout { circle: Circle; svg: string; ring: string }
 export function layout(id: DesignId, shape: Shape, f: Record<string, string>, accent = "#e7b84a"): Layout {
   const { w: W, h: H } = SIZE[shape];
   const v = shape === "vertical";
-  const g = (k: string) => (f[k] ?? "").trim();
+  // Any "$160000" typed without commas is shown as "$160,000".
+  const g = (k: string) => (f[k] ?? "").trim().replace(/\$(\d{4,})(?![\d,])/g, (_, n: string) => `$${Number(n).toLocaleString("en-US")}`);
   const parts: string[] = [];
   let circle: Circle;
   let ring = accent;

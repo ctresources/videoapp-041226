@@ -70,7 +70,9 @@ export async function POST(req: NextRequest) {
   if (b.action === "make") {
     const photos = Array.isArray(b.photos) ? b.photos.filter((u): u is string => typeof u === "string") : [];
     const d = designById(design)!;
-    const title = String(b.title ?? "").trim().slice(0, 100) || [d.name, fields.address || fields.name || fields.title].filter(Boolean).join(": ");
+    // Named by its headline ("Price Improvement: 24 Shagbark Ct"), in title case.
+    const head = (fields.headline || d.name).toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+    const title = String(b.title ?? "").trim().slice(0, 100) || [head, fields.address || fields.name || fields.title].filter(Boolean).join(": ");
     const r = await makeTemplateVideo(s.admin, s.user, { design, shape, fields, photos, script: String(b.script ?? ""), title });
     if ("error" in r) return NextResponse.json({ error: r.error, code: r.code }, { status: r.status });
     return NextResponse.json(r);

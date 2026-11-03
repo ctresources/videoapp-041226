@@ -21,7 +21,11 @@ interface Setup { designs: Design[]; listings: Listing[]; videosLeft: number | n
 
 const input = "w-full rounded-[10px] border border-spark-rule bg-[#fdfbf7] px-3 py-2 text-[16px] text-spark-ink outline-none focus:border-[#A3660F]";
 const chip = (on: boolean) => `rounded-xl border px-3.5 py-2 text-[15px] font-semibold ${on ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]" : "border-spark-rule bg-white text-spark-ink-soft hover:border-spark-amber"}`;
-const money = (v: string | number) => (typeof v === "number" ? `$${v.toLocaleString("en-US")}` : v && /^\d+$/.test(String(v)) ? `$${Number(v).toLocaleString("en-US")}` : String(v ?? ""));
+/** 160000, "160000" or "$160000" → "$160,000"; anything else as typed. */
+const money = (v: string | number) => {
+  const s = String(v ?? "").trim();
+  return /^\$?\d{4,}$/.test(s) ? `$${Number(s.replace("$", "")).toLocaleString("en-US")}` : s;
+};
 
 export function TemplatesStudio() {
   const [setup, setSetup] = useState<Setup | null>(null);

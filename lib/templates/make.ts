@@ -110,7 +110,11 @@ export async function makeTemplateVideo(admin: Admin, user: { id: string }, o: {
     render_provider: "template", render_status: "rendering",
     metadata: { title: o.title, dimension: { width: w, height: h }, orientation: o.shape === "vertical" ? "portrait" : "landscape", template: record, heygen_engine: "avatar_iii", is_digital_twin: twinOk },
   }).select("id, metadata").single();
-  if (!row) return { error: "Couldn't start the video.", status: 500 };
+  if (!row) {
+    // Don't leave an empty draft behind in My Sparks.
+    await admin.from("projects").delete().eq("id", projectId);
+    return { error: "Couldn't start the video. Nothing was charged.", status: 500 };
+  }
   const videoId = (row as { id: string }).id;
 
   // The render: the agent's own shape (a wide twin renders wide, a tall headshot tall).
