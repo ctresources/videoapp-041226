@@ -17,8 +17,11 @@ import { announceVideoReady } from "@/lib/video/ready-notice";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
 import { hasAdminPerks } from "@/lib/utils/roles";
 import { designById, introBackground, SIZE, wordsLayer, type Circle, type DesignId, type Shape } from "@/lib/templates/designs";
-import { addWords, composeClean, secondsOf } from "@/lib/templates/compose";
+import { addWords, composeClean, faststart, secondsOf } from "@/lib/templates/compose";
 import { animatedProject, renderAnimatedWords } from "@/lib/templates/animated";
+import { OPEN_PLACE, templateLine } from "@/lib/templates/opener";
+import { makeAgentOpener } from "@/lib/api/agent-opener";
+import { prependClip } from "@/lib/utils/composite-photos";
 
 /** The words, animated by HyperFrames; null (still words) if that fails. */
 async function animateWords(rec: TemplateRecord, fields: Record<string, string>, seconds: number, logo: Buffer | null, key: string): Promise<Buffer | null> {
@@ -93,6 +96,12 @@ export interface TemplateRecord {
   music?: string | null;
   /** Music On/Off on the page (2026-11-03); on unless turned off. */
   musicOn?: boolean;
+  /** Since the opener (2026-11-03) music goes over the finished video, opener included, not into clean. */
+  musicAt?: "final";
+  /** "Open with me" asked for: who, and the line (null = silent). */
+  openWith?: { lookId: string; line: string | null };
+  /** The opener as made, kept in storage so new words keep it in front. */
+  openerClip?: { url: string; seconds: number; talks: boolean } | null;
   /** Where the face circle was put in this video (kept so new words line up with it). */
   circle?: Circle;
 }
@@ -151,6 +160,8 @@ export async function makeTemplateVideo(admin: Admin, user: { id: string }, o: {
   face?: "twin" | "avatar";
   /** Music under the voice; on unless false. */
   music?: boolean;
+  /** "Open with me": a short cinematic shot of the agent first (2026-11-03). */
+  openWithMe?: boolean;
 }): Promise<{ videoId: string; projectId: string } | { error: string; status: number; code?: string }> {
   const d = designById(o.design);
   if (!d) return { error: "Pick a design.", status: 400 };
@@ -180,7 +191,11 @@ export async function makeTemplateVideo(admin: Admin, user: { id: string }, o: {
   }).select("id").single();
   if (!project) return { error: "Couldn't start the video.", status: 500 };
   const projectId = (project as { id: string }).id;
-  const record: TemplateRecord = { design: o.design, shape: o.shape, fields: o.fields, photos, accent: accentOf(p), logo: p.logo_url, musicOn: o.music !== false };
+  const record: TemplateRecord = {
+    design: o.design, shape: o.shape, fields: o.fields, photos, accent: accentOf(p), logo: p.logo_url, musicOn: o.music !== false,
+    // Only the twin has the agent's own voice linked, so only the twin talks.
+    ...(o.openWithMe && { openWith: { lookId, line: twinOk ? templateLine(o.design, o.fields, p.company_name) : null } }),
+  };
   const { w, h } = SIZE[o.shape];
   const { data: row } = await admin.from("generated_videos").insert({
     project_id: projectId, user_id: user.id, video_type: o.shape === "vertical" ? "reel_9x16" : "youtube_16x9",
@@ -241,6 +256,17 @@ export async function templateRenderDone(admin: Admin, callbackId: string, o: { 
   return finishTemplateVideo(admin, rowId, o.videoUrl);
 }
 
+/** The opener in front, then the music over all of it (2 dB under the usual bed), ready to stream. */
+async function topAndTail(work: string, worded: string, opener: TemplateRecord["openerClip"], music: string | null): Promise<string> {
+  let buf: Buffer = fs.readFileSync(worded);
+  let changed = false;
+  if (opener) { const w = await prependClip(buf, opener.url, opener.seconds, opener.talks); if (w) { buf = w; changed = true; } }
+  if (music) { const m = await mixBackgroundMusic(buf, music, { trimDb: -2 }); if (m) { buf = m; changed = true; } }
+  if (!changed) return worded;
+  fs.writeFileSync(path.join(work, "joined.mp4"), buf);
+  return faststart(work, "joined.mp4", "ready.mp4");
+}
+
 /** A picture of the place when the agent didn't give one (Market Update, Neighborhood). */
 async function placePhoto(admin: Admin, userId: string, shape: Shape, place: string): Promise<string | null> {
   const bytes = await generateTwinBackdrop({ description: `a beautiful sunny street view of ${place}, homes and trees, inviting, real estate`, orientation: shape === "vertical" ? "portrait" : "landscape" });
@@ -269,6 +295,13 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
       const url = await placePhoto(admin, row.user_id, rec.shape, place);
       if (url) photos = [url];
     }
+    // "Open with me": the cinematic shot, made while the rest is put together.
+    const openerMaking = rec.openWith
+      ? makeAgentOpener({
+          lookId: rec.openWith.lookId, photoUrl: photos[0] ?? null, place: OPEN_PLACE[rec.design], style: "chest",
+          aspect: rec.shape === "vertical" ? "9:16" : "16:9", line: rec.openWith.line, timeoutMs: 300_000,
+        })
+      : Promise.resolve(null);
     const avatar = await download(renderUrl, path.join(work, "avatar.mp4"));
     const local = await Promise.all(photos.map((u, i) => download(u, path.join(work, `photo-${i}`)).catch(() => null)));
     const still = d.photos === "none" ? path.join(work, "still.png") : null;
@@ -285,27 +318,39 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
       workDir: work, shape: rec.shape, circle, avatar,
       photos: usable, still: still ?? (usable.length ? null : path.join(work, "plain.png")), threads: 1,
     });
-    // Music under the voice, mixed into the kept video so Edit the words keeps it.
-    const music = await musicFinding;
-    if (music) {
-      // 2 dB under the app's usual bed (the owner found it a little high).
-      const mixed = await mixBackgroundMusic(fs.readFileSync(clean), music, { trimDb: -2 });
-      if (mixed) fs.writeFileSync(clean, mixed);
-    }
     // The words animated (HyperFrames), else the still words.
     const animated = await animateWords(rec, rec.fields, await secondsOf(clean), logo, `${rowId}-words-1`);
-    const final = await addWords({ workDir: work, clean, words: png, threads: 1, animated });
-    console.log(`[templates] ${rowId} put together in ${Math.round((Date.now() - t0) / 1000)}s (${animated ? "animated" : "still"} words)`);
+    const worded = await addWords({ workDir: work, clean, words: png, threads: 1, animated });
+    const pub = (p: string) => admin.storage.from("videos").getPublicUrl(p).data.publicUrl;
+
+    // The opener kept in storage (HeyGen's link expires), so new words keep it in front.
+    const shot = await openerMaking;
+    let openerClip: TemplateRecord["openerClip"] = null;
+    if (shot) {
+      try {
+        const bytes = Buffer.from(await (await fetch(shot.url)).arrayBuffer());
+        const op = `${row.user_id}/${rowId}-opener.mp4`;
+        const up = await admin.storage.from("videos").upload(op, bytes, { contentType: "video/mp4", upsert: true });
+        openerClip = { url: up.error ? shot.url : pub(op), seconds: shot.seconds, talks: shot.talks };
+      } catch { openerClip = { url: shot.url, seconds: shot.seconds, talks: shot.talks }; }
+    }
+    // Music over the whole video, opener included.
+    const music = await musicFinding;
+    const final = await topAndTail(work, worded, openerClip, music);
+    console.log(`[templates] ${rowId} put together in ${Math.round((Date.now() - t0) / 1000)}s (${animated ? "animated" : "still"} words${openerClip ? ", opener" : ""}${music ? ", music" : ""})`);
 
     const cleanPath = `${row.user_id}/${rowId}-clean.mp4`;
     const finalPath = `${row.user_id}/${rowId}.mp4`;
     const up1 = await admin.storage.from("videos").upload(cleanPath, fs.readFileSync(clean), { contentType: "video/mp4", upsert: true });
     const up2 = await admin.storage.from("videos").upload(finalPath, fs.readFileSync(final), { contentType: "video/mp4", upsert: true });
     if (up1.error || up2.error) throw new Error(`Couldn't store the video: ${(up1.error ?? up2.error)!.message}`);
-    const pub = (p: string) => admin.storage.from("videos").getPublicUrl(p).data.publicUrl;
     await admin.from("generated_videos").update({
       render_status: "completed", video_url: `${pub(finalPath)}?v=${Date.now()}`, render_finished_at: new Date().toISOString(),
-      metadata: { ...row.metadata, template: { ...rec, photos, clean: pub(cleanPath), animated: !!animated, circle, music: music ?? null } },
+      metadata: {
+        ...row.metadata,
+        ...(openerClip && { opener_seconds: openerClip.seconds }),
+        template: { ...rec, photos, clean: pub(cleanPath), animated: !!animated, circle, music: music ?? null, musicAt: "final", openerClip },
+      },
     }).eq("id", rowId);
     await postCopy;
     if (row.project_id) {
@@ -338,7 +383,9 @@ export async function rewordTemplateVideo(admin: Admin, userId: string, rowId: s
     const logo = rec.logo ? await fetch(rec.logo).then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => (b ? Buffer.from(b) : null)).catch(() => null) : null;
     const { png } = await wordsLayer(rec.design, rec.shape, clean, rec.accent, logo, rec.circle);
     const animated = await animateWords(rec, clean, await secondsOf(cleanFile), logo, `${rowId}-words-${Date.now()}`);
-    const final = await addWords({ workDir: work, clean: cleanFile, words: png, threads: 1, animated });
+    const worded = await addWords({ workDir: work, clean: cleanFile, words: png, threads: 1, animated });
+    // The opener back in front; the music again, unless it's already in clean (made before 2026-11-03's opener).
+    const final = await topAndTail(work, worded, rec.openerClip ?? null, rec.musicAt === "final" ? rec.music ?? null : null);
     const finalPath = `${row.user_id}/${rowId}.mp4`;
     const { error } = await admin.storage.from("videos").upload(finalPath, fs.readFileSync(final), { contentType: "video/mp4", upsert: true });
     if (error) return { error: "Couldn't save it. Try again." };

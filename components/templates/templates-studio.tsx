@@ -48,6 +48,7 @@ export function TemplatesStudio() {
   const [found, setFound] = useState<Found | null>(null);
   const [bg, setBg] = useState("");
   const [music, setMusic] = useState(true);
+  const [openWithMe, setOpenWithMe] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const d = setup?.designs.find((x) => x.id === design) ?? null;
@@ -149,7 +150,7 @@ export function TemplatesStudio() {
     if (!window.confirm("Make this video? It uses 1 short video from your plan.")) return;
     setMaking(true);
     try {
-      const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "make", design, shape, fields: words, photos, script, face, music }) });
+      const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "make", design, shape, fields: words, photos, script, face, music, openWithMe }) });
       const out = await r.json().catch(() => ({}));
       if (!r.ok) { toast.error(out.error || "Couldn't make the video."); return; }
       setMade(out.videoId);
@@ -255,6 +256,13 @@ export function TemplatesStudio() {
           <div className="flex flex-wrap gap-2">
             <button type="button" className={chip(music)} onClick={() => setMusic(true)}>On</button>
             <button type="button" className={chip(!music)} onClick={() => setMusic(false)}>Off</button>
+          </div>
+
+          {/* A short cinematic shot of the agent first, talking with their twin (2026-11-03). */}
+          <p className="mb-1.5 mt-4 text-[17px] font-bold text-spark-ink">Open with me</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={chip(openWithMe)} onClick={() => setOpenWithMe(true)}>On</button>
+            <button type="button" className={chip(!openWithMe)} onClick={() => setOpenWithMe(false)}>Off</button>
           </div>
 
           {setup.faces?.twin && setup.faces.avatar && (

@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     const head = (fields.headline || d.name).toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
     const title = String(b.title ?? "").trim().slice(0, 100) || [head, fields.address || fields.name || fields.title].filter(Boolean).join(": ");
     const face = b.face === "avatar" ? "avatar" : b.face === "twin" ? "twin" : undefined;
-    const r = await makeTemplateVideo(s.admin, s.user, { design, shape, fields, photos, script: String(b.script ?? ""), title, face, music: b.music !== false });
+    const r = await makeTemplateVideo(s.admin, s.user, { design, shape, fields, photos, script: String(b.script ?? ""), title, face, music: b.music !== false, openWithMe: b.openWithMe === true });
     if ("error" in r) return NextResponse.json({ error: r.error, code: r.code }, { status: r.status });
     return NextResponse.json(r);
   }

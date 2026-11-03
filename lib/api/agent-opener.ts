@@ -25,14 +25,33 @@ export function parseOpenerStyle(v: unknown): OpenerStyle | null {
   return v === "full" || v === "chest" ? v : null;
 }
 
-function promptFor(style: OpenerStyle, line?: string | null): string {
+/**
+ * Where the shot is (2026-11-03, for the video templates): in front of the
+ * home (listing videos, Just Listed), the same with a slower, elegant move
+ * (Luxury), on a street in the area (Market Update, Neighborhood), or in a
+ * bright office with no photo (Agent Introduction).
+ */
+export type OpenerPlace = "home" | "elegant" | "area" | "office";
+
+function promptFor(style: OpenerStyle, line?: string | null, place: OpenerPlace = "home"): string {
   const who = "The person from the avatar reference, the real estate agent,";
   const say = line ? `look straight into the camera and say: "${line.replace(/"/g, "")}" Then they` : "";
+  const end = line ? "Natural, realistic and cinematic. Quiet ambience, no music. They say only that line." : "Natural, realistic and cinematic. They do not speak.";
+  if (place === "area") return [
+    `${who} stands on a sidewalk in the neighborhood in the reference photo, framed from the waist up, with the street, homes and trees softly behind them. They smile warmly at the camera, ${say ? `${say} ` : "then "}gesture with an open hand toward the street, inviting the viewer to look around. Camera at eye level, a slow, smooth push-in.`,
+    "The street, homes, trees and sky look like the reference photo. No text, no signs and no logos.",
+    end,
+  ].join(" ");
+  if (place === "office") return [
+    `${who} stands in a bright, simple, modern real estate office with soft daylight from a window, framed from the waist up. They smile warmly at the camera, ${say ? `${say} ` : "then "}give a small, friendly nod. Camera at eye level, almost still.`,
+    "No other people, no text, no signs and no logos.",
+    end,
+  ].join(" ");
   const shot = style === "full"
     ? `${who} stands on the front walkway of the house in the reference photo, seen full length from head to toe, with the front of the house behind them. They smile warmly at the camera, ${say ? `${say} ` : "then "}turn slightly and gesture with an open hand toward the front door, welcoming the viewer. Camera at eye level, a slow, smooth push-in.`
     : `${who} stands in front of the house in the reference photo, framed from the chest up and close to the camera, with the front of the house softly behind them. They smile warmly at the camera, ${say ? `${say} ` : "then "}gesture with an open hand back toward the house, welcoming the viewer. Camera at eye level, almost still.`;
   return [
-    shot,
+    place === "elegant" ? shot.replace(/Camera at eye level[^.]*\./, "The camera glides slowly and smoothly at eye level; a refined, elegant mood.") : shot,
     "The house, its siding, shutters, windows, front door, roof, plants, lawn and sky look exactly as in the reference photo.",
     "Nothing is added to the property: no fences, no extra buildings, no cars, no other people, no signs, no text and no logos.",
     line ? "Natural, realistic and cinematic. Quiet outdoor ambience, no music. They say only that line." : "Natural, realistic and cinematic. They do not speak.",
@@ -62,7 +81,9 @@ export function welcomeLine(address: string | null | undefined): string | null {
 
 export async function makeAgentOpener(opts: {
   lookId: string;
-  photoUrl: string;
+  /** The photo the shot is made from; none for the office. */
+  photoUrl?: string | null;
+  place?: OpenerPlace;
   aspect: "16:9" | "9:16";
   style: OpenerStyle;
   seconds?: number;
@@ -86,8 +107,8 @@ export async function makeAgentOpener(opts: {
         type: "cinematic_avatar",
         model: "heygen_video_1",
         avatar_id: [opts.lookId],
-        references: [{ type: "url", url: opts.photoUrl }],
-        prompt: promptFor(opts.style, opts.line),
+        ...(opts.photoUrl && opts.place !== "office" && { references: [{ type: "url", url: opts.photoUrl }] }),
+        prompt: promptFor(opts.style, opts.line, opts.place),
         aspect_ratio: opts.aspect,
         resolution: "720p",
         duration: Math.min(15, Math.max(5, Math.round(seconds))),

@@ -18,6 +18,12 @@ const run = promisify(execFile);
  */
 const ff = (cwd: string, args: string[]) => run(ffmpegPath.path, ["-y", "-hide_banner", "-loglevel", "error", ...args], { cwd, maxBuffer: 16 * 1024 * 1024 });
 
+/** The same video with its index up front, so phones start playing at once. Returns the new file. */
+export async function faststart(workDir: string, input: string, output: string): Promise<string> {
+  await ff(workDir, ["-i", input, "-c", "copy", "-movflags", "+faststart", output]);
+  return path.join(workDir, output);
+}
+
 /** How long a video is, in seconds. */
 export const secondsOf = async (file: string) => (await probe(file)).dur;
 
