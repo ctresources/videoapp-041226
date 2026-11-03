@@ -96,7 +96,7 @@ export interface StoreOptions {
   /** The contact card over the last seconds: headline first (2026-10-24). */
   endCard?: { lines: string[]; logoUrl?: string | null } | null;
   /** The agent in front of the home, put first (2026-10-24). */
-  opener?: { style: OpenerStyle; lookId: string; photoUrl: string } | null;
+  opener?: { style: OpenerStyle; lookId: string; photoUrl: string; line?: string | null } | null;
 }
 
 /**
@@ -427,7 +427,8 @@ export async function storeVideoDetailed(
     // music, so the music runs under the opener too.
     const openerShot = await openerMaking;
     if (openerShot && !seeThrough) {
-      const withOpener = await prependClip(processed, openerShot.url, openerShot.seconds);
+      // A talking opener keeps its own voice; a silent one gets silence.
+      const withOpener = await prependClip(processed, openerShot.url, openerShot.seconds, openerShot.talks);
       if (withOpener) {
         processed = withOpener;
         changed = true;

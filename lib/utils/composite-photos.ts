@@ -692,9 +692,11 @@ export async function flattenCutout(
 
 export async function prependClip(
   videoBuffer: Buffer,
-  /** A silent opening shot (its own sound is dropped), downloaded straight away. */
+  /** The opening shot, downloaded straight away. Its own sound is dropped unless keepSound. */
   clipUrl: string,
   clipSeconds: number,
+  /** A talking opener (2026-11-03): keep its voice. Falls back to silence if it has no sound. */
+  keepSound = false,
 ): Promise<Buffer | null> {
   const startedAt = Date.now();
   const dir = join(tmpdir(), `opener-${randomUUID()}`);
@@ -711,13 +713,16 @@ export async function prependClip(
     if (!w || !h) throw new Error("couldn't read the video's size");
     const W = Math.round(w / 2) * 2, H = Math.round(h / 2) * 2;
     const d = Math.max(1, clipSeconds).toFixed(3);
-    await new Promise<void>((resolve, reject) => {
+    const joinClip = (withSound: boolean) => new Promise<void>((resolve, reject) => {
       ffmpeg()
         .input(clipPath)
         .input(inPath)
         .complexFilter([
           `[0:v]trim=duration=${d},setpts=PTS-STARTPTS,scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,fps=25,format=yuv420p[cv]`,
-          `aevalsrc=0:c=stereo:s=48000:d=${d}[ca]`,
+          // Its own voice, padded or cut to the shot's length, or silence.
+          withSound
+            ? `[0:a]aresample=48000,aformat=channel_layouts=stereo,apad,atrim=duration=${d},asetpts=PTS-STARTPTS[ca]`
+            : `aevalsrc=0:c=stereo:s=48000:d=${d}[ca]`,
           `[1:v]scale=${W}:${H},setsar=1,fps=25,format=yuv420p[mv]`,
           `[1:a]aresample=48000,aformat=channel_layouts=stereo[ma]`,
           `[cv][ca][mv][ma]concat=n=2:v=1:a=1[outv][outa]`,
@@ -731,8 +736,18 @@ export async function prependClip(
         .on("error", (err) => reject(err))
         .save(outPath);
     });
+    let spoke = keepSound;
+    if (keepSound) {
+      await joinClip(true).catch(async (err) => {
+        console.warn("[composite-photos] Opener's own sound couldn't be used, joining it silent:", err instanceof Error ? err.message : err);
+        spoke = false;
+        await joinClip(false);
+      });
+    } else {
+      await joinClip(false);
+    }
     const out = await fs.readFile(outPath);
-    console.log(`[composite-photos] Opener put first (${d}s) in ${Math.round((Date.now() - startedAt) / 1000)}s`);
+    console.log(`[composite-photos] Opener put first (${d}s${spoke ? ", talking" : ""}) in ${Math.round((Date.now() - startedAt) / 1000)}s`);
     return out;
   } catch (err) {
     console.error("[composite-photos] Opener skipped, keeping the video as it was:", err instanceof Error ? err.message : err);

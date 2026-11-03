@@ -8,8 +8,11 @@
  * four minutes on Seedance. It invented a fence at the frame's edge there, so
  * the description keeps the house as photographed and adds nothing.
  *
- * No script and no voice in this mode: the shot is silent and the video's own
- * narration, music or opening line carry the sound.
+ * Silent by default: the video's own narration, music or opening line carry
+ * the sound. Since 2026-11-03 (HeyGen Video can now voice its cast; the owner
+ * approved a test on her twin) a listing video's opener can speak one line,
+ * "Welcome to 24 Shagbark Court in Harleysville…", in the look's own linked
+ * voice: only a Digital Twin has the agent's voice linked, so only twins talk.
  *
  * Returns null on any failure, so a video is never held up by its opener.
  */
@@ -22,17 +25,39 @@ export function parseOpenerStyle(v: unknown): OpenerStyle | null {
   return v === "full" || v === "chest" ? v : null;
 }
 
-function promptFor(style: OpenerStyle): string {
+function promptFor(style: OpenerStyle, line?: string | null): string {
   const who = "The person from the avatar reference, the real estate agent,";
+  const say = line ? `look straight into the camera and say: "${line.replace(/"/g, "")}" Then they` : "";
   const shot = style === "full"
-    ? `${who} stands on the front walkway of the house in the reference photo, seen full length from head to toe, with the front of the house behind them. They smile warmly at the camera, then turn slightly and gesture with an open hand toward the front door, welcoming the viewer. Camera at eye level, a slow, smooth push-in.`
-    : `${who} stands in front of the house in the reference photo, framed from the chest up and close to the camera, with the front of the house softly behind them. They smile warmly at the camera, then gesture with an open hand back toward the house, welcoming the viewer. Camera at eye level, almost still.`;
+    ? `${who} stands on the front walkway of the house in the reference photo, seen full length from head to toe, with the front of the house behind them. They smile warmly at the camera, ${say ? `${say} ` : "then "}turn slightly and gesture with an open hand toward the front door, welcoming the viewer. Camera at eye level, a slow, smooth push-in.`
+    : `${who} stands in front of the house in the reference photo, framed from the chest up and close to the camera, with the front of the house softly behind them. They smile warmly at the camera, ${say ? `${say} ` : "then "}gesture with an open hand back toward the house, welcoming the viewer. Camera at eye level, almost still.`;
   return [
     shot,
     "The house, its siding, shutters, windows, front door, roof, plants, lawn and sky look exactly as in the reference photo.",
     "Nothing is added to the property: no fences, no extra buildings, no cars, no other people, no signs, no text and no logos.",
-    "Natural, realistic and cinematic. They do not speak.",
+    line ? "Natural, realistic and cinematic. Quiet outdoor ambience, no music. They say only that line." : "Natural, realistic and cinematic. They do not speak.",
   ].join(" ");
+}
+
+/** "24 Shagbark Ct E, Harleysville, PA 19438" → "Welcome to 24 Shagbark Court East in Harleysville. Come on in, let me show you around." */
+const SAY: Record<string, string> = {
+  st: "Street", ave: "Avenue", av: "Avenue", rd: "Road", dr: "Drive", ln: "Lane", ct: "Court", blvd: "Boulevard", pl: "Place",
+  cir: "Circle", ter: "Terrace", pkwy: "Parkway", hwy: "Highway", trl: "Trail", sq: "Square", way: "Way",
+  n: "North", s: "South", e: "East", w: "West", ne: "Northeast", nw: "Northwest", se: "Southeast", sw: "Southwest",
+};
+export function welcomeLine(address: string | null | undefined): string | null {
+  const parts = (address ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const street = (parts[0] ?? "").replace(/\s*(#|apt\.?|unit|suite)\s*\S+$/i, "");
+  if (!/^\d+\s+\S/.test(street)) return null;
+  const ws = street.split(/\s+/);
+  // Directions anywhere; "St", "Dr"… only at the end ("24 Shagbark Ct E"), so "St Andrews Rd" keeps its Saint.
+  const spoken = ws.map((w, i) => {
+    const k = w.toLowerCase().replace(/\.$/, "");
+    const dir = k.length <= 2 && /^[nsew]{1,2}$/.test(k);
+    return i === 0 || (!dir && i < ws.length - 2) ? w : SAY[k] ?? w;
+  }).join(" ");
+  const town = parts.length >= 3 ? parts[1] : "";
+  return `Welcome to ${spoken}${town && !/\d/.test(town) ? ` in ${town}` : ""}. Come on in, let me show you around.`.slice(0, 160);
 }
 
 export async function makeAgentOpener(opts: {
@@ -43,7 +68,12 @@ export async function makeAgentOpener(opts: {
   seconds?: number;
   /** Give up after this long (ms). */
   timeoutMs?: number;
-}): Promise<{ url: string; seconds: number } | null> {
+  /** One line for them to say (only a Digital Twin has their own voice). Silent without. */
+  line?: string | null;
+}): Promise<{ url: string; seconds: number; talks: boolean } | null> {
+  // A spoken line needs time to land: about 2.6 words a second, plus a beat.
+  const words = (opts.line ?? "").split(/\s+/).filter(Boolean).length;
+  const seconds = words ? Math.max(opts.seconds ?? 6, Math.ceil(words / 2.6) + 2) : (opts.seconds ?? 6);
   const key = process.env.HEYGEN_API_KEY;
   if (!key) return null;
   const headers = { "x-api-key": key, "Content-Type": "application/json" };
@@ -57,10 +87,10 @@ export async function makeAgentOpener(opts: {
         model: "heygen_video_1",
         avatar_id: [opts.lookId],
         references: [{ type: "url", url: opts.photoUrl }],
-        prompt: promptFor(opts.style),
+        prompt: promptFor(opts.style, opts.line),
         aspect_ratio: opts.aspect,
         resolution: "720p",
-        duration: Math.min(15, Math.max(5, Math.round(opts.seconds ?? 6))),
+        duration: Math.min(15, Math.max(5, Math.round(seconds))),
         title: "SparkReels opener",
       }),
       signal: AbortSignal.timeout(30_000),
@@ -79,7 +109,7 @@ export async function makeAgentOpener(opts: {
       if (!d) continue;
       if (d.status === "completed" && d.video_url) {
         console.log(`[opener] ${opts.style} shot ready in ${Math.round((Date.now() - started) / 1000)}s`);
-        return { url: d.video_url as string, seconds: Number(d.duration) || opts.seconds || 6 };
+        return { url: d.video_url as string, seconds: Number(d.duration) || seconds, talks: !!opts.line };
       }
       if (d.status === "failed") {
         console.warn(`[opener] failed: ${JSON.stringify(d.error ?? d.failure_message ?? d).slice(0, 300)}`);

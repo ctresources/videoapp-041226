@@ -64,10 +64,10 @@ export async function buildStoreOptions(
 
 /** The opener asked for at render time, if it is whole. */
 function openerOf(v: unknown): StoreOptions["opener"] {
-  const o = v as { style?: unknown; look_id?: unknown; photo_url?: unknown } | null;
+  const o = v as { style?: unknown; look_id?: unknown; photo_url?: unknown; line?: unknown } | null;
   const style = parseOpenerStyle(o?.style);
   if (!style || typeof o?.look_id !== "string" || typeof o?.photo_url !== "string") return null;
-  return { style, lookId: o.look_id, photoUrl: o.photo_url };
+  return { style, lookId: o.look_id, photoUrl: o.photo_url, line: typeof o.line === "string" && o.line.trim() ? o.line.slice(0, 160) : null };
 }
 
 /** The contact card recorded at render time, if it has anything to say. */

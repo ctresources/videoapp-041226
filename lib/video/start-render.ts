@@ -38,7 +38,7 @@ import { isTwinLook, pickTwin } from "@/lib/utils/twin-looks";
 import { canAccessFeature, getAccessLevel, isPaidLevel } from "@/lib/access";
 import { friendlyRenderError } from "@/lib/utils/render-errors";
 import { addSparkleeNote } from "@/lib/sparklee-notes";
-import { parseOpenerStyle } from "@/lib/api/agent-opener";
+import { parseOpenerStyle, welcomeLine } from "@/lib/api/agent-opener";
 import { standardMaxWords, standardMaxMinutes, clampScript, WPM } from "@/lib/utils/video-length";
 
 /**
@@ -1673,6 +1673,11 @@ export async function startRender(
                   ? profile.heygen_digital_twin_look_id
                   : directAvatarId,
                 photo_url: listingPhotos[0] || directPhotos[0],
+                // The twin says "Welcome to …" in its own voice (2026-11-03). Only a
+                // twin has the agent's voice linked; a headshot look stays silent.
+                ...((profile.heygen_digital_twin_look_id && !profile.twin_consent_needed)
+                  && welcomeLine(listingData?.address as string | undefined)
+                  && { line: welcomeLine(listingData?.address as string | undefined) }),
               },
             }),
           },
