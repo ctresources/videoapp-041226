@@ -91,6 +91,8 @@ export interface TemplateRecord {
   clean?: string; logo?: string | null;
   /** The music track under the voice (mixed into clean, so new words keep it). */
   music?: string | null;
+  /** Music On/Off on the page (2026-11-03); on unless turned off. */
+  musicOn?: boolean;
   /** Where the face circle was put in this video (kept so new words line up with it). */
   circle?: Circle;
 }
@@ -147,6 +149,8 @@ export async function makeTemplateVideo(admin: Admin, user: { id: string }, o: {
   design: DesignId; shape: Shape; fields: Record<string, string>; photos: string[]; script: string; title: string;
   /** Who's on screen, when the agent has both. */
   face?: "twin" | "avatar";
+  /** Music under the voice; on unless false. */
+  music?: boolean;
 }): Promise<{ videoId: string; projectId: string } | { error: string; status: number; code?: string }> {
   const d = designById(o.design);
   if (!d) return { error: "Pick a design.", status: 400 };
@@ -176,7 +180,7 @@ export async function makeTemplateVideo(admin: Admin, user: { id: string }, o: {
   }).select("id").single();
   if (!project) return { error: "Couldn't start the video.", status: 500 };
   const projectId = (project as { id: string }).id;
-  const record: TemplateRecord = { design: o.design, shape: o.shape, fields: o.fields, photos, accent: accentOf(p), logo: p.logo_url };
+  const record: TemplateRecord = { design: o.design, shape: o.shape, fields: o.fields, photos, accent: accentOf(p), logo: p.logo_url, musicOn: o.music !== false };
   const { w, h } = SIZE[o.shape];
   const { data: row } = await admin.from("generated_videos").insert({
     project_id: projectId, user_id: user.id, video_type: o.shape === "vertical" ? "reel_9x16" : "youtube_16x9",
@@ -256,7 +260,7 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
     const rec = row.metadata.template as TemplateRecord;
     const d = designById(rec.design)!;
     // Started now, so they're ready by the time the video is put together.
-    const musicFinding = pickMusic(rec.design);
+    const musicFinding = rec.musicOn === false ? Promise.resolve(null) : pickMusic(rec.design);
     const postCopy = writePostCopy(admin, row.project_id, String(row.metadata.title ?? d.name), rec);
 
     let photos = rec.photos;
@@ -284,7 +288,8 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
     // Music under the voice, mixed into the kept video so Edit the words keeps it.
     const music = await musicFinding;
     if (music) {
-      const mixed = await mixBackgroundMusic(fs.readFileSync(clean), music);
+      // 2 dB under the app's usual bed (the owner found it a little high).
+      const mixed = await mixBackgroundMusic(fs.readFileSync(clean), music, { trimDb: -2 });
       if (mixed) fs.writeFileSync(clean, mixed);
     }
     // The words animated (HyperFrames), else the still words.

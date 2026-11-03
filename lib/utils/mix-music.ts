@@ -98,9 +98,9 @@ const MIX_BOOST = "volume=2.0,alimiter=limit=0.95[a]";
  * sidechaincompress requires them to match, and a HeyGen render's 44.1kHz
  * stereo against an arbitrary uploaded track is not a safe assumption.
  */
-const DUCKED_FILTER = [
+const duckedFilter = (level: number) => [
   "[0:a]aformat=channel_layouts=stereo:sample_rates=44100,asplit=2[voice][key]",
-  `[1:a]aformat=channel_layouts=stereo:sample_rates=44100,${MUSIC_EVEN},volume=${MUSIC_LEVEL}[music]`,
+  `[1:a]aformat=channel_layouts=stereo:sample_rates=44100,${MUSIC_EVEN},volume=${level}[music]`,
   `[music][key]sidechaincompress=threshold=0.04:ratio=${DUCK_RATIO}:attack=12:release=350[duck]`,
   `[voice][duck]${MIX_TAIL}`,
   `[mix]${MIX_BOOST}`,
@@ -112,8 +112,8 @@ const DUCKED_FILTER = [
  * music entirely is the bug this whole file exists to avoid, and that is what
  * a hard failure here used to cause.
  */
-const FLAT_FILTER = [
-  `[1:a]volume=${FLAT_LEVEL}[m]`,
+const flatFilter = (level: number) => [
+  `[1:a]volume=${level}[m]`,
   `[0:a][m]${MIX_TAIL}`,
   `[mix]${MIX_BOOST}`,
 ];
@@ -147,7 +147,12 @@ function runMix(videoPath: string, musicPath: string, outPath: string, filter: s
 export async function mixBackgroundMusic(
   videoBuffer: Buffer,
   musicUrl: string,
+  /** Moves the music up or down from the usual level, in dB (templates sit 2 dB lower, the owner's ask 2026-11-03). */
+  opts?: { trimDb?: number },
 ): Promise<Buffer | null> {
+  const k = Math.pow(10, (opts?.trimDb ?? 0) / 20);
+  const level = Math.round(MUSIC_LEVEL * k * 1000) / 1000;
+  const flat = Math.round(FLAT_LEVEL * k * 1000) / 1000;
   const dir = join(tmpdir(), `mix-${randomUUID()}`);
   try {
     await fs.mkdir(dir, { recursive: true });
@@ -163,21 +168,21 @@ export async function mixBackgroundMusic(
 
     let ducked = true;
     try {
-      await runMix(videoPath, musicPath, outPath, DUCKED_FILTER);
+      await runMix(videoPath, musicPath, outPath, duckedFilter(level));
     } catch (err) {
       console.warn(
         "[mix-music] Ducked mix failed, falling back to a flat bed:",
         err instanceof Error ? err.message : err,
       );
       ducked = false;
-      await runMix(videoPath, musicPath, outPath, FLAT_FILTER);
+      await runMix(videoPath, musicPath, outPath, flatFilter(flat));
     }
 
     const mixed = await fs.readFile(outPath);
     console.log(
       `[mix-music] Mixed ${(musicUrl.split("?")[0] || "").slice(-40)} into video ` +
-      `(${(mixed.length / 1024 / 1024).toFixed(1)} MB, level=${MUSIC_LEVEL}, ` +
-      `${ducked ? `evened + ducked ${DUCK_RATIO}:1` : `flat at ${FLAT_LEVEL}`})`,
+      `(${(mixed.length / 1024 / 1024).toFixed(1)} MB, level=${level}, ` +
+      `${ducked ? `evened + ducked ${DUCK_RATIO}:1` : `flat at ${flat}`})`,
     );
     return mixed;
   } catch (err) {
