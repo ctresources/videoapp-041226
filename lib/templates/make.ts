@@ -3,7 +3,9 @@ import os from "os";
 import path from "path";
 import sharp from "sharp";
 import type { createAdminClient } from "@/lib/supabase/admin";
-import { generateVideoV3, lookOrientation } from "@/lib/api/heygen";
+import { generateVideoV3, lookOrientation, searchBackgroundMusic } from "@/lib/api/heygen";
+import { generateSeoData } from "@/lib/api/perplexity";
+import { mixBackgroundMusic } from "@/lib/utils/mix-music";
 import { generateTwinBackdrop } from "@/lib/api/openai-image";
 import { openaiChatJson } from "@/lib/api/openai-chat";
 import { chargeOneVideo, ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
@@ -33,6 +35,48 @@ async function animateWords(rec: TemplateRecord, fields: Record<string, string>,
 
 type Admin = ReturnType<typeof createAdminClient>;
 
+/** Music under the voice (2026-11-03, the owner's ask): a library track to suit each design. */
+const MUSIC: Record<DesignId, string> = {
+  just_listed: "upbeat inspiring corporate",
+  luxury: "elegant cinematic piano",
+  market_update: "modern corporate news",
+  neighborhood: "warm acoustic upbeat",
+  agent_intro: "warm inspiring corporate",
+};
+async function pickMusic(design: DesignId): Promise<string | null> {
+  try {
+    const tracks = (await searchBackgroundMusic(MUSIC[design], 3)).filter((t) => /^https:\/\//.test(t.audio_url ?? ""));
+    return tracks.length ? tracks[Math.floor(Math.random() * tracks.length)].audio_url : null;
+  } catch (err) {
+    console.warn("[templates] music lookup skipped:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+/**
+ * The post's title, description and hashtags (2026-11-03): template videos
+ * reached Publish with only a title. Written from the script and the words on
+ * screen, onto the project, unless it already has post copy.
+ */
+async function writePostCopy(admin: Admin, projectId: string | null, title: string, rec: TemplateRecord): Promise<void> {
+  if (!projectId) return;
+  try {
+    const { data } = await admin.from("projects").select("ai_script, seo_data").eq("id", projectId).single();
+    const pr = data as { ai_script: { script?: string } | null; seo_data: Record<string, unknown> | null } | null;
+    if (pr?.seo_data && Object.keys(pr.seo_data).length) return;
+    const onScreen = Object.entries(rec.fields).filter(([k, v]) => k !== "bg" && v?.trim()).map(([, v]) => v).join(". ");
+    const source = [pr?.ai_script?.script ?? "", onScreen].filter(Boolean).join("\n");
+    const keywords = [rec.fields.address, rec.fields.title, rec.fields.name].filter((x): x is string => !!x?.trim());
+    const seo = await Promise.race([
+      generateSeoData(title, source || title, keywords),
+      new Promise<null>((r) => setTimeout(() => r(null), 45_000)),
+    ]);
+    if (seo) await admin.from("projects").update({ seo_data: { ...seo, youtube_title: seo.youtube_title || title } }).eq("id", projectId);
+  } catch (err) {
+    console.warn("[templates] post copy skipped:", err instanceof Error ? err.message : err);
+  }
+}
+
 /**
  * Video templates, start to finish (2026-11-02, the owner's approved mockup).
  *  1. makeTemplateVideo: HeyGen renders the agent saying the script (callback
@@ -45,6 +89,8 @@ type Admin = ReturnType<typeof createAdminClient>;
 export interface TemplateRecord {
   design: DesignId; shape: Shape; fields: Record<string, string>; photos: string[]; accent: string;
   clean?: string; logo?: string | null;
+  /** The music track under the voice (mixed into clean, so new words keep it). */
+  music?: string | null;
   /** Where the face circle was put in this video (kept so new words line up with it). */
   circle?: Circle;
 }
@@ -209,6 +255,9 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
     if (!row) return;
     const rec = row.metadata.template as TemplateRecord;
     const d = designById(rec.design)!;
+    // Started now, so they're ready by the time the video is put together.
+    const musicFinding = pickMusic(rec.design);
+    const postCopy = writePostCopy(admin, row.project_id, String(row.metadata.title ?? d.name), rec);
 
     let photos = rec.photos;
     if (d.photos === "place" && photos.length === 0) {
@@ -232,6 +281,12 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
       workDir: work, shape: rec.shape, circle, avatar,
       photos: usable, still: still ?? (usable.length ? null : path.join(work, "plain.png")), threads: 1,
     });
+    // Music under the voice, mixed into the kept video so Edit the words keeps it.
+    const music = await musicFinding;
+    if (music) {
+      const mixed = await mixBackgroundMusic(fs.readFileSync(clean), music);
+      if (mixed) fs.writeFileSync(clean, mixed);
+    }
     // The words animated (HyperFrames), else the still words.
     const animated = await animateWords(rec, rec.fields, await secondsOf(clean), logo, `${rowId}-words-1`);
     const final = await addWords({ workDir: work, clean, words: png, threads: 1, animated });
@@ -245,8 +300,9 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
     const pub = (p: string) => admin.storage.from("videos").getPublicUrl(p).data.publicUrl;
     await admin.from("generated_videos").update({
       render_status: "completed", video_url: `${pub(finalPath)}?v=${Date.now()}`, render_finished_at: new Date().toISOString(),
-      metadata: { ...row.metadata, template: { ...rec, photos, clean: pub(cleanPath), animated: !!animated, circle } },
+      metadata: { ...row.metadata, template: { ...rec, photos, clean: pub(cleanPath), animated: !!animated, circle, music: music ?? null } },
     }).eq("id", rowId);
+    await postCopy;
     if (row.project_id) {
       await admin.from("projects").update({ status: "ready" }).eq("id", row.project_id);
       await ensureProjectThumbnail(row.project_id, row.user_id).catch(() => {});
