@@ -1,6 +1,6 @@
 // Renders all five designs in both shapes over a sample photo, with a grey
 // stand-in for the agent's circle, into one contact sheet for checking.
-//   node scripts/templates/preview-designs.mjs <out.png>
+//   node scripts/templates/preview-designs.mjs <out.png> [background id] [accent hex]
 import { createRequire } from "module";
 import path from "path";
 import sharp from "sharp";
@@ -30,7 +30,7 @@ for (const shape of ["horizontal", "vertical"]) {
     const bg = des.id === "agent_intro"
       ? await d.introBackground(shape)
       : await sharp(Buffer.from(await (await fetch(photos[des.id])).arrayBuffer())).resize(w, h, { fit: "cover" }).png().toBuffer();
-    const { png, circle } = await d.wordsLayer(des.id, shape, sample[des.id]);
+    const { png, circle } = await d.wordsLayer(des.id, shape, { ...sample[des.id], bg: process.argv[3] ?? "" }, process.argv[4]);
     const disc = await sharp({ create: { width: Math.round(circle.d), height: Math.round(circle.d), channels: 4, background: "#9a8f80" } })
       .composite([{ input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(circle.d)}" height="${Math.round(circle.d)}"><circle cx="${circle.d / 2}" cy="${circle.d / 2}" r="${circle.d / 2}" fill="#fff"/></svg>`), blend: "dest-in" }]).png().toBuffer();
     console.log(shape, des.id);

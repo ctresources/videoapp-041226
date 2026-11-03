@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { BackgroundPicker } from "@/components/templates/background-picker";
 
 /**
  * Video templates (2026-11-02, the owner's approved mockup): pick a design,
@@ -17,7 +18,7 @@ type DesignId = "just_listed" | "luxury" | "market_update" | "neighborhood" | "a
 interface Field { key: string; label: string; placeholder?: string }
 interface Design { id: DesignId; name: string; blurb: string; photos: "listing" | "place" | "none"; fields: Field[]; defaults: Record<string, string> }
 interface Listing { id: string; address: string; price: string | number; beds: string | number; baths: string | number; sqft: string | number; photos: string[] }
-interface Setup { designs: Design[]; listings: Listing[]; videosLeft: number | null; faces?: { twin: boolean; avatar: boolean } }
+interface Setup { designs: Design[]; listings: Listing[]; videosLeft: number | null; accent: string; faces?: { twin: boolean; avatar: boolean } }
 interface Found { period: string; source: string; sourceUrl: string }
 
 const input = "w-full rounded-[10px] border border-spark-rule bg-[#fdfbf7] px-3 py-2 text-[16px] text-spark-ink outline-none focus:border-[#A3660F]";
@@ -45,9 +46,12 @@ export function TemplatesStudio() {
   const [face, setFace] = useState<"twin" | "avatar">("twin");
   const [lookingUp, setLookingUp] = useState(false);
   const [found, setFound] = useState<Found | null>(null);
+  const [bg, setBg] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const d = setup?.designs.find((x) => x.id === design) ?? null;
+  // The background color travels with the words (fields.bg), kept across designs.
+  const words = bg ? { ...fields, bg } : fields;
 
   useEffect(() => {
     fetch("/api/templates").then((r) => (r.ok ? r.json() : null)).then((s: Setup | null) => {
@@ -83,14 +87,15 @@ export function TemplatesStudio() {
     const t = setTimeout(async () => {
       setPreviewing(true);
       try {
-        const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "preview", design, shape, fields, photo: photos[0] ?? null }) });
+        const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "preview", design, shape, fields: words, photo: photos[0] ?? null }) });
         if (!r.ok) return;
         const url = URL.createObjectURL(await r.blob());
         setPreview((old) => { if (old) URL.revokeObjectURL(old); return url; });
       } finally { setPreviewing(false); }
     }, 700);
     return () => clearTimeout(t);
-  }, [setup, design, shape, fields, photos]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setup, design, shape, fields, photos, bg]);
 
   async function upload(files: FileList | null) {
     if (!files?.length) return;
@@ -143,7 +148,7 @@ export function TemplatesStudio() {
     if (!window.confirm("Make this video? It uses 1 short video from your plan.")) return;
     setMaking(true);
     try {
-      const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "make", design, shape, fields, photos, script, face }) });
+      const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "make", design, shape, fields: words, photos, script, face }) });
       const out = await r.json().catch(() => ({}));
       if (!r.ok) { toast.error(out.error || "Couldn't make the video."); return; }
       setMade(out.videoId);
@@ -186,26 +191,29 @@ export function TemplatesStudio() {
           <p className="mb-1 text-[17px] font-bold text-spark-ink">Words on screen</p>
           <div className="grid gap-x-3 sm:grid-cols-2">
             {d.fields.map((f) => (
-              <label key={f.key} className={`block ${d.id === "market_update" && /^s\d/.test(f.key) ? "" : "sm:col-span-2"}`}>
-                <span className="mb-1 mt-2 block text-[14px] font-semibold text-spark-ink-soft">{f.label}</span>
-                <input className={input} value={fields[f.key] ?? ""} placeholder={f.placeholder} onChange={(e) => setFields({ ...fields, [f.key]: e.target.value })} />
-              </label>
+              <Fragment key={f.key}>
+                {/* Look up numbers sits right above the three numbers (2026-11-03). */}
+                {d.id === "market_update" && f.key === "s1" && (
+                  <div className="mt-3 sm:col-span-2">
+                    <button type="button" onClick={() => void lookUpNumbers()} disabled={lookingUp} className={chip(false)}>
+                      {lookingUp ? <Loader2 size={15} className="mr-1.5 inline animate-spin" /> : null}Look up numbers
+                    </button>
+                    {found && (
+                      <p className="mt-1.5 text-[13px] text-spark-ink-muted">
+                        {found.period && <>For {found.period}. </>}Source: {found.sourceUrl
+                          ? <a href={found.sourceUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#A3660F] underline">{found.source || "open"}</a>
+                          : found.source || "not given"}. Check them before you make the video.
+                      </p>
+                    )}
+                  </div>
+                )}
+                <label className={`block ${d.id === "market_update" && /^s\d/.test(f.key) ? "" : "sm:col-span-2"}`}>
+                  <span className="mb-1 mt-2 block text-[14px] font-semibold text-spark-ink-soft">{f.label}</span>
+                  <input className={input} value={fields[f.key] ?? ""} placeholder={f.placeholder} onChange={(e) => setFields({ ...fields, [f.key]: e.target.value })} />
+                </label>
+              </Fragment>
             ))}
           </div>
-          {d.id === "market_update" && (
-            <div className="mt-3">
-              <button type="button" onClick={() => void lookUpNumbers()} disabled={lookingUp} className={chip(false)}>
-                {lookingUp ? <Loader2 size={15} className="mr-1.5 inline animate-spin" /> : null}Look up numbers
-              </button>
-              {found && (
-                <p className="mt-1.5 text-[13px] text-spark-ink-muted">
-                  {found.period && <>For {found.period}. </>}Source: {found.sourceUrl
-                    ? <a href={found.sourceUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#A3660F] underline">{found.source || "open"}</a>
-                    : found.source || "not given"}. Check them before you make the video.
-                </p>
-              )}
-            </div>
-          )}
 
           {d.photos !== "none" && (
             <>
@@ -236,6 +244,9 @@ export function TemplatesStudio() {
             <button type="button" className={chip(shape === "vertical")} onClick={() => setShape("vertical")}>Vertical 9:16</button>
             <button type="button" className={chip(shape === "horizontal")} onClick={() => setShape("horizontal")}>Horizontal 16:9</button>
           </div>
+
+          <p className="mb-1.5 mt-4 text-[17px] font-bold text-spark-ink">Background</p>
+          <BackgroundPicker value={bg} accent={setup.accent} onChange={setBg} />
 
           {setup.faces?.twin && setup.faces.avatar && (
             <>

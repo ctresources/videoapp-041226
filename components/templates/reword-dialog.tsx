@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BackgroundPicker } from "@/components/templates/background-picker";
 
 /**
  * "Edit the words" on a template video in My Sparks (2026-11-02, the owner's
@@ -18,12 +19,16 @@ export function RewordButton({ videoId, design, fields: start, onDone }: {
   const [open, setOpen] = useState(false);
   const [defs, setDefs] = useState<Field[] | null>(null);
   const [fields, setFields] = useState<Record<string, string>>(start);
+  const [accent, setAccent] = useState("#e7b84a");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!open || defs) return;
     fetch("/api/templates").then((r) => (r.ok ? r.json() : null))
-      .then((s) => setDefs((s?.designs ?? []).find((d: { id: string }) => d.id === design)?.fields ?? []))
+      .then((s) => {
+        setDefs((s?.designs ?? []).find((d: { id: string }) => d.id === design)?.fields ?? []);
+        if (typeof s?.accent === "string") setAccent(s.accent);
+      })
       .catch(() => setDefs([]));
   }, [open, defs, design]);
 
@@ -57,6 +62,12 @@ export function RewordButton({ videoId, design, fields: start, onDone }: {
                   value={fields[f.key] ?? ""} placeholder={f.placeholder} onChange={(e) => setFields({ ...fields, [f.key]: e.target.value })} />
               </label>
             ))}
+            {defs && (
+              <div className="mb-2 mt-3">
+                <span className="mb-1 block text-[14px] font-semibold text-spark-ink-soft">Background</span>
+                <BackgroundPicker value={fields.bg ?? ""} accent={accent} onChange={(id) => setFields({ ...fields, bg: id })} />
+              </div>
+            )}
             <div className="mt-3 flex gap-2">
               <Button onClick={() => void save()} loading={busy}>Update the words</Button>
               <button type="button" onClick={() => setOpen(false)} disabled={busy} className="rounded-xl border border-spark-rule px-4 py-2 text-[15px] font-semibold">Cancel</button>

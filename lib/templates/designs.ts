@@ -3,6 +3,7 @@ import path from "path";
 import * as opentypeNs from "opentype.js";
 import sharp from "sharp";
 import { glyphPathData } from "@/lib/utils/glyph-path-data";
+import { darken, lighten, shadeOf } from "@/lib/templates/backgrounds";
 
 const opentype = ((opentypeNs as unknown as { default?: typeof opentypeNs }).default ?? opentypeNs);
 
@@ -134,6 +135,11 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
   let circle: Circle;
   let ring = accent;
   const defs: string[] = [];
+  // The background color the agent picked (2026-11-03), else each design's own shade.
+  const S = shadeOf(f.bg, accent);
+  const sh = (own: string) => S ?? own;
+  // On their own brand color, the brand-colored words are lightened so they still stand out.
+  if (f.bg === "brand" && S) accent = lighten(accent, 0.55);
   /** Name · brokerage, then the phones underneath, at (x, y). */
   const contact = (x: number, y: number, anchor: "start" | "middle" | "end", maxW: number, size: number) => {
     let yy = y;
@@ -150,7 +156,7 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
     put("label", `<rect x="${W * 0.05}" y="${H * (v ? 0.05 : 0.07)}" width="${kw}" height="${ks * 1.6}" rx="${ks * 0.18}" fill="${accent}"/>`);
     put("label", line(kt, W * 0.05 + ks * 0.55, H * (v ? 0.05 : 0.07) + ks * 1.17, ks, ink(accent), "display", "start", 2));
     // Dark fade under the words.
-    defs.push(`<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="0.45" stop-color="#000" stop-opacity="0.72"/><stop offset="1" stop-color="#000" stop-opacity="0.86"/></linearGradient>`);
+    defs.push(`<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sh("#000")}" stop-opacity="0"/><stop offset="0.45" stop-color="${sh("#000")}" stop-opacity="0.72"/><stop offset="1" stop-color="${sh("#000")}" stop-opacity="0.86"/></linearGradient>`);
     if (v) {
       put("fade", `<rect x="0" y="${H * 0.6}" width="${W}" height="${H * 0.4}" fill="url(#fade)"/>`);
       circle = { cx: W * 0.5, cy: H * 0.6, d: W * 0.42 };
@@ -179,10 +185,10 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
   } else if (id === "luxury") {
     const bar = v ? H * 0.1 : H * 0.16;
     // A soft dark band behind the address, so it reads over a bright room.
-    defs.push(`<radialGradient id="lxband" cx="0.5" cy="${v ? 0.4 : 0.47}" r="${v ? 0.6 : 0.55}"><stop offset="0" stop-color="#000" stop-opacity="0.5"/><stop offset="1" stop-color="#000" stop-opacity="0.15"/></radialGradient>`);
+    defs.push(`<radialGradient id="lxband" cx="0.5" cy="${v ? 0.4 : 0.47}" r="${v ? 0.6 : 0.55}"><stop offset="0" stop-color="${sh("#000")}" stop-opacity="0.5"/><stop offset="1" stop-color="${sh("#000")}" stop-opacity="0.15"/></radialGradient>`);
     put("band", `<rect x="0" y="0" width="${W}" height="${H}" fill="url(#lxband)"/>`);
-    put("bartop", `<rect x="0" y="0" width="${W}" height="${bar}" fill="#0d0b09"/>`);
-    put("barbot", `<rect x="0" y="${H - bar}" width="${W}" height="${bar}" fill="#0d0b09"/>`);
+    put("bartop", `<rect x="0" y="0" width="${W}" height="${bar}" fill="${sh("#0d0b09")}"/>`);
+    put("barbot", `<rect x="0" y="${H - bar}" width="${W}" height="${bar}" fill="${sh("#0d0b09")}"/>`);
     const kt = (g("headline") || "Luxury Listing").toUpperCase();
     put("kicker", line(kt, W / 2, bar * 0.62, fit(kt, W * 0.9, v ? 26 : 30, 16, "text", 6), accent, "text", "middle", 6));
     const a = wrap(g("address"), W * 0.86, v ? 56 : 64, 30, 2, "text");
@@ -199,7 +205,7 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
     const stats = [1, 2, 3].map((i) => ({ v: g(`s${i}`), l: g(`s${i}l`), c: g(`s${i}c`) })).filter((s) => s.v);
     const changeColor = (c: string) => (/^\s*(-|down)/i.test(c) ? "#ff8a80" : "#6fd39a");
     if (v) {
-      defs.push(`<linearGradient id="pan" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0e121a" stop-opacity="0.96"/><stop offset="0.8" stop-color="#0e121a" stop-opacity="0.9"/><stop offset="1" stop-color="#0e121a" stop-opacity="0"/></linearGradient>`);
+      defs.push(`<linearGradient id="pan" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sh("#0e121a")}" stop-opacity="0.96"/><stop offset="0.8" stop-color="${sh("#0e121a")}" stop-opacity="0.9"/><stop offset="1" stop-color="${sh("#0e121a")}" stop-opacity="0"/></linearGradient>`);
       put("panel", `<rect x="0" y="0" width="${W}" height="${H * 0.56}" fill="url(#pan)"/>`);
       const x = W * 0.07;
       put("kicker", line(g("headline").toUpperCase(), x, H * 0.07, fit(g("headline").toUpperCase(), W * 0.86, 26, 16, "text", 3), accent, "text", "start", 3));
@@ -215,11 +221,11 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
         put(`stat${i}`, line(s.c, sx + 14, ty + 132, fit(s.c, tw - 28, 20, 12, "text"), changeColor(s.c), "text"));
       });
       circle = { cx: W / 2, cy: H * 0.73, d: W * 0.46 };
-      defs.push(`<linearGradient id="foot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.8"/></linearGradient>`);
+      defs.push(`<linearGradient id="foot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sh("#000")}" stop-opacity="0"/><stop offset="1" stop-color="${sh("#000")}" stop-opacity="0.8"/></linearGradient>`);
       put("foot", `<rect x="0" y="${H * 0.84}" width="${W}" height="${H * 0.16}" fill="url(#foot)"/>`);
       contact(W / 2, H * 0.93, "middle", W * 0.88, 24);
     } else {
-      defs.push(`<linearGradient id="pan" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0e121a" stop-opacity="0.96"/><stop offset="0.72" stop-color="#0e121a" stop-opacity="0.92"/><stop offset="1" stop-color="#0e121a" stop-opacity="0"/></linearGradient>`);
+      defs.push(`<linearGradient id="pan" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${sh("#0e121a")}" stop-opacity="0.96"/><stop offset="0.72" stop-color="${sh("#0e121a")}" stop-opacity="0.92"/><stop offset="1" stop-color="${sh("#0e121a")}" stop-opacity="0"/></linearGradient>`);
       put("panel", `<rect x="0" y="0" width="${W * 0.62}" height="${H}" fill="url(#pan)"/>`);
       const x = W * 0.045, maxW = W * 0.5;
       put("kicker", line(g("headline").toUpperCase(), x, H * 0.14, fit(g("headline").toUpperCase(), maxW, 24, 14, "text", 3), accent, "text", "start", 3));
@@ -238,10 +244,10 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
       contact(x, H * 0.885, "start", maxW, 20);
     }
   } else if (id === "neighborhood") {
-    defs.push(`<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.8"/></linearGradient>`);
+    defs.push(`<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sh("#000")}" stop-opacity="0"/><stop offset="1" stop-color="${sh("#000")}" stop-opacity="0.8"/></linearGradient>`);
     put("fade", `<rect x="0" y="${H * 0.45}" width="${W}" height="${H * 0.55}" fill="url(#fade)"/>`);
     // A soft dark top for the contact block.
-    defs.push(`<linearGradient id="top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0.6"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>`);
+    defs.push(`<linearGradient id="top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sh("#000")}" stop-opacity="0.6"/><stop offset="1" stop-color="${sh("#000")}" stop-opacity="0"/></linearGradient>`);
     put("top", `<rect x="0" y="0" width="${W}" height="${H * (v ? 0.2 : 0.26)}" fill="url(#top)"/>`);
     const kt = (g("headline") || "Neighborhood Spotlight").toUpperCase();
     const ks = v ? 24 : 22;
@@ -279,9 +285,15 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
     }
     ring = "#ffffff";
   } else {
-    // agent_intro: the background is drawn by background() below.
+    // agent_intro: the background is drawn here too, with a hole for the agent's
+    // circle, so a new color can be laid on later without a new video (2026-11-03).
+    circle = v ? { cx: W / 2, cy: H * 0.3, d: W * 0.62 } : { cx: W * 0.24, cy: H * 0.5, d: W * 0.34 };
+    const hr = circle.d / 2 - 1;
+    const holed = `M0 0H${W}V${H}H0Z M${circle.cx - hr} ${circle.cy} a${hr} ${hr} 0 1 0 ${2 * hr} 0 a${hr} ${hr} 0 1 0 ${-2 * hr} 0Z`;
+    const [b0, b1] = S ? [darken(S, 0.45), S] : ["#16120d", "#3a2a14"];
+    defs.push(`<linearGradient id="ib" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${b0}"/><stop offset="1" stop-color="${b1}"/></linearGradient><radialGradient id="ir" cx="0.25" cy="0.4" r="0.6"><stop offset="0" stop-color="${accent}" stop-opacity="0.28"/><stop offset="1" stop-color="${accent}" stop-opacity="0"/></radialGradient>`);
+    put("bg", `<path d="${holed}" fill-rule="evenodd" fill="url(#ib)"/><path d="${holed}" fill-rule="evenodd" fill="url(#ir)"/>`);
     if (v) {
-      circle = { cx: W / 2, cy: H * 0.3, d: W * 0.62 };
       const x = W / 2;
       put("kicker", line(g("headline").toUpperCase(), x, H * 0.57, fit(g("headline").toUpperCase(), W * 0.86, 28, 16, "text", 4), accent, "text", "middle", 4));
       put("name", line(g("name"), x, H * 0.65, fit(g("name"), W * 0.9, 76, 36, "display"), "#fff", "display", "middle"));
@@ -290,7 +302,6 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
       put("phones", line(g("phones"), x, H * 0.81, fit(g("phones"), W * 0.88, 30, 16, "text"), "#fff", "text", "middle"));
       put("website", line(g("website"), x, H * 0.86, fit(g("website"), W * 0.86, 28, 16, "text"), "#fff", "text", "middle"));
     } else {
-      circle = { cx: W * 0.24, cy: H * 0.5, d: W * 0.34 };
       const x = W * 0.46, maxW = W * 0.5;
       put("kicker", line(g("headline").toUpperCase(), x, H * 0.3, fit(g("headline").toUpperCase(), maxW, 28, 14, "text", 4), accent, "text", "start", 4));
       put("name", line(g("name"), x, H * 0.43, fit(g("name"), maxW, 80, 34, "display"), "#fff", "display"));

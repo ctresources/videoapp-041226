@@ -86,7 +86,7 @@ export async function writeTemplateScript(o: { design: DesignId; shape: Shape; f
   const d = designById(o.design)!;
   const words = o.shape === "vertical" ? 75 : 105;
   const system = `You write short spoken scripts for a real estate agent's ${d.name} video. First person, warm and confident, plain spoken English, short sentences, no stage directions, no emojis, no hashtags. About ${words} words (never more than ${words + 15}). Use only the facts given; never invent numbers, features or promises. End with one short line inviting viewers to call or message the agent. Return ONLY JSON: {"script":"..."}`;
-  const facts = Object.entries(o.fields).filter(([, v]) => v?.trim()).map(([k, v]) => `${k}: ${v}`).join("\n");
+  const facts = Object.entries(o.fields).filter(([k, v]) => k !== "bg" && v?.trim()).map(([k, v]) => `${k}: ${v}`).join("\n");
   const user = `Agent: ${o.name ?? "the agent"}${o.city ? `, ${o.city}` : ""}\nWords on screen:\n${facts}`;
   const out = await openaiChatJson(system, [{ role: "user", content: user }], { label: "template-script", maxTokens: 600, timeoutMs: 30_000 });
   const s = typeof out?.script === "string" ? out.script.trim() : "";
@@ -267,6 +267,8 @@ export async function rewordTemplateVideo(admin: Admin, userId: string, rowId: s
   const design = designById(rec.design)!;
   const clean: Record<string, string> = {};
   for (const f of design.fields) clean[f.key] = String(fields[f.key] ?? rec.fields[f.key] ?? "").slice(0, 160);
+  // The background color rides with the words.
+  clean.bg = String(fields.bg ?? rec.fields.bg ?? "").slice(0, 20);
   const work = tmp("tplw-");
   try {
     const cleanFile = await download(rec.clean, path.join(work, "clean.mp4"));
