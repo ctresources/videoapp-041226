@@ -1202,6 +1202,35 @@ function FullGuide() {
                 Instagram takes the first ten, and trims a very tall or very wide photo to a shape it
                 accepts.
               </span>
+              {/* Quick Reels Templates (2026-11-03, the owner's ask). */}
+              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="quick-reels-templates">Quick Reels Templates</span>
+              <span className="block mt-1.5">
+                <strong>Quick Reels Templates</strong>, the button on Spark Studio&apos;s first screen,
+                makes a short designed reel. Pick <strong>Just Listed</strong>, <strong>Luxury
+                Listing</strong>, <strong>Market Update</strong>, <strong>Neighborhood Spotlight</strong>{" "}
+                or <strong>Agent Introduction</strong>. Your name, brokerage, phones and a saved listing
+                fill in the words on screen, and you can change any of them. On Market Update,{" "}
+                <strong>AI search</strong> finds the area&apos;s latest median price, days on market and
+                homes sold, and shows where they came from so you can check them first.
+              </span>
+              <span className="block mt-1.5">
+                Add up to 12 photos; each slowly zooms and fades into the next. Then choose{" "}
+                <strong>Vertical</strong> or <strong>Horizontal</strong>, a <strong>Background</strong>{" "}
+                color, <strong>Music</strong> on or off, <strong>Digital Twin</strong> or{" "}
+                <strong>Avatar</strong> when you have both, and <strong>Open with me</strong>: a short
+                shot of you first, saying a welcome line in your Digital Twin&apos;s voice (silent with
+                your avatar). The preview changes as you go.
+              </span>
+              <span className="block mt-1.5">
+                <strong>Next · script</strong> writes a short script from the words on screen. Change it
+                if you like, then press <strong>Make video</strong>. It uses one short video. You talk in
+                a circle in the corner while the words animate in, and the post&apos;s title, description
+                and hashtags are written for you.
+              </span>
+              <span className="block mt-1.5">
+                Need to change a price or a phone number later? <strong>Edit the words</strong> on the
+                video in My Sparks: ready in about a minute, free, and no new video is used.
+              </span>
               <span className="block mt-1.5">
                 No photos to start from? That is a Scenes Reel (step 17).
               </span>

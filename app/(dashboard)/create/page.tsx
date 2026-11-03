@@ -3462,7 +3462,7 @@ function CreatePageInner() {
       {/* Video templates, while being tested (2026-11-02). */}
       {step === "input" && account?.videoTemplates && (
         <Link href="/templates" className="ml-2 mt-2 inline-flex items-center gap-1.5 rounded-[12px] border-[1.5px] border-spark-rule bg-white/60 px-3 py-1.5 text-[14.5px] font-bold text-spark-ink hover:border-spark-amber">
-          🏷 Video templates <span className="text-[12px] font-medium text-spark-ink-muted">Just Listed, Market Update…</span>
+          🏷 Quick Reels Templates <span className="text-[12px] font-medium text-spark-ink-muted">Just Listed, Market Update…</span>
         </Link>
       )}
 

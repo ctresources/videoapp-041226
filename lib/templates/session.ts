@@ -13,7 +13,7 @@ export async function templateSession(): Promise<
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   if (!(await hasFeature(user.id, TEMPLATE_FEATURE))) {
-    return { ok: false, response: NextResponse.json({ error: "Video templates aren't on for your account yet." }, { status: 403 }) };
+    return { ok: false, response: NextResponse.json({ error: "Quick Reels Templates aren't on for your account yet." }, { status: 403 }) };
   }
   return { ok: true, user: { id: user.id, email: user.email ?? null }, admin: createAdminClient() };
 }

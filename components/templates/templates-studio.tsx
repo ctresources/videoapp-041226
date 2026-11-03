@@ -57,7 +57,7 @@ export function TemplatesStudio() {
 
   useEffect(() => {
     fetch("/api/templates").then((r) => (r.ok ? r.json() : null)).then((s: Setup | null) => {
-      if (!s) { toast.error("Couldn't open video templates."); return; }
+      if (!s) { toast.error("Couldn't open Quick Reels Templates."); return; }
       setSetup(s);
       setFields(s.designs.find((x) => x.id === "just_listed")?.defaults ?? {});
     }).catch(() => {});
@@ -165,7 +165,7 @@ export function TemplatesStudio() {
 
   return (
     <div className="w-full">
-      <h1 className="mb-4 text-[26px] font-bold text-spark-ink">Video templates</h1>
+      <h1 className="mb-4 text-[26px] font-bold text-spark-ink">Quick Reels Templates</h1>
 
       {/* The five designs */}
       <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-5">
