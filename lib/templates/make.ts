@@ -64,6 +64,13 @@ export const accentOf = (p: TemplateProfile | null) => {
   const c = (p?.brand_colors ?? []).find((x) => /^#[0-9a-f]{6}$/i.test(x ?? ""));
   return c ?? "#e7b84a";
 };
+/** Which faces the agent can put on screen: an approved Digital Twin, a headshot avatar. */
+export const facesOf = (p: TemplateProfile | null) => ({
+  twin: !!p?.heygen_digital_twin_look_id && !p.twin_consent_needed && canUseDigitalTwin(p.subscription_tier, p.role),
+  avatar: !!(p?.heygen_look_wide || p?.heygen_look_tall),
+});
+/** A Market Update needs at least one of its three numbers. */
+export const hasNumbers = (f: Record<string, string>) => ["s1", "s2", "s3"].some((k) => (f[k] ?? "").trim());
 export const phoneOf = (p: TemplateProfile | null) => p?.mobile_phone || p?.phone || p?.company_phone || null;
 
 const tmp = (prefix: string) => fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -90,9 +97,12 @@ export async function writeTemplateScript(o: { design: DesignId; shape: Shape; f
 /** Starts the video. Returns the My Sparks row and project. */
 export async function makeTemplateVideo(admin: Admin, user: { id: string }, o: {
   design: DesignId; shape: Shape; fields: Record<string, string>; photos: string[]; script: string; title: string;
+  /** Who's on screen, when the agent has both. */
+  face?: "twin" | "avatar";
 }): Promise<{ videoId: string; projectId: string } | { error: string; status: number; code?: string }> {
   const d = designById(o.design);
   if (!d) return { error: "Pick a design.", status: 400 };
+  if (o.design === "market_update" && !hasNumbers(o.fields)) return { error: "Add at least one number first.", status: 400 };
   const script = o.script.trim();
   if (!script) return { error: "Write the script first.", status: 400 };
   if (script.split(/\s+/).length > 260) return { error: "Keep the script under about 2 minutes (260 words).", status: 400 };
@@ -104,8 +114,9 @@ export async function makeTemplateVideo(admin: Admin, user: { id: string }, o: {
   const isAdmin = hasAdminPerks(p.role);
   if (!isAdmin && availableFor(p as never, "short") < 1) return { error: "You don't have a short video left this month.", status: 402, code: "out_of_videos" };
 
-  // Who's on screen: their approved Digital Twin, else the headshot look for this shape.
-  const twinOk = !!p.heygen_digital_twin_look_id && !p.twin_consent_needed && canUseDigitalTwin(p.subscription_tier, p.role);
+  // Who's on screen: their pick; else their approved Digital Twin, else the headshot look for this shape.
+  const faces = facesOf(p);
+  const twinOk = faces.twin && (o.face !== "avatar" || !faces.avatar);
   const lookId = twinOk ? p.heygen_digital_twin_look_id! : (o.shape === "vertical" ? p.heygen_look_tall ?? p.heygen_look_wide : p.heygen_look_wide ?? p.heygen_look_tall);
   if (!lookId) return { error: "Add your headshot in Settings first.", status: 409, code: "no_headshot" };
   const voiceId = await ensureVoiceForRender({ id: user.id, heygen_voice_id: p.heygen_voice_id, voice_sample_url: p.voice_sample_url });

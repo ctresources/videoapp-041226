@@ -62,10 +62,11 @@ export async function composeClean(o: {
 
   // The circle: a square from the talking video (the middle, or the top of a tall one), cut round.
   const d = Math.round(o.circle.d / 2) * 2;
-  // Zoomed in on the face: head and shoulders, not the whole frame.
-  const side = Math.round((a.h > a.w ? a.w * 0.8 : a.h * 0.68) / 2) * 2;
+  // The render's whole height (or width, if tall): twins and headshots are
+  // already filmed head and shoulders, so zooming in more crowds the circle (2026-11-03).
+  const side = Math.round(Math.min(a.w, a.h) / 2) * 2;
   const cx = Math.round((a.w - side) / 2);
-  const cy = Math.round(Math.min(a.h - side, a.h * (a.h > a.w ? 0.1 : 0.04)));
+  const cy = Math.round(Math.min(a.h - side, a.h > a.w ? a.h * 0.06 : 0));
   const mask = await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${d}" height="${d}"><rect width="${d}" height="${d}" fill="#000"/><circle cx="${d / 2}" cy="${d / 2}" r="${d / 2}" fill="#fff"/></svg>`)).grayscale().png().toBuffer();
   fs.writeFileSync(path.join(o.workDir, "mask.png"), mask);
   const x = Math.round(o.circle.cx - d / 2), y = Math.round(o.circle.cy - d / 2);

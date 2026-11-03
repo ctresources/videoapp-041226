@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { templateSession } from "@/lib/templates/session";
 import { DESIGNS, defaultFields, designById, type DesignId, type Shape } from "@/lib/templates/designs";
-import { accentOf, makeTemplateVideo, previewImage, rewordTemplateVideo, templateProfile, writeTemplateScript } from "@/lib/templates/make";
+import { lookUpMarketNumbers } from "@/lib/templates/numbers";
+import { accentOf, facesOf, hasNumbers, makeTemplateVideo, previewImage, rewordTemplateVideo, templateProfile, writeTemplateScript } from "@/lib/templates/make";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
 import { hasAdminPerks } from "@/lib/utils/roles";
 
@@ -13,7 +14,7 @@ export const maxDuration = 600;
  * Video templates (2026-11-02, the owner's approved mockup), behind the
  * "video_templates" switch.
  * GET  — the designs, starting words for each, saved listings, videos left.
- * POST { action: "preview" | "script" | "make" | "reword", … }
+ * POST { action: "preview" | "script" | "numbers" | "make" | "reword", … }
  */
 const shapeOf = (s: unknown): Shape => (s === "horizontal" ? "horizontal" : "vertical");
 const cleanFields = (f: unknown) => Object.fromEntries(Object.entries((f && typeof f === "object" ? f : {}) as Record<string, unknown>)
@@ -34,7 +35,7 @@ export async function GET() {
   const { data: allow } = await s.admin.from("profiles").select(ALLOWANCE_SELECT).eq("id", s.user.id).single();
   return NextResponse.json({
     designs: DESIGNS.map((d) => ({ ...d, defaults: defaultFields(d.id, prof) })),
-    profile: prof, accent: accentOf(p), listings,
+    profile: prof, accent: accentOf(p), listings, faces: facesOf(p),
     videosLeft: hasAdminPerks(p?.role) ? null : availableFor(allow as never, "short"),
   });
 }
@@ -68,13 +69,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: err instanceof Error ? err.message : "Couldn't write the script." }, { status: 502 });
     }
   }
+  if (b.action === "numbers") {
+    const area = [fields.title?.replace(/\s*housing market\s*$/i, ""), p?.location_state].filter(Boolean).join(", ");
+    try {
+      const n = await lookUpMarketNumbers(area || [p?.location_city, p?.location_state].filter(Boolean).join(", "));
+      if (!n || !hasNumbers(n as unknown as Record<string, string>)) return NextResponse.json({ error: "Couldn't find numbers for that area. Type them in instead." }, { status: 404 });
+      return NextResponse.json({ numbers: n });
+    } catch (err) {
+      console.error("[templates] numbers:", err instanceof Error ? err.message : err);
+      return NextResponse.json({ error: "Couldn't look up the numbers. Try again or type them in." }, { status: 502 });
+    }
+  }
   if (b.action === "make") {
     const photos = Array.isArray(b.photos) ? b.photos.filter((u): u is string => typeof u === "string") : [];
     const d = designById(design)!;
     // Named by its headline ("Price Improvement: 24 Shagbark Ct"), in title case.
     const head = (fields.headline || d.name).toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
     const title = String(b.title ?? "").trim().slice(0, 100) || [head, fields.address || fields.name || fields.title].filter(Boolean).join(": ");
-    const r = await makeTemplateVideo(s.admin, s.user, { design, shape, fields, photos, script: String(b.script ?? ""), title });
+    const face = b.face === "avatar" ? "avatar" : b.face === "twin" ? "twin" : undefined;
+    const r = await makeTemplateVideo(s.admin, s.user, { design, shape, fields, photos, script: String(b.script ?? ""), title, face });
     if ("error" in r) return NextResponse.json({ error: r.error, code: r.code }, { status: r.status });
     return NextResponse.json(r);
   }

@@ -17,7 +17,8 @@ type DesignId = "just_listed" | "luxury" | "market_update" | "neighborhood" | "a
 interface Field { key: string; label: string; placeholder?: string }
 interface Design { id: DesignId; name: string; blurb: string; photos: "listing" | "place" | "none"; fields: Field[]; defaults: Record<string, string> }
 interface Listing { id: string; address: string; price: string | number; beds: string | number; baths: string | number; sqft: string | number; photos: string[] }
-interface Setup { designs: Design[]; listings: Listing[]; videosLeft: number | null }
+interface Setup { designs: Design[]; listings: Listing[]; videosLeft: number | null; faces?: { twin: boolean; avatar: boolean } }
+interface Found { period: string; source: string; sourceUrl: string }
 
 const input = "w-full rounded-[10px] border border-spark-rule bg-[#fdfbf7] px-3 py-2 text-[16px] text-spark-ink outline-none focus:border-[#A3660F]";
 const chip = (on: boolean) => `rounded-xl border px-3.5 py-2 text-[15px] font-semibold ${on ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]" : "border-spark-rule bg-white text-spark-ink-soft hover:border-spark-amber"}`;
@@ -41,6 +42,9 @@ export function TemplatesStudio() {
   const [writing, setWriting] = useState(false);
   const [making, setMaking] = useState(false);
   const [made, setMade] = useState<string | null>(null);
+  const [face, setFace] = useState<"twin" | "avatar">("twin");
+  const [lookingUp, setLookingUp] = useState(false);
+  const [found, setFound] = useState<Found | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const d = setup?.designs.find((x) => x.id === design) ?? null;
@@ -56,7 +60,7 @@ export function TemplatesStudio() {
   function pickDesign(id: DesignId) {
     if (!setup) return;
     setDesign(id);
-    setScript(null); setMade(null);
+    setScript(null); setMade(null); setFound(null);
     const next = { ...(setup.designs.find((x) => x.id === id)?.defaults ?? {}) };
     // Keep what was already typed for words both designs share.
     for (const k of Object.keys(next)) if (k !== "headline" && fields[k]) next[k] = fields[k];
@@ -118,11 +122,28 @@ export function TemplatesStudio() {
     } finally { setWriting(false); }
   }
 
+  async function lookUpNumbers() {
+    setLookingUp(true);
+    try {
+      const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "numbers", design, shape, fields }) });
+      const out = await r.json().catch(() => ({}));
+      if (!r.ok) { toast.error(out.error || "Couldn't look up the numbers."); return; }
+      const n = out.numbers as Record<string, string>;
+      setFields((f) => ({
+        ...f, s1: n.s1, s1c: n.s1c, s2: n.s2, s2c: n.s2c, s3: n.s3, s3c: n.s3c,
+        // The month the numbers are for, not this month.
+        ...(n.period ? { headline: `Market Update · ${n.period.replace(/\s+\d{4}$/, "")}` } : {}),
+      }));
+      setFound({ period: n.period, source: n.source, sourceUrl: n.sourceUrl });
+      setScript(null);
+    } finally { setLookingUp(false); }
+  }
+
   async function make() {
     if (!window.confirm("Make this video? It uses 1 short video from your plan.")) return;
     setMaking(true);
     try {
-      const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "make", design, shape, fields, photos, script }) });
+      const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "make", design, shape, fields, photos, script, face }) });
       const out = await r.json().catch(() => ({}));
       if (!r.ok) { toast.error(out.error || "Couldn't make the video."); return; }
       setMade(out.videoId);
@@ -132,6 +153,8 @@ export function TemplatesStudio() {
 
   if (!setup || !d) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-spark-amber" /></div>;
   const needsPhotos = d.photos === "listing" && photos.length === 0;
+  const needsNumbers = d.id === "market_update" && !["s1", "s2", "s3"].some((k) => (fields[k] ?? "").trim());
+  const blocked = needsPhotos ? "Add a photo of the home first." : needsNumbers ? "Add at least one number first." : null;
 
   return (
     <div className="w-full">
@@ -169,6 +192,20 @@ export function TemplatesStudio() {
               </label>
             ))}
           </div>
+          {d.id === "market_update" && (
+            <div className="mt-3">
+              <button type="button" onClick={() => void lookUpNumbers()} disabled={lookingUp} className={chip(false)}>
+                {lookingUp ? <Loader2 size={15} className="mr-1.5 inline animate-spin" /> : null}Look up numbers
+              </button>
+              {found && (
+                <p className="mt-1.5 text-[13px] text-spark-ink-muted">
+                  {found.period && <>For {found.period}. </>}Source: {found.sourceUrl
+                    ? <a href={found.sourceUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#A3660F] underline">{found.source || "open"}</a>
+                    : found.source || "not given"}. Check them before you make the video.
+                </p>
+              )}
+            </div>
+          )}
 
           {d.photos !== "none" && (
             <>
@@ -199,6 +236,16 @@ export function TemplatesStudio() {
             <button type="button" className={chip(shape === "vertical")} onClick={() => setShape("vertical")}>Vertical 9:16</button>
             <button type="button" className={chip(shape === "horizontal")} onClick={() => setShape("horizontal")}>Horizontal 16:9</button>
           </div>
+
+          {setup.faces?.twin && setup.faces.avatar && (
+            <>
+              <p className="mb-1.5 mt-4 text-[17px] font-bold text-spark-ink">On screen</p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className={chip(face === "twin")} onClick={() => setFace("twin")}>Digital Twin</button>
+                <button type="button" className={chip(face === "avatar")} onClick={() => setFace("avatar")}>Avatar</button>
+              </div>
+            </>
+          )}
         </section>
 
         <section className="flex h-full flex-col rounded-2xl border border-spark-rule bg-white p-4">
@@ -210,8 +257,8 @@ export function TemplatesStudio() {
 
           {script === null ? (
             <div className="mt-auto flex flex-wrap items-center gap-3 pt-4">
-              <Button onClick={() => void writeScript()} loading={writing} disabled={needsPhotos}>Next · script</Button>
-              <span className="text-[14px] text-spark-ink-muted">{needsPhotos ? "Add a photo of the home first." : "Uses 1 short video"}</span>
+              <Button onClick={() => void writeScript()} loading={writing} disabled={!!blocked}>Next · script</Button>
+              <span className="text-[14px] text-spark-ink-muted">{blocked ?? "Uses 1 short video"}</span>
             </div>
           ) : (
             <div className="mt-4 flex flex-1 flex-col">
@@ -222,7 +269,7 @@ export function TemplatesStudio() {
                   <p className="text-[15px] font-semibold text-[#0f7a52]">✓ Being made. <Link href={`/videos?highlight=${made}`} className="underline">Watch for it in My Sparks</Link></p>
                 ) : (
                   <>
-                    <Button onClick={() => void make()} loading={making} disabled={!script.trim()}>Make video</Button>
+                    <Button onClick={() => void make()} loading={making} disabled={!script.trim() || !!blocked}>Make video</Button>
                     <button type="button" onClick={() => void writeScript()} disabled={writing} className="text-[14px] font-semibold text-[#A3660F] underline">Write it again</button>
                     <span className="text-[14px] text-spark-ink-muted">Uses 1 short video{setup.videosLeft !== null ? ` · you have ${setup.videosLeft}` : ""}</span>
                   </>
