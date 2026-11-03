@@ -15,10 +15,16 @@ const page = await context.newPage();
 await page.goto(`${BASE}/login`);
 console.log("Waiting for you to sign in (up to 10 minutes)…");
 const deadline = Date.now() + 10 * 60_000;
+let signedIn = false;
 while (Date.now() < deadline) {
   const url = page.url();
-  if (!/\/(login|register|auth)/.test(new URL(url).pathname) && new URL(url).hostname.includes("sparkreels")) break;
+  if (!/\/(login|register|auth)/.test(new URL(url).pathname) && new URL(url).hostname.includes("sparkreels")) { signedIn = true; break; }
   await page.waitForTimeout(1000);
+}
+if (!signedIn) {
+  console.log("Not signed in after 10 minutes; nothing saved.");
+  await browser.close();
+  process.exit(1);
 }
 await page.waitForTimeout(3000);
 await context.storageState({ path: out });

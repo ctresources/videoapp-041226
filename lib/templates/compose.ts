@@ -17,6 +17,9 @@ const run = promisify(execFile);
  */
 const ff = (cwd: string, args: string[]) => run(ffmpegPath.path, ["-y", "-hide_banner", "-loglevel", "error", ...args], { cwd, maxBuffer: 16 * 1024 * 1024 });
 
+/** How long a video is, in seconds. */
+export const secondsOf = async (file: string) => (await probe(file)).dur;
+
 async function probe(file: string): Promise<{ w: number; h: number; dur: number }> {
   try { await run(ffmpegPath.path, ["-hide_banner", "-i", file]); } catch (e) {
     const s = String((e as { stderr?: string }).stderr ?? "");
@@ -79,9 +82,23 @@ export async function composeClean(o: {
 }
 
 /** The words over the clean video. Used for the first version and for every change of words. */
-export async function addWords(o: { workDir: string; clean: string; words: Buffer; threads?: number; out?: string }): Promise<string> {
-  fs.writeFileSync(path.join(o.workDir, "words.png"), o.words);
+export async function addWords(o: {
+  workDir: string; clean: string; words: Buffer; threads?: number; out?: string;
+  /** The animated words (a see-through WebM from HyperFrames, 2026-11-03); the still words are used without it. */
+  animated?: Buffer | null;
+}): Promise<string> {
   const out = o.out ?? "final.mp4";
+  if (o.animated) {
+    fs.writeFileSync(path.join(o.workDir, "words.webm"), o.animated);
+    // Only the libvpx decoder keeps the see-through layer.
+    await ff(o.workDir, [
+      "-threads", String(o.threads ?? 1), "-i", o.clean, "-c:v", "libvpx-vp9", "-i", "words.webm",
+      "-filter_complex", "[1:v]format=rgba[w0];[w0][0:v]scale2ref[w][b];[b][w]overlay=0:0:eof_action=pass,format=yuv420p[v]",
+      "-map", "[v]", "-map", "0:a?", "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-c:a", "copy", "-movflags", "+faststart", out,
+    ]);
+    return path.join(o.workDir, out);
+  }
+  fs.writeFileSync(path.join(o.workDir, "words.png"), o.words);
   await ff(o.workDir, [
     "-threads", String(o.threads ?? 1), "-i", o.clean, "-loop", "1", "-i", "words.png",
     "-filter_complex", "[0:v][1:v]overlay=0:0:shortest=1,format=yuv420p[v]",

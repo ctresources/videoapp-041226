@@ -15,7 +15,21 @@ import { announceVideoReady } from "@/lib/video/ready-notice";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
 import { hasAdminPerks } from "@/lib/utils/roles";
 import { designById, introBackground, SIZE, wordsLayer, type DesignId, type Shape } from "@/lib/templates/designs";
-import { addWords, composeClean } from "@/lib/templates/compose";
+import { addWords, composeClean, secondsOf } from "@/lib/templates/compose";
+import { animatedProject, renderAnimatedWords } from "@/lib/templates/animated";
+
+/** The words, animated by HyperFrames; null (still words) if that fails. */
+async function animateWords(rec: TemplateRecord, fields: Record<string, string>, seconds: number, logo: Buffer | null, key: string): Promise<Buffer | null> {
+  if (!seconds) return null;
+  try {
+    const logoPng = rec.design === "agent_intro" && logo ? await sharp(logo).png().toBuffer() : null;
+    const project = animatedProject({ design: rec.design, shape: rec.shape, fields, accent: rec.accent, seconds, logo: logoPng });
+    return await renderAnimatedWords(project, rec.shape, key);
+  } catch (err) {
+    console.warn("[templates] animated words skipped:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -205,8 +219,10 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
       workDir: work, shape: rec.shape, circle, avatar,
       photos: usable, still: still ?? (usable.length ? null : path.join(work, "plain.png")), threads: 1,
     });
-    const final = await addWords({ workDir: work, clean, words: png, threads: 1 });
-    console.log(`[templates] ${rowId} put together in ${Math.round((Date.now() - t0) / 1000)}s`);
+    // The words animated (HyperFrames), else the still words.
+    const animated = await animateWords(rec, rec.fields, await secondsOf(clean), logo, `${rowId}-words-1`);
+    const final = await addWords({ workDir: work, clean, words: png, threads: 1, animated });
+    console.log(`[templates] ${rowId} put together in ${Math.round((Date.now() - t0) / 1000)}s (${animated ? "animated" : "still"} words)`);
 
     const cleanPath = `${row.user_id}/${rowId}-clean.mp4`;
     const finalPath = `${row.user_id}/${rowId}.mp4`;
@@ -216,7 +232,7 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
     const pub = (p: string) => admin.storage.from("videos").getPublicUrl(p).data.publicUrl;
     await admin.from("generated_videos").update({
       render_status: "completed", video_url: `${pub(finalPath)}?v=${Date.now()}`, render_finished_at: new Date().toISOString(),
-      metadata: { ...row.metadata, template: { ...rec, photos, clean: pub(cleanPath) } },
+      metadata: { ...row.metadata, template: { ...rec, photos, clean: pub(cleanPath), animated: !!animated } },
     }).eq("id", rowId);
     if (row.project_id) {
       await admin.from("projects").update({ status: "ready" }).eq("id", row.project_id);
@@ -245,7 +261,8 @@ export async function rewordTemplateVideo(admin: Admin, userId: string, rowId: s
     const cleanFile = await download(rec.clean, path.join(work, "clean.mp4"));
     const logo = rec.logo ? await fetch(rec.logo).then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => (b ? Buffer.from(b) : null)).catch(() => null) : null;
     const { png } = await wordsLayer(rec.design, rec.shape, clean, rec.accent, logo);
-    const final = await addWords({ workDir: work, clean: cleanFile, words: png, threads: 1 });
+    const animated = await animateWords(rec, clean, await secondsOf(cleanFile), logo, `${rowId}-words-${Date.now()}`);
+    const final = await addWords({ workDir: work, clean: cleanFile, words: png, threads: 1, animated });
     const finalPath = `${row.user_id}/${rowId}.mp4`;
     const { error } = await admin.storage.from("videos").upload(finalPath, fs.readFileSync(final), { contentType: "video/mp4", upsert: true });
     if (error) return { error: "Couldn't save it. Try again." };

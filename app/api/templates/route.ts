@@ -7,7 +7,7 @@ import { hasAdminPerks } from "@/lib/utils/roles";
 
 export const dynamic = "force-dynamic";
 // Changing the words re-makes the video's picture (about a minute).
-export const maxDuration = 300;
+export const maxDuration = 600;
 
 /**
  * Video templates (2026-11-02, the owner's approved mockup), behind the
