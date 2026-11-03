@@ -1,6 +1,6 @@
 import { strToU8, zipSync } from "fflate";
 import type { createAdminClient } from "@/lib/supabase/admin";
-import { layout, SIZE, type DesignId, type Shape } from "@/lib/templates/designs";
+import { layout, SIZE, type Circle, type DesignId, type Shape } from "@/lib/templates/designs";
 
 /**
  * Animated words for video templates (2026-11-03, the owner's pick after the
@@ -24,7 +24,7 @@ function steps(id: DesignId, v: boolean): Step[] {
       ["fade", { opacity: 0 }, 0.1, 0.8],
       ["label", { x: -70, opacity: 0 }, 0.2, 0.7, "back.out(1.6)"],
       ["addr", rise, 0.9, 0.7, "power3.out"],
-      ["price", { scale: 0.6, opacity: 0, transformOrigin: v ? "50% 50%" : "0% 50%" }, 1.4, 0.6, "back.out(2.2)"],
+      ["price", { scale: 0.6, opacity: 0, transformOrigin: "0% 50%" }, 1.4, 0.6, "back.out(2.2)"],
       ["details", { y: 16, opacity: 0 }, 1.9, 0.6],
       ["contact", contactIn, 2.2, 0.7, "power2.out"],
     ];
@@ -74,12 +74,14 @@ export function animatedProject(o: {
   design: DesignId; shape: Shape; fields: Record<string, string>; accent: string; seconds: number;
   /** Agent Introduction's logo, as a PNG. */
   logo?: Buffer | null;
+  /** The circle's place in an already-made video. */
+  circle?: Circle | null;
 }): Uint8Array {
   const { w: W, h: H } = SIZE[o.shape];
   const v = o.shape === "vertical";
   const PW = v ? 1080 : 1920, PH = v ? 1920 : 1080;
   const T = Math.max(2, Math.round(o.seconds * 100) / 100);
-  let { svg } = layout(o.design, o.shape, o.fields, o.accent);
+  let { svg } = layout(o.design, o.shape, o.fields, o.accent, o.circle);
   // The logo goes in the page itself (same place as the still version).
   if (o.design === "agent_intro" && o.logo) {
     const lw = Math.round(v ? W * 0.32 : W * 0.14), lh = Math.round(lw * 0.5);

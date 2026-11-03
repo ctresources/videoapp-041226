@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { ImagePlus, Loader2, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { BackgroundPicker } from "@/components/templates/background-picker";
@@ -192,11 +192,13 @@ export function TemplatesStudio() {
           <div className="grid gap-x-3 sm:grid-cols-2">
             {d.fields.map((f) => (
               <Fragment key={f.key}>
-                {/* Look up numbers sits right above the three numbers (2026-11-03). */}
+                {/* AI search sits right above the three numbers (2026-11-03). */}
                 {d.id === "market_update" && f.key === "s1" && (
                   <div className="mt-3 sm:col-span-2">
-                    <button type="button" onClick={() => void lookUpNumbers()} disabled={lookingUp} className={chip(false)}>
-                      {lookingUp ? <Loader2 size={15} className="mr-1.5 inline animate-spin" /> : null}Look up numbers
+                    {/* Filled, so it stands out (2026-11-03, the owner's ask). */}
+                    <button type="button" onClick={() => void lookUpNumbers()} disabled={lookingUp}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#c98a1e] to-[#A3660F] px-4 py-2 text-[15px] font-bold text-white shadow-sm hover:brightness-105 disabled:opacity-70">
+                      {lookingUp ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}AI search
                     </button>
                     {found && (
                       <p className="mt-1.5 text-[13px] text-spark-ink-muted">

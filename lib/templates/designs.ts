@@ -120,7 +120,9 @@ export interface Layout { circle: Circle; svg: string; ring: string }
  * Everything for one design in one shape: the agent's circle and the words.
  * accent: the agent's first brand color, or gold.
  */
-export function layout(id: DesignId, shape: Shape, f: Record<string, string>, accent = "#e7b84a"): Layout {
+export function layout(id: DesignId, shape: Shape, f: Record<string, string>, accent = "#e7b84a",
+  /** Where the circle already is in a made video (its face is part of the picture), for Edit the words. */
+  at?: Circle | null): Layout {
   const { w: W, h: H } = SIZE[shape];
   const v = shape === "vertical";
   // Any "$160000" typed without commas is shown as "$160,000".
@@ -159,20 +161,23 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
     defs.push(`<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sh("#000")}" stop-opacity="0"/><stop offset="0.45" stop-color="${sh("#000")}" stop-opacity="0.72"/><stop offset="1" stop-color="${sh("#000")}" stop-opacity="0.86"/></linearGradient>`);
     if (v) {
       put("fade", `<rect x="0" y="${H * 0.6}" width="${W}" height="${H * 0.4}" fill="url(#fade)"/>`);
-      circle = { cx: W * 0.5, cy: H * 0.6, d: W * 0.42 };
+      // The circle bottom right, just above the words; never in the middle
+      // (2026-11-03, the owner's rule). The words line up on the left.
+      const cd = W * 0.36;
+      circle = { cx: W - W * 0.05 - cd / 2, cy: H * 0.6, d: cd };
       // One line after another, so a two-line address pushes the rest down
       // instead of running into it.
-      const x = W / 2, maxW = W * 0.88;
+      const x = W * 0.06, maxW = W * 0.88;
       const a = wrap(g("address"), maxW, 44, 28, 2, "display");
       let y = H * 0.785;
-      a.lines.forEach((l, i) => put("addr", line(l, x, y + i * a.size * 1.12, a.size, "#fff", "display", "middle")));
+      a.lines.forEach((l, i) => put("addr", line(l, x, y + i * a.size * 1.12, a.size, "#fff", "display")));
       y += (a.lines.length - 1) * a.size * 1.12;
       const ps = fit(g("price"), maxW, 64, 36, "display");
       y += ps * 1.08;
-      put("price", line(g("price"), x, y, ps, accent, "display", "middle"));
+      put("price", line(g("price"), x, y, ps, accent, "display"));
       const ds = fit(g("details"), maxW, 26, 16, "text");
-      if (g("details")) { y += ds * 1.7; put("details", line(g("details"), x, y, ds, "#f1ece2", "text", "middle")); }
-      contact(x, Math.min(y + 40, H * 0.945), "middle", maxW, 22);
+      if (g("details")) { y += ds * 1.7; put("details", line(g("details"), x, y, ds, "#f1ece2", "text")); }
+      contact(x, Math.min(y + 40, H * 0.945), "start", maxW, 22);
     } else {
       put("fade", `<rect x="0" y="${H * 0.56}" width="${W}" height="${H * 0.44}" fill="url(#fade)"/>`);
       circle = { cx: W * 0.135, cy: H - W * 0.03 - W * 0.095, d: W * 0.19 };
@@ -220,7 +225,9 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
         put(`stat${i}`, line(s.l, sx + 14, ty + 100, fit(s.l, tw - 28, 20, 12, "text"), "#c9cfdb", "text"));
         put(`stat${i}`, line(s.c, sx + 14, ty + 132, fit(s.c, tw - 28, 20, 12, "text"), changeColor(s.c), "text"));
       });
-      circle = { cx: W / 2, cy: H * 0.73, d: W * 0.46 };
+      // Bottom right, just above the name and phones.
+      const cd = W * 0.4;
+      circle = { cx: W - W * 0.05 - cd / 2, cy: H * 0.828 - cd / 2, d: cd };
       defs.push(`<linearGradient id="foot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sh("#000")}" stop-opacity="0"/><stop offset="1" stop-color="${sh("#000")}" stop-opacity="0.8"/></linearGradient>`);
       put("foot", `<rect x="0" y="${H * 0.84}" width="${W}" height="${H * 0.16}" fill="url(#foot)"/>`);
       contact(W / 2, H * 0.93, "middle", W * 0.88, 24);
@@ -240,7 +247,9 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
         put(`stat${i}`, line(s.l, sx + 14, ty + 104, fit(s.l, tw - 28, 19, 12, "text"), "#c9cfdb", "text"));
         put(`stat${i}`, line(s.c, sx + 14, ty + 140, fit(s.c, tw - 28, 19, 12, "text"), changeColor(s.c), "text"));
       });
-      circle = { cx: W * 0.8, cy: H * 0.6, d: W * 0.3 };
+      // In the bottom right corner.
+      const cd = W * 0.24;
+      circle = { cx: W - W * 0.04 - cd / 2, cy: H - W * 0.04 - cd / 2, d: cd };
       contact(x, H * 0.885, "start", maxW, 20);
     }
   } else if (id === "neighborhood") {
@@ -267,8 +276,10 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
         put(`chip${ci}`, line(h, cx + cs * 0.8, cy + cs * 1.3, cs, "#fff", "text"));
         cx += cw + 10;
       });
-      // Lower than the contact lines, so they never run under it.
-      circle = { cx: W * 0.72, cy: H * 0.36, d: W * 0.42 };
+      // Bottom right, just above the neighborhood name (which can be two lines).
+      const cd = W * 0.38;
+      const nameTop = H * 0.8 - n.size * 0.85;
+      circle = { cx: W - W * 0.05 - cd / 2, cy: nameTop - 24 - cd / 2, d: cd };
       contact(W * 0.06, H * 0.115, "start", W * 0.88, 22);
     } else {
       put("name", line(g("name"), W * 0.045, H * 0.8, fit(g("name"), W * 0.68, 104, 40, "display"), "#fff", "display"));
@@ -312,6 +323,7 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
     }
   }
 
+  if (at && id !== "agent_intro") circle = at;
   // The ring around the agent's circle, drawn with the words.
   const rw = Math.max(4, Math.round(circle.d * 0.025));
   const ringSvg = `<circle id="ring" cx="${circle.cx}" cy="${circle.cy}" r="${circle.d / 2 + rw / 2}" fill="none" stroke="${ring}" stroke-width="${rw}" transform="rotate(-90 ${circle.cx} ${circle.cy})"/>`;
@@ -321,8 +333,8 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
 }
 
 /** The words layer as a see-through PNG, with the logo placed for Agent Introduction. */
-export async function wordsLayer(id: DesignId, shape: Shape, f: Record<string, string>, accent?: string, logo?: Buffer | null): Promise<{ png: Buffer; circle: Circle }> {
-  const { svg, circle } = layout(id, shape, f, accent);
+export async function wordsLayer(id: DesignId, shape: Shape, f: Record<string, string>, accent?: string, logo?: Buffer | null, at?: Circle | null): Promise<{ png: Buffer; circle: Circle }> {
+  const { svg, circle } = layout(id, shape, f, accent, at);
   const base = sharp(Buffer.from(svg));
   if (id === "agent_intro" && logo) {
     const { w: W, h: H } = SIZE[shape];

@@ -14,7 +14,7 @@ import { ensureProjectThumbnail } from "@/lib/utils/thumbnail-render";
 import { announceVideoReady } from "@/lib/video/ready-notice";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
 import { hasAdminPerks } from "@/lib/utils/roles";
-import { designById, introBackground, SIZE, wordsLayer, type DesignId, type Shape } from "@/lib/templates/designs";
+import { designById, introBackground, SIZE, wordsLayer, type Circle, type DesignId, type Shape } from "@/lib/templates/designs";
 import { addWords, composeClean, secondsOf } from "@/lib/templates/compose";
 import { animatedProject, renderAnimatedWords } from "@/lib/templates/animated";
 
@@ -23,7 +23,7 @@ async function animateWords(rec: TemplateRecord, fields: Record<string, string>,
   if (!seconds) return null;
   try {
     const logoPng = rec.design === "agent_intro" && logo ? await sharp(logo).png().toBuffer() : null;
-    const project = animatedProject({ design: rec.design, shape: rec.shape, fields, accent: rec.accent, seconds, logo: logoPng });
+    const project = animatedProject({ design: rec.design, shape: rec.shape, fields, accent: rec.accent, seconds, logo: logoPng, circle: rec.circle });
     return await renderAnimatedWords(project, rec.shape, key);
   } catch (err) {
     console.warn("[templates] animated words skipped:", err instanceof Error ? err.message : err);
@@ -45,6 +45,8 @@ type Admin = ReturnType<typeof createAdminClient>;
 export interface TemplateRecord {
   design: DesignId; shape: Shape; fields: Record<string, string>; photos: string[]; accent: string;
   clean?: string; logo?: string | null;
+  /** Where the face circle was put in this video (kept so new words line up with it). */
+  circle?: Circle;
 }
 
 const PROFILE = `${ALLOWANCE_SELECT}, role, subscription_tier, full_name, company_name, phone, company_phone, mobile_phone, website, location_city, location_state, brand_colors, logo_url, photo_wide_url, photo_tall_url, avatar_url, heygen_voice_id, voice_sample_url, heygen_look_wide, heygen_look_tall, heygen_digital_twin_look_id, twin_consent_needed`;
@@ -243,7 +245,7 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
     const pub = (p: string) => admin.storage.from("videos").getPublicUrl(p).data.publicUrl;
     await admin.from("generated_videos").update({
       render_status: "completed", video_url: `${pub(finalPath)}?v=${Date.now()}`, render_finished_at: new Date().toISOString(),
-      metadata: { ...row.metadata, template: { ...rec, photos, clean: pub(cleanPath), animated: !!animated } },
+      metadata: { ...row.metadata, template: { ...rec, photos, clean: pub(cleanPath), animated: !!animated, circle } },
     }).eq("id", rowId);
     if (row.project_id) {
       await admin.from("projects").update({ status: "ready" }).eq("id", row.project_id);
@@ -273,7 +275,7 @@ export async function rewordTemplateVideo(admin: Admin, userId: string, rowId: s
   try {
     const cleanFile = await download(rec.clean, path.join(work, "clean.mp4"));
     const logo = rec.logo ? await fetch(rec.logo).then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => (b ? Buffer.from(b) : null)).catch(() => null) : null;
-    const { png } = await wordsLayer(rec.design, rec.shape, clean, rec.accent, logo);
+    const { png } = await wordsLayer(rec.design, rec.shape, clean, rec.accent, logo, rec.circle);
     const animated = await animateWords(rec, clean, await secondsOf(cleanFile), logo, `${rowId}-words-${Date.now()}`);
     const final = await addWords({ workDir: work, clean: cleanFile, words: png, threads: 1, animated });
     const finalPath = `${row.user_id}/${rowId}.mp4`;
