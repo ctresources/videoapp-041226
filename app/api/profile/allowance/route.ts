@@ -61,15 +61,15 @@ export async function GET() {
    * in feature_access and are readable only by the service role, so hasFeature
    * uses the admin client while this route uses the caller's session.
    */
-  const [campaignCalendar, sparkPodcast, sparkreelsMode, videoTemplates] = await Promise.all([
+  const [campaignCalendar, sparkPodcast, sparkreelsMode] = await Promise.all([
     hasFeature(user.id, CAMPAIGN_CALENDAR),
     // Spark Podcast's switch (2026-10-30).
     hasFeature(user.id, "spark_podcast"),
     // SparkReels mode (2026-11-01, lib/sparkreels-mode.ts).
     hasFeature(user.id, "sparkreels_mode"),
-    // Video templates, while being tested (2026-11-02).
-    hasFeature(user.id, "video_templates"),
   ]);
+  // Quick Reels Templates: open to everyone since 2026-11-03.
+  const videoTemplates = true;
 
   // Read through the caller's session: generated_images lets a user read their
   // own rows, which is all a count needs.

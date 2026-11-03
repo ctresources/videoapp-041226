@@ -30,6 +30,17 @@ export type WhatsNewItem = {
 
 const ITEMS: WhatsNewItem[] = [
   {
+    id: "quick-reels-templates",
+    title: "Quick Reels Templates",
+    description:
+      "Five ready-made designs: Just Listed, Luxury, Market Update, Neighborhood and Meet Your Agent. Your words animate in while you talk in the corner, and you can open with a short shot of you welcoming viewers.",
+    releaseDate: "2026-11-03",
+    howItWorksAnchor: "quick-reels-templates",
+    badge: "NEW",
+    freeHref: "/templates",
+    freeLabel: "Open Quick Reels Templates",
+  },
+  {
     id: "send-to-website",
     title: "Send to Website",
     description:
