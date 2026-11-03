@@ -690,6 +690,23 @@ export async function flattenCutout(
   }
 }
 
+/** How loud a file's sound is (mean and peak, dB), over its first `seconds`. Null if it has none. */
+async function loudness(file: string, seconds = 60): Promise<{ mean: number; max: number } | null> {
+  let mean: number | null = null, max: number | null = null;
+  await new Promise<void>((resolve) => {
+    ffmpeg(file)
+      .outputOptions(["-t", String(seconds), "-vn", "-af", "volumedetect", "-f", "null"])
+      .on("stderr", (line: string) => {
+        const m = line.match(/mean_volume:\s*(-?[\d.]+) dB/); if (m) mean = Number(m[1]);
+        const x = line.match(/max_volume:\s*(-?[\d.]+) dB/); if (x) max = Number(x[1]);
+      })
+      .on("end", () => resolve())
+      .on("error", () => resolve())
+      .save(process.platform === "win32" ? "NUL" : "/dev/null");
+  });
+  return mean !== null && max !== null ? { mean, max } : null;
+}
+
 export async function prependClip(
   videoBuffer: Buffer,
   /** The opening shot, downloaded straight away. Its own sound is dropped unless keepSound. */
@@ -713,6 +730,15 @@ export async function prependClip(
     if (!w || !h) throw new Error("couldn't read the video's size");
     const W = Math.round(w / 2) * 2, H = Math.round(h / 2) * 2;
     const d = Math.max(1, clipSeconds).toFixed(3);
+    // A talking opener comes back about 8 dB quieter than the video (2026-11-03
+    // test): brought up (or down) to the video's level, never past -1 dB peak.
+    let gain = 0;
+    if (keepSound) {
+      const [c, m] = await Promise.all([loudness(clipPath, 20), loudness(inPath, 60)]);
+      if (c && m && c.mean > -70) gain = Math.max(-10, Math.min(15, m.mean - c.mean, -1 - c.max));
+      if (gain) console.log(`[composite-photos] Opener voice ${gain > 0 ? "+" : ""}${gain.toFixed(1)} dB to match the video`);
+    }
+    const level = Math.abs(gain) >= 0.5 ? `,volume=${gain.toFixed(1)}dB` : "";
     const joinClip = (withSound: boolean) => new Promise<void>((resolve, reject) => {
       ffmpeg()
         .input(clipPath)
@@ -721,7 +747,7 @@ export async function prependClip(
           `[0:v]trim=duration=${d},setpts=PTS-STARTPTS,scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,fps=25,format=yuv420p[cv]`,
           // Its own voice, padded or cut to the shot's length, or silence.
           withSound
-            ? `[0:a]aresample=48000,aformat=channel_layouts=stereo,apad,atrim=duration=${d},asetpts=PTS-STARTPTS[ca]`
+            ? `[0:a]aresample=48000,aformat=channel_layouts=stereo${level},apad,atrim=duration=${d},asetpts=PTS-STARTPTS[ca]`
             : `aevalsrc=0:c=stereo:s=48000:d=${d}[ca]`,
           `[1:v]scale=${W}:${H},setsar=1,fps=25,format=yuv420p[mv]`,
           `[1:a]aresample=48000,aformat=channel_layouts=stereo[ma]`,
