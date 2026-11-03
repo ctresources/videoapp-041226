@@ -211,10 +211,17 @@ export async function GET(req: NextRequest) {
        */
       const builtHere = video.render_provider === "ffmpeg";
       const isAgent = video.render_provider === "heygen_agent";
+      /**
+       * A video template or a podcast at the desk (2026-11-02): HeyGen makes
+       * a part, and our own step finishes it from the webhook and writes the
+       * row. Asking HeyGen here and storing what it says would publish the
+       * bare part (no photos, no words, no second person) as the video.
+       */
+      const ownFinish = video.render_provider === "template" || video.render_provider === "podcast_desk";
       // The video agent can plan for a long while before it renders: Abby
       // Vellucci's 2026-10-29 video spent 46 minutes planning, was failed at
       // 45 and finished at 55. 75 for it, and see the check below.
-      const timeoutMin = builtHere ? 16 : isLongRender ? 90 : isAgent ? 75 : 45;
+      const timeoutMin = builtHere ? 16 : isLongRender ? 90 : isAgent ? 75 : ownFinish ? 60 : 45;
       let timedOut = ageMs > timeoutMin * 60 * 1000;
       /**
        * Ask HeyGen before giving up (2026-10-29). A video HeyGen has finished
@@ -260,8 +267,8 @@ export async function GET(req: NextRequest) {
       try {
         const provider = video.render_provider as string;
 
-        if (provider === "ffmpeg") {
-          // Still building; see builtHere above. The row is the whole answer.
+        if (provider === "ffmpeg" || ownFinish) {
+          // Still building; see builtHere and ownFinish above. The row is the whole answer.
         } else if (provider === "heygen_agent") {
           // ── Two-step v3 polling ─────────────────────────────────────────
           // Step 1: poll the agent session to get video_id

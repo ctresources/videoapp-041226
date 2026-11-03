@@ -61,12 +61,14 @@ export async function GET() {
    * in feature_access and are readable only by the service role, so hasFeature
    * uses the admin client while this route uses the caller's session.
    */
-  const [campaignCalendar, sparkPodcast, sparkreelsMode] = await Promise.all([
+  const [campaignCalendar, sparkPodcast, sparkreelsMode, videoTemplates] = await Promise.all([
     hasFeature(user.id, CAMPAIGN_CALENDAR),
     // Spark Podcast's switch (2026-10-30).
     hasFeature(user.id, "spark_podcast"),
     // SparkReels mode (2026-11-01, lib/sparkreels-mode.ts).
     hasFeature(user.id, "sparkreels_mode"),
+    // Video templates, while being tested (2026-11-02).
+    hasFeature(user.id, "video_templates"),
   ]);
 
   // Read through the caller's session: generated_images lets a user read their
@@ -101,6 +103,7 @@ export async function GET() {
     campaignCalendar,
     // Producer and up only (2026-10-30, the owner's call).
     sparkreelsMode,
+    videoTemplates,
     sparkPodcast: sparkPodcast && ["producer", "influencer", "admin"].includes(getAccessLevel({ subscription_tier: profile.subscription_tier as string | null, role: profile.role as string | null })),
     // AI images made this calendar month, for the image generator's counter.
     // Two before the free video, a hundred after it — the same ceiling the

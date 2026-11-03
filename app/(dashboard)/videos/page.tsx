@@ -30,6 +30,7 @@ import { ThumbnailEditButton } from "@/components/social/thumbnail-edit-button";
 import { SendToWebsiteButton } from "@/components/website/send-to-website";
 import { OlderList, splitRecent, type OlderItem } from "@/components/videos/older-list";
 import { partnerPlatform } from "@/lib/utils/social-platforms";
+import { RewordButton } from "@/components/templates/reword-dialog";
 
 interface DraftProject {
   id: string;
@@ -66,6 +67,8 @@ interface GeneratedVideo {
     stock_clip_urls?: string[];
     /** Photos attached to a camera take, for Record again (2026-10-21). */
     camera_photos?: string[];
+    /** A video template (2026-11-02): its design and words, and the clean video the words go over. */
+    template?: { design: string; fields: Record<string, string>; clean?: string };
   } | null;
   projects?: {
     title: string;
@@ -1493,6 +1496,12 @@ function VideosContent() {
                           <Download size={13} />
                         </Button>
                       </div>
+
+                      {/* A video template's words, changed without a new render (2026-11-02). */}
+                      {video.render_provider === "template" && video.metadata?.template?.clean && (
+                        <RewordButton videoId={video.id} design={video.metadata.template.design} fields={video.metadata.template.fields}
+                          onDone={(url) => setVideos((vs) => vs.map((x) => (x.id === video.id ? { ...x, video_url: url } : x)))} />
+                      )}
 
                       {/* Back into the flow that made this. A finished video
                           used to be a dead end: the only way to change

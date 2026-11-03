@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video Templates — mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Playfair+Display:ital,wght@0,600;1,500&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#24221e; --muted:#6b665c; --rule:#e8e2d6; --amber:#c98a1b; --amberdk:#A3660F; --tint:#fbeacc; --gold:#e7b84a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f6f3ec; font-family:Inter,system-ui,sans-serif; color:var(--ink); padding:28px 16px 60px; }
+  .wrap { max-width:1100px; margin:0 auto; display:flex; flex-direction:column; gap:30px; }
+  .label { font-size:13px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--amberdk); margin:0 0 10px; }
+  .note { font-size:14px; color:var(--muted); margin:8px 0 0; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:18px; }
+  .item b { display:block; font-size:15px; margin-top:8px; }
+  .item span { font-size:13px; color:var(--muted); }
+
+  /* A 16:9 frame */
+  .f { position:relative; aspect-ratio:16/9; border-radius:12px; overflow:hidden; background:#222 center/cover no-repeat; color:#fff; container-type:inline-size; }
+  .agent { position:absolute; border-radius:50%; border:0.5cqw solid #fff; background:#c9b49a url(https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&q=70) center/cover; box-shadow:0 1cqw 3cqw rgba(0,0,0,.35); }
+  .shade { position:absolute; inset:0; }
+
+  /* 1 Just Listed */
+  .jl .ribbon { position:absolute; left:4cqw; top:5cqw; background:var(--gold); color:#1b1408; font-weight:900; font-size:5cqw; letter-spacing:.06em; padding:1cqw 2.6cqw; border-radius:.8cqw; }
+  .jl .bar { position:absolute; left:0; right:0; bottom:0; padding:2.6cqw 4cqw 2.6cqw 26cqw; background:linear-gradient(transparent, rgba(0,0,0,.78) 35%); }
+  .jl .addr { font-weight:800; font-size:4.4cqw; line-height:1.1; }
+  .jl .price { font-weight:900; font-size:6cqw; color:var(--gold); line-height:1.1; }
+  .jl .meta { font-size:2.4cqw; opacity:.9; }
+  .jl .agent { left:4cqw; bottom:3cqw; width:19cqw; height:19cqw; }
+
+  /* 2 Luxury */
+  .lx::before, .lx::after { content:""; position:absolute; left:0; right:0; height:9cqw; background:#0d0b09; z-index:1; }
+  .lx::before { top:0; } .lx::after { bottom:0; }
+  .lx .shade { background:rgba(0,0,0,.25); }
+  .lx .kicker { position:absolute; z-index:2; top:2.6cqw; left:0; right:0; text-align:center; font-family:"Playfair Display",serif; font-style:italic; color:var(--gold); font-size:3.8cqw; letter-spacing:.04em; }
+  .lx .addr { position:absolute; z-index:2; left:0; right:0; top:38%; text-align:center; font-family:"Playfair Display",serif; font-size:6cqw; text-shadow:0 .4cqw 2cqw rgba(0,0,0,.6); }
+  .lx .price { position:absolute; z-index:2; left:0; right:0; top:55%; text-align:center; letter-spacing:.3em; font-size:2.8cqw; }
+  .lx .foot { position:absolute; z-index:2; bottom:2.8cqw; left:0; right:0; text-align:center; font-size:2.2cqw; letter-spacing:.2em; color:#d8cdb8; }
+  .lx .agent { right:3cqw; bottom:11cqw; width:14cqw; height:14cqw; z-index:2; border-color:var(--gold); }
+
+  /* 3 Market Update */
+  .mu .panel { position:absolute; left:0; top:0; bottom:0; width:58%; background:linear-gradient(90deg, rgba(14,18,26,.95) 70%, rgba(14,18,26,0)); padding:4cqw; }
+  .mu .k { color:var(--gold); font-weight:800; font-size:2.4cqw; letter-spacing:.14em; text-transform:uppercase; }
+  .mu h4 { margin:.6cqw 0 2.4cqw; font-size:5cqw; line-height:1.05; }
+  .mu .stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.4cqw; }
+  .mu .s { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:1cqw; padding:1.4cqw; }
+  .mu .s b { display:block; font-size:4cqw; font-weight:900; }
+  .mu .s i { font-style:normal; font-size:1.8cqw; color:#c9cfdb; }
+  .mu .s em { font-style:normal; color:#6fd39a; font-size:1.8cqw; font-weight:700; }
+  .mu .agent { right:5cqw; bottom:5cqw; width:22cqw; height:22cqw; }
+
+  /* 4 Neighborhood */
+  .nb .shade { background:linear-gradient(180deg, rgba(0,0,0,.05) 40%, rgba(0,0,0,.75)); }
+  .nb .k { position:absolute; left:4cqw; top:4cqw; background:#fff; color:#1b1408; font-weight:800; font-size:2.3cqw; letter-spacing:.12em; padding:.8cqw 1.6cqw; border-radius:5cqw; text-transform:uppercase; }
+  .nb .name { position:absolute; left:4cqw; bottom:10cqw; font-weight:900; font-size:8cqw; line-height:1; }
+  .nb .chips { position:absolute; left:4cqw; bottom:4cqw; display:flex; gap:1.2cqw; }
+  .nb .chips span { background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.4); border-radius:5cqw; padding:.7cqw 1.8cqw; font-size:2.2cqw; font-weight:600; }
+  .nb .agent { right:4cqw; bottom:4cqw; width:17cqw; height:17cqw; }
+
+  /* 5 Agent Intro */
+  .ai { background:linear-gradient(120deg,#1a1510,#3a2a14); }
+  .ai .agent { left:6cqw; top:50%; transform:translateY(-50%); width:34cqw; height:34cqw; border-color:var(--gold); border-width:.8cqw; }
+  .ai .txt { position:absolute; left:46cqw; top:50%; transform:translateY(-50%); }
+  .ai .hi { color:var(--gold); font-size:2.6cqw; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+  .ai .nm { font-size:6.4cqw; font-weight:900; line-height:1.05; margin:.6cqw 0 1cqw; }
+  .ai .role { font-size:2.8cqw; color:#e9dcc3; }
+  .ai .ct { margin-top:2.4cqw; font-size:2.4cqw; line-height:1.6; color:#fff; }
+  .ai .logo { position:absolute; right:4cqw; top:4cqw; background:#fff; color:#1b1408; font-weight:900; font-size:2cqw; padding:1cqw 1.6cqw; border-radius:.8cqw; }
+
+  /* Studio screen */
+  .card { background:#fff; border:1px solid var(--rule); border-radius:18px; padding:20px; }
+  .picker { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+  .pk { border:2px solid var(--rule); border-radius:12px; overflow:hidden; font-size:13.5px; font-weight:700; background:#fff; }
+  .pk.on { border-color:var(--amber); box-shadow:0 0 0 3px var(--tint); }
+  .pk .f { border-radius:0; }
+  .pk div.t { padding:6px 8px; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:18px; align-items:start; }
+  .fields label { display:block; font-size:13px; font-weight:600; color:#55524b; margin:10px 0 4px; }
+  input { width:100%; border:1px solid var(--rule); border-radius:10px; padding:10px 12px; font-size:15px; background:#fdfbf7; }
+  .row { display:flex; gap:10px; } .row > div { flex:1; }
+  .chip { display:inline-block; border:1px solid var(--rule); border-radius:10px; padding:7px 12px; font-size:13.5px; font-weight:600; margin:0 6px 6px 0; }
+  .chip.on { border-color:var(--amber); background:var(--tint); color:var(--amberdk); }
+  .btn { border:0; border-radius:12px; background:var(--amber); color:#fff; font-weight:700; font-size:15px; padding:11px 18px; }
+  .btn.ghost { background:#fff; color:var(--ink); border:1px solid var(--rule); }
+  .photos { display:flex; gap:6px; }
+  .photos i { width:64px; height:44px; border-radius:8px; background:#ccc center/cover; display:block; }
+  .after { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div>
+    <p class="label">1 · The five designs (horizontal shown; each also comes vertical)</p>
+    <div class="grid">
+      <div class="item">
+        <div class="f jl" style="background-image:url(https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=900&q=70)">
+          <div class="ribbon">JUST LISTED</div>
+          <div class="bar"><div class="addr">42 Maple Lane, Springfield</div><div class="price">$749,000</div><div class="meta">3 beds · 2.5 baths · 2,140 sq ft</div></div>
+          <div class="agent"></div>
+        </div>
+        <b>Just Listed</b><span>Agent in a circle, gold label, address and price over the photos.</span>
+      </div>
+      <div class="item">
+        <div class="f lx" style="background-image:url(https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=900&q=70)">
+          <div class="shade"></div>
+          <div class="kicker">Luxury Listing</div>
+          <div class="addr">18 Harbor View Drive</div>
+          <div class="price">OFFERED AT $2,450,000</div>
+          <div class="foot">5 BEDS · 6 BATHS · WATERFRONT</div>
+          <div class="agent"></div>
+        </div>
+        <b>Luxury Listing</b><span>Cinema bars, elegant serif type, gold accents.</span>
+      </div>
+      <div class="item">
+        <div class="f mu" style="background-image:url(https://images.unsplash.com/photo-1449844908441-8829872d2607?w=900&q=70)">
+          <div class="panel">
+            <div class="k">Market Update · November</div>
+            <h4>Springfield Housing Market</h4>
+            <div class="stats">
+              <div class="s"><b>$412K</b><i>Median price</i><br><em>▲ 4%</em></div>
+              <div class="s"><b>18</b><i>Days on market</i><br><em>▼ 3 days</em></div>
+              <div class="s"><b>126</b><i>Homes sold</i><br><em>▲ 9%</em></div>
+            </div>
+          </div>
+          <div class="agent"></div>
+        </div>
+        <b>Market Update</b><span>Three numbers on screen while the agent explains them.</span>
+      </div>
+      <div class="item">
+        <div class="f nb" style="background-image:url(https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=900&q=70)">
+          <div class="shade"></div>
+          <div class="k">Neighborhood Spotlight</div>
+          <div class="name">Riverside</div>
+          <div class="chips"><span>Walkable</span><span>Top schools</span><span>Riverfront park</span></div>
+          <div class="agent"></div>
+        </div>
+        <b>Neighborhood Spotlight</b><span>The place name big, three highlights, agent in the corner.</span>
+      </div>
+      <div class="item">
+        <div class="f ai">
+          <div class="logo">YOUR LOGO</div>
+          <div class="agent"></div>
+          <div class="txt">
+            <div class="hi">Meet your agent</div>
+            <div class="nm">Jane Smith</div>
+            <div class="role">Your Springfield REALTOR® · Smith Realty Group</div>
+            <div class="ct">📞 (555) 010-2030<br>🌐 janesmithhomes.com</div>
+          </div>
+        </div>
+        <b>Agent Introduction</b><span>Big portrait, name, brokerage, phone and website, with their logo.</span>
+      </div>
+    </div>
+    <p class="note">Colors: the agent's own brand colors from Settings, gold if they haven't set any. The agent is their Digital Twin or photo look, in their cloned voice.</p>
+  </div>
+
+  <div>
+    <p class="label">2 · In Spark Studio — pick a design, check the words, make it</p>
+    <div class="card">
+      <p style="margin:0 0 10px;font-weight:800;font-size:17px">Video templates</p>
+      <div class="picker">
+        <div class="pk on"><div class="f jl" style="background-image:url(https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=60)"><div class="ribbon">JUST LISTED</div><div class="agent"></div></div><div class="t">Just Listed</div></div>
+        <div class="pk"><div class="f lx" style="background-image:url(https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=400&q=60)"><div class="kicker">Luxury Listing</div></div><div class="t">Luxury Listing</div></div>
+        <div class="pk"><div class="f mu" style="background-image:url(https://images.unsplash.com/photo-1449844908441-8829872d2607?w=400&q=60)"><div class="panel"><div class="k">Market Update</div></div></div><div class="t">Market Update</div></div>
+        <div class="pk"><div class="f nb" style="background-image:url(https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=60)"><div class="shade"></div><div class="name">Riverside</div></div><div class="t">Neighborhood</div></div>
+        <div class="pk"><div class="f ai"><div class="agent"></div></div><div class="t">Agent Intro</div></div>
+      </div>
+
+      <div class="two">
+        <div class="fields">
+          <p style="margin:0;font-weight:800">Words on screen</p>
+          <label>Headline</label><input value="JUST LISTED">
+          <label>Address</label><input value="42 Maple Lane, Springfield">
+          <div class="row"><div><label>Price</label><input value="$749,000"></div><div><label>Details</label><input value="3 beds · 2.5 baths · 2,140 sq ft"></div></div>
+          <label>Your name and phone</label><input value="Jane Smith · (555) 010-2030">
+          <p class="note">Filled in from the listing and your Settings. Change anything.</p>
+
+          <p style="margin:16px 0 6px;font-weight:800">Photos</p>
+          <div class="photos">
+            <i style="background-image:url(https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=200&q=50)"></i>
+            <i style="background-image:url(https://images.unsplash.com/photo-1556911220-bff31c812dba?w=200&q=50)"></i>
+            <i style="background-image:url(https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=200&q=50)"></i>
+            <span class="chip" style="margin:0;align-self:center">+ Add</span>
+          </div>
+
+          <p style="margin:16px 0 6px;font-weight:800">Shape</p>
+          <span class="chip on">Vertical 9:16</span><span class="chip">Horizontal 16:9</span>
+        </div>
+        <div>
+          <p style="margin:0 0 8px;font-weight:800">Preview</p>
+          <div class="f jl" style="background-image:url(https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=900&q=70)">
+            <div class="ribbon">JUST LISTED</div>
+            <div class="bar"><div class="addr">42 Maple Lane, Springfield</div><div class="price">$749,000</div><div class="meta">3 beds · 2.5 baths · 2,140 sq ft</div></div>
+            <div class="agent"></div>
+          </div>
+          <p class="note">The script is written for you from the listing, and you can edit it on the next screen.</p>
+          <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn">Next · script</button><span class="note" style="margin:0">Uses 1 short video</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="label">3 · After it's made — in My Sparks</p>
+    <div class="card after">
+      <div style="width:330px"><div class="f jl" style="background-image:url(https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=900&q=70)"><div class="ribbon">JUST LISTED</div><div class="bar"><div class="addr">42 Maple Lane, Springfield</div><div class="price">$735,000</div></div><div class="agent"></div></div></div>
+      <div style="flex:1;min-width:240px">
+        <p style="margin:0;font-weight:800">Edit the words</p>
+        <p class="note" style="margin-top:4px">Price dropped? Typo in the address? Change it and press Update. Ready in about a minute — no new video used.</p>
+        <label style="display:block;font-size:13px;font-weight:600;color:#55524b;margin:12px 0 4px">Price</label><input value="$735,000">
+        <div style="margin-top:12px;display:flex;gap:10px"><button class="btn">Update the words</button><button class="btn ghost">Cancel</button></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -12,6 +12,7 @@ import { maybeRetireVoiceAfterRender } from "@/lib/utils/voice-slot";
 import { getVideoTranslationStatus } from "@/lib/api/heygen";
 import { waitUntil } from "@vercel/functions";
 import { deskPartDone } from "@/lib/podcast/desk";
+import { templateRenderDone } from "@/lib/templates/make";
 
 /** Constant-time string compare that tolerates differing lengths. */
 function safeEqual(a: string, b: string): boolean {
@@ -293,9 +294,11 @@ export async function POST(req: NextRequest) {
   // A Spark Podcast desk episode is two renders, "<row id>:host" and
   // "<row id>:guest" (2026-11-02). Each reports here on its own; the second
   // one in puts the episode together, after this answers.
+  // A video template's render ends ":tpl" (2026-11-02): finished the same way.
   if (callbackId?.includes(":")) {
     if (success || failed) {
-      const finish = await deskPartDone(admin, callbackId, { success: success && !successWithoutFile, videoUrl, failure: failureDetail });
+      const done = { success: success && !successWithoutFile, videoUrl, failure: failureDetail };
+      const finish = callbackId.endsWith(":tpl") ? await templateRenderDone(admin, callbackId, done) : await deskPartDone(admin, callbackId, done);
       if (finish) waitUntil(finish);
     }
     return NextResponse.json({ received: true });

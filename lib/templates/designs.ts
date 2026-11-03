@@ -1,0 +1,316 @@
+import { readFileSync } from "fs";
+import path from "path";
+import * as opentypeNs from "opentype.js";
+import sharp from "sharp";
+import { glyphPathData } from "@/lib/utils/glyph-path-data";
+
+const opentype = ((opentypeNs as unknown as { default?: typeof opentypeNs }).default ?? opentypeNs);
+
+/**
+ * Video templates (2026-11-02, the owner's approved mockup): five designs.
+ * HeyGen makes the plain video of the agent talking; SparkReels puts the
+ * photos, the agent's circle and these words on top (lib/templates/compose.ts).
+ * The words are drawn here as one see-through layer, in real type, so a price
+ * or an address is always spelled right and can be changed later for free.
+ */
+
+export const TEMPLATE_FEATURE = "video_templates";
+export type DesignId = "just_listed" | "luxury" | "market_update" | "neighborhood" | "agent_intro";
+export type Shape = "vertical" | "horizontal";
+export const SIZE: Record<Shape, { w: number; h: number }> = { horizontal: { w: 1280, h: 720 }, vertical: { w: 720, h: 1280 } };
+
+export interface Field { key: string; label: string; placeholder?: string }
+export interface Design {
+  id: DesignId; name: string; blurb: string;
+  /** Listing designs use the listing's photos; Market and Neighborhood one place photo; Agent Intro none. */
+  photos: "listing" | "place" | "none";
+  fields: Field[];
+}
+
+export const DESIGNS: Design[] = [
+  { id: "just_listed", name: "Just Listed", blurb: "Agent in a circle, gold label, address and price over the photos.", photos: "listing",
+    fields: [{ key: "headline", label: "Headline" }, { key: "address", label: "Address" }, { key: "price", label: "Price" }, { key: "details", label: "Details", placeholder: "3 beds · 2.5 baths · 2,140 sq ft" }, { key: "agent", label: "Your name and phone" }] },
+  { id: "luxury", name: "Luxury Listing", blurb: "Cinema bars, elegant type, gold accents.", photos: "listing",
+    fields: [{ key: "headline", label: "Headline" }, { key: "address", label: "Address" }, { key: "price", label: "Price line" }, { key: "details", label: "Details" }] },
+  { id: "market_update", name: "Market Update", blurb: "Three numbers on screen while the agent explains them.", photos: "place",
+    fields: [{ key: "headline", label: "Label" }, { key: "title", label: "Title" },
+      { key: "s1", label: "Number 1", placeholder: "$412K" }, { key: "s1l", label: "What it is", placeholder: "Median price" }, { key: "s1c", label: "Change", placeholder: "Up 4%" },
+      { key: "s2", label: "Number 2" }, { key: "s2l", label: "What it is" }, { key: "s2c", label: "Change" },
+      { key: "s3", label: "Number 3" }, { key: "s3l", label: "What it is" }, { key: "s3c", label: "Change" }] },
+  { id: "neighborhood", name: "Neighborhood Spotlight", blurb: "The place name big, three highlights, agent in the corner.", photos: "place",
+    fields: [{ key: "headline", label: "Label" }, { key: "name", label: "Neighborhood" }, { key: "highlights", label: "Highlights (comma between)", placeholder: "Walkable, Top schools, Riverfront park" }] },
+  { id: "agent_intro", name: "Agent Introduction", blurb: "Big portrait, name, brokerage, phone and website, with their logo.", photos: "none",
+    fields: [{ key: "headline", label: "Label" }, { key: "name", label: "Your name" }, { key: "role", label: "Title and brokerage" }, { key: "phone", label: "Phone" }, { key: "website", label: "Website" }] },
+];
+export const designById = (id: string) => DESIGNS.find((d) => d.id === id) ?? null;
+
+/** Where the agent's circle sits, in pixels. */
+export interface Circle { cx: number; cy: number; d: number }
+
+// ── Type ───────────────────────────────────────────────────────────────────────
+type Face = "display" | "text" | "condensed";
+const faces: Partial<Record<Face, opentypeNs.Font>> = {};
+// Literal paths so the deployment's file tracer bundles these (see image-render.ts).
+function font(face: Face): opentypeNs.Font {
+  const f = faces[face];
+  if (f) return f;
+  const buf = face === "text"
+    ? readFileSync(path.join(process.cwd(), "fonts", "Montserrat-SemiBold.ttf"))
+    : face === "condensed"
+      ? readFileSync(path.join(process.cwd(), "fonts", "Anton-Regular.ttf"))
+      : readFileSync(path.join(process.cwd(), "fonts", "ArchivoBlack-Regular.ttf"));
+  const parsed = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+  faces[face] = parsed;
+  return parsed;
+}
+const width = (t: string, size: number, face: Face, spacing = 0) => font(face).getAdvanceWidth(t, size) + spacing * Math.max(0, Array.from(t).length - 1);
+
+/** One line of real type. anchor: where x is. spacing: extra pixels between letters. */
+function line(t: string, x: number, y: number, size: number, fill: string, face: Face, anchor: "start" | "middle" | "end" = "start", spacing = 0): string {
+  if (!t) return "";
+  const w = width(t, size, face, spacing);
+  let cx = anchor === "middle" ? x - w / 2 : anchor === "end" ? x - w : x;
+  if (!spacing) return `<path d="${glyphPathData(font(face).getPath(t, cx, y, size))}" fill="${fill}"/>`;
+  const out: string[] = [];
+  for (const ch of Array.from(t)) {
+    if (ch.trim()) out.push(`<path d="${glyphPathData(font(face).getPath(ch, cx, y, size))}" fill="${fill}"/>`);
+    cx += font(face).getAdvanceWidth(ch, size) + spacing;
+  }
+  return out.join("");
+}
+/** The largest size (down to min) at which t fits in maxW on one line. */
+function fit(t: string, maxW: number, start: number, min: number, face: Face, spacing = 0): number {
+  let s = start;
+  while (s > min && width(t, s, face, spacing) > maxW) s -= 1;
+  return s;
+}
+/** Wraps t into at most maxLines lines that fit maxW, shrinking down to min. */
+function wrap(t: string, maxW: number, start: number, min: number, maxLines: number, face: Face): { size: number; lines: string[] } {
+  for (let s = start; ; s -= 1) {
+    const words = t.trim().split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let cur = "";
+    for (const w of words) {
+      const next = cur ? `${cur} ${w}` : w;
+      if (cur && width(next, s, face) > maxW) { lines.push(cur); cur = w; } else cur = next;
+    }
+    if (cur) lines.push(cur);
+    if ((lines.length <= maxLines && lines.every((l) => width(l, s, face) <= maxW)) || s <= min) return { size: s, lines: lines.slice(0, maxLines) };
+  }
+}
+const ink = (hex: string) => {
+  const n = parseInt(hex.slice(1), 16);
+  return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 150 ? "#14100a" : "#ffffff";
+};
+
+// ── Layouts ────────────────────────────────────────────────────────────────────
+export interface Layout { circle: Circle; svg: string; ring: string }
+
+/**
+ * Everything for one design in one shape: the agent's circle and the words.
+ * accent: the agent's first brand color, or gold.
+ */
+export function layout(id: DesignId, shape: Shape, f: Record<string, string>, accent = "#e7b84a"): Layout {
+  const { w: W, h: H } = SIZE[shape];
+  const v = shape === "vertical";
+  const g = (k: string) => (f[k] ?? "").trim();
+  const parts: string[] = [];
+  let circle: Circle;
+  let ring = accent;
+  const defs: string[] = [];
+
+  if (id === "just_listed") {
+    // Gold label top-left.
+    const ks = v ? 40 : 46;
+    const kt = g("headline") || "JUST LISTED";
+    const kw = width(kt, ks, "display", 2) + ks * 1.1;
+    parts.push(`<rect x="${W * 0.05}" y="${H * (v ? 0.05 : 0.07)}" width="${kw}" height="${ks * 1.6}" rx="${ks * 0.18}" fill="${accent}"/>`);
+    parts.push(line(kt, W * 0.05 + ks * 0.55, H * (v ? 0.05 : 0.07) + ks * 1.17, ks, ink(accent), "display", "start", 2));
+    // Dark fade under the words.
+    defs.push(`<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="0.45" stop-color="#000" stop-opacity="0.72"/><stop offset="1" stop-color="#000" stop-opacity="0.86"/></linearGradient>`);
+    if (v) {
+      parts.push(`<rect x="0" y="${H * 0.6}" width="${W}" height="${H * 0.4}" fill="url(#fade)"/>`);
+      circle = { cx: W * 0.5, cy: H * 0.6, d: W * 0.42 };
+      // One line after another, so a two-line address pushes the rest down
+      // instead of running into it.
+      const x = W / 2, maxW = W * 0.88;
+      const a = wrap(g("address"), maxW, 44, 28, 2, "display");
+      let y = H * 0.785;
+      a.lines.forEach((l, i) => parts.push(line(l, x, y + i * a.size * 1.12, a.size, "#fff", "display", "middle")));
+      y += (a.lines.length - 1) * a.size * 1.12;
+      const ps = fit(g("price"), maxW, 64, 36, "display");
+      y += ps * 1.08;
+      parts.push(line(g("price"), x, y, ps, accent, "display", "middle"));
+      const ds = fit(g("details"), maxW, 26, 16, "text");
+      if (g("details")) { y += ds * 1.7; parts.push(line(g("details"), x, y, ds, "#f1ece2", "text", "middle")); }
+      const as = fit(g("agent"), maxW, 22, 14, "text");
+      if (g("agent")) { y += as * 1.75; parts.push(line(g("agent"), x, Math.min(y, H * 0.975), as, "#d9d2c3", "text", "middle")); }
+    } else {
+      parts.push(`<rect x="0" y="${H * 0.56}" width="${W}" height="${H * 0.44}" fill="url(#fade)"/>`);
+      circle = { cx: W * 0.135, cy: H - W * 0.03 - W * 0.095, d: W * 0.19 };
+      const x0 = W * 0.27, maxW = W - x0 - W * 0.04;
+      parts.push(line(g("address"), x0, H * 0.79, fit(g("address"), maxW, 54, 28, "display"), "#fff", "display"));
+      parts.push(line(g("price"), x0, H * 0.895, fit(g("price"), maxW, 72, 36, "display"), accent, "display"));
+      parts.push(line(g("details"), x0, H * 0.955, fit(g("details"), maxW * 0.62, 26, 16, "text"), "#f1ece2", "text"));
+      parts.push(line(g("agent"), W * 0.96, H * 0.955, fit(g("agent"), maxW * 0.36, 22, 14, "text"), "#d9d2c3", "text", "end"));
+    }
+  } else if (id === "luxury") {
+    const bar = v ? H * 0.1 : H * 0.16;
+    // A soft dark band behind the address, so it reads over a bright room.
+    defs.push(`<radialGradient id="lxband" cx="0.5" cy="${v ? 0.4 : 0.47}" r="${v ? 0.6 : 0.55}"><stop offset="0" stop-color="#000" stop-opacity="0.5"/><stop offset="1" stop-color="#000" stop-opacity="0.15"/></radialGradient>`);
+    parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="url(#lxband)"/>`);
+    parts.push(`<rect x="0" y="0" width="${W}" height="${bar}" fill="#0d0b09"/><rect x="0" y="${H - bar}" width="${W}" height="${bar}" fill="#0d0b09"/>`);
+    const kt = (g("headline") || "Luxury Listing").toUpperCase();
+    parts.push(line(kt, W / 2, bar * 0.62, fit(kt, W * 0.9, v ? 26 : 30, 16, "text", 6), accent, "text", "middle", 6));
+    const a = wrap(g("address"), W * 0.86, v ? 56 : 64, 30, 2, "text");
+    const ay = H * (v ? 0.36 : 0.44) - ((a.lines.length - 1) * a.size * 0.55);
+    a.lines.forEach((l, i) => parts.push(line(l, W / 2, ay + i * a.size * 1.15, a.size, "#fff", "text", "middle")));
+    const p = g("price").toUpperCase();
+    parts.push(line(p, W / 2, ay + a.lines.length * a.size * 1.15 + (v ? 40 : 34), fit(p, W * 0.86, v ? 28 : 30, 16, "text", 8), "#fff", "text", "middle", 8));
+    const d = g("details").toUpperCase();
+    parts.push(line(d, W / 2, H - bar * 0.4, fit(d, W * 0.9, v ? 22 : 24, 14, "text", 5), "#d8cdb8", "text", "middle", 5));
+    const cd = v ? W * 0.34 : W * 0.14;
+    circle = { cx: W - W * 0.04 - cd / 2, cy: H - bar - W * 0.025 - cd / 2, d: cd };
+  } else if (id === "market_update") {
+    const stats = [1, 2, 3].map((i) => ({ v: g(`s${i}`), l: g(`s${i}l`), c: g(`s${i}c`) })).filter((s) => s.v);
+    const changeColor = (c: string) => (/^\s*(-|down)/i.test(c) ? "#ff8a80" : "#6fd39a");
+    if (v) {
+      defs.push(`<linearGradient id="pan" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0e121a" stop-opacity="0.96"/><stop offset="0.8" stop-color="#0e121a" stop-opacity="0.9"/><stop offset="1" stop-color="#0e121a" stop-opacity="0"/></linearGradient>`);
+      parts.push(`<rect x="0" y="0" width="${W}" height="${H * 0.56}" fill="url(#pan)"/>`);
+      const x = W * 0.07;
+      parts.push(line(g("headline").toUpperCase(), x, H * 0.07, fit(g("headline").toUpperCase(), W * 0.86, 26, 16, "text", 3), accent, "text", "start", 3));
+      const t = wrap(g("title"), W * 0.86, 56, 30, 2, "display");
+      t.lines.forEach((l, i) => parts.push(line(l, x, H * 0.13 + i * t.size * 1.1, t.size, "#fff", "display")));
+      const ty = H * 0.13 + t.lines.length * t.size * 1.1 + 20;
+      const tw = (W * 0.86 - 2 * 16) / 3;
+      stats.forEach((s, i) => {
+        const sx = x + i * (tw + 16);
+        parts.push(`<rect x="${sx}" y="${ty}" width="${tw}" height="${H * 0.15}" rx="16" fill="#fff" fill-opacity="0.08" stroke="#fff" stroke-opacity="0.18"/>`);
+        parts.push(line(s.v, sx + 14, ty + 62, fit(s.v, tw - 28, 46, 22, "display"), "#fff", "display"));
+        parts.push(line(s.l, sx + 14, ty + 100, fit(s.l, tw - 28, 20, 12, "text"), "#c9cfdb", "text"));
+        parts.push(line(s.c, sx + 14, ty + 132, fit(s.c, tw - 28, 20, 12, "text"), changeColor(s.c), "text"));
+      });
+      circle = { cx: W / 2, cy: H * 0.76, d: W * 0.5 };
+    } else {
+      defs.push(`<linearGradient id="pan" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0e121a" stop-opacity="0.96"/><stop offset="0.72" stop-color="#0e121a" stop-opacity="0.92"/><stop offset="1" stop-color="#0e121a" stop-opacity="0"/></linearGradient>`);
+      parts.push(`<rect x="0" y="0" width="${W * 0.62}" height="${H}" fill="url(#pan)"/>`);
+      const x = W * 0.045, maxW = W * 0.5;
+      parts.push(line(g("headline").toUpperCase(), x, H * 0.14, fit(g("headline").toUpperCase(), maxW, 24, 14, "text", 3), accent, "text", "start", 3));
+      const t = wrap(g("title"), maxW, 58, 30, 2, "display");
+      t.lines.forEach((l, i) => parts.push(line(l, x, H * 0.27 + i * t.size * 1.08, t.size, "#fff", "display")));
+      const ty = H * 0.27 + t.lines.length * t.size * 1.08 + 24;
+      const tw = (maxW - 2 * 14) / 3;
+      stats.forEach((s, i) => {
+        const sx = x + i * (tw + 14);
+        parts.push(`<rect x="${sx}" y="${ty}" width="${tw}" height="${H * 0.3}" rx="14" fill="#fff" fill-opacity="0.08" stroke="#fff" stroke-opacity="0.18"/>`);
+        parts.push(line(s.v, sx + 14, ty + 66, fit(s.v, tw - 28, 48, 22, "display"), "#fff", "display"));
+        parts.push(line(s.l, sx + 14, ty + 104, fit(s.l, tw - 28, 19, 12, "text"), "#c9cfdb", "text"));
+        parts.push(line(s.c, sx + 14, ty + 140, fit(s.c, tw - 28, 19, 12, "text"), changeColor(s.c), "text"));
+      });
+      circle = { cx: W * 0.8, cy: H * 0.6, d: W * 0.3 };
+    }
+  } else if (id === "neighborhood") {
+    defs.push(`<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.8"/></linearGradient>`);
+    parts.push(`<rect x="0" y="${H * 0.45}" width="${W}" height="${H * 0.55}" fill="url(#fade)"/>`);
+    const kt = (g("headline") || "Neighborhood Spotlight").toUpperCase();
+    const ks = v ? 24 : 22;
+    const kw = width(kt, ks, "text", 3) + ks * 1.6;
+    parts.push(`<rect x="${W * 0.05}" y="${H * 0.05}" width="${kw}" height="${ks * 2}" rx="${ks}" fill="#fff"/>`);
+    parts.push(line(kt, W * 0.05 + ks * 0.8, H * 0.05 + ks * 1.36, ks, "#14100a", "text", "start", 3));
+    const hl = g("highlights").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 3);
+    const cs = v ? 24 : 22;
+    if (v) {
+      const n = wrap(g("name"), W * 0.88, 104, 44, 2, "display");
+      n.lines.forEach((l, i) => parts.push(line(l, W * 0.06, H * 0.8 + i * n.size, n.size, "#fff", "display")));
+      let cy = H * 0.8 + n.lines.length * n.size + 10, cx = W * 0.06;
+      for (const h of hl) {
+        const cw = width(h, cs, "text") + cs * 1.6;
+        if (cx + cw > W * 0.94) { cx = W * 0.06; cy += cs * 2.4; }
+        parts.push(`<rect x="${cx}" y="${cy}" width="${cw}" height="${cs * 1.9}" rx="${cs}" fill="#fff" fill-opacity="0.18" stroke="#fff" stroke-opacity="0.45"/>`);
+        parts.push(line(h, cx + cs * 0.8, cy + cs * 1.3, cs, "#fff", "text"));
+        cx += cw + 10;
+      }
+      circle = { cx: W * 0.74, cy: H * 0.2, d: W * 0.4 };
+    } else {
+      parts.push(line(g("name"), W * 0.045, H * 0.8, fit(g("name"), W * 0.68, 104, 40, "display"), "#fff", "display"));
+      let cx = W * 0.045;
+      for (const h of hl) {
+        const cw = width(h, cs, "text") + cs * 1.6;
+        parts.push(`<rect x="${cx}" y="${H * 0.86}" width="${cw}" height="${cs * 1.9}" rx="${cs}" fill="#fff" fill-opacity="0.18" stroke="#fff" stroke-opacity="0.45"/>`);
+        parts.push(line(h, cx + cs * 0.8, H * 0.86 + cs * 1.3, cs, "#fff", "text"));
+        cx += cw + 12;
+      }
+      const cd = W * 0.18;
+      circle = { cx: W - W * 0.04 - cd / 2, cy: H - W * 0.04 - cd / 2, d: cd };
+    }
+    ring = "#ffffff";
+  } else {
+    // agent_intro: the background is drawn by background() below.
+    if (v) {
+      circle = { cx: W / 2, cy: H * 0.3, d: W * 0.62 };
+      const x = W / 2;
+      parts.push(line(g("headline").toUpperCase(), x, H * 0.57, fit(g("headline").toUpperCase(), W * 0.86, 28, 16, "text", 4), accent, "text", "middle", 4));
+      parts.push(line(g("name"), x, H * 0.65, fit(g("name"), W * 0.9, 76, 36, "display"), "#fff", "display", "middle"));
+      const r = wrap(g("role"), W * 0.86, 30, 18, 2, "text");
+      r.lines.forEach((l, i) => parts.push(line(l, x, H * 0.705 + i * r.size * 1.3, r.size, "#e9dcc3", "text", "middle")));
+      parts.push(line(g("phone"), x, H * 0.81, fit(g("phone"), W * 0.86, 34, 18, "text"), "#fff", "text", "middle"));
+      parts.push(line(g("website"), x, H * 0.86, fit(g("website"), W * 0.86, 28, 16, "text"), "#fff", "text", "middle"));
+    } else {
+      circle = { cx: W * 0.24, cy: H * 0.5, d: W * 0.34 };
+      const x = W * 0.46, maxW = W * 0.5;
+      parts.push(line(g("headline").toUpperCase(), x, H * 0.3, fit(g("headline").toUpperCase(), maxW, 28, 14, "text", 4), accent, "text", "start", 4));
+      parts.push(line(g("name"), x, H * 0.43, fit(g("name"), maxW, 80, 34, "display"), "#fff", "display"));
+      const r = wrap(g("role"), maxW, 30, 16, 2, "text");
+      r.lines.forEach((l, i) => parts.push(line(l, x, H * 0.52 + i * r.size * 1.3, r.size, "#e9dcc3", "text")));
+      parts.push(line(g("phone"), x, H * 0.7, fit(g("phone"), maxW, 32, 16, "text"), "#fff", "text"));
+      parts.push(line(g("website"), x, H * 0.78, fit(g("website"), maxW, 28, 14, "text"), "#fff", "text"));
+    }
+  }
+
+  // The ring around the agent's circle, drawn with the words.
+  const rw = Math.max(4, Math.round(circle.d * 0.025));
+  const ringSvg = `<circle cx="${circle.cx}" cy="${circle.cy}" r="${circle.d / 2 + rw / 2}" fill="none" stroke="${ring}" stroke-width="${rw}"/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs>${defs.join("")}</defs>${parts.join("")}${ringSvg}</svg>`;
+  return { circle, svg, ring: ringSvg };
+}
+
+/** The words layer as a see-through PNG, with the logo placed for Agent Introduction. */
+export async function wordsLayer(id: DesignId, shape: Shape, f: Record<string, string>, accent?: string, logo?: Buffer | null): Promise<{ png: Buffer; circle: Circle }> {
+  const { svg, circle } = layout(id, shape, f, accent);
+  const base = sharp(Buffer.from(svg));
+  if (id === "agent_intro" && logo) {
+    const { w: W, h: H } = SIZE[shape];
+    const lw = Math.round(shape === "vertical" ? W * 0.32 : W * 0.14);
+    const lp = await sharp(logo).resize({ width: lw, height: Math.round(lw * 0.5), fit: "inside" }).png().toBuffer();
+    const meta = await sharp(lp).metadata();
+    const top = shape === "vertical" ? Math.round(H * 0.9) : Math.round(H * 0.06);
+    const left = shape === "vertical" ? Math.round((W - (meta.width ?? lw)) / 2) : Math.round(W - W * 0.04 - (meta.width ?? lw));
+    return { png: await base.composite([{ input: lp, top, left }]).png().toBuffer(), circle };
+  }
+  return { png: await base.png().toBuffer(), circle };
+}
+
+/** Agent Introduction's background: a dark warm gradient tinted with the accent. */
+export async function introBackground(shape: Shape, accent = "#e7b84a"): Promise<Buffer> {
+  const { w: W, h: H } = SIZE[shape];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><defs><linearGradient id="b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#16120d"/><stop offset="1" stop-color="#3a2a14"/></linearGradient><radialGradient id="r" cx="0.25" cy="0.4" r="0.6"><stop offset="0" stop-color="${accent}" stop-opacity="0.28"/><stop offset="1" stop-color="${accent}" stop-opacity="0"/></radialGradient></defs><rect width="${W}" height="${H}" fill="url(#b)"/><rect width="${W}" height="${H}" fill="url(#r)"/></svg>`;
+  return sharp(Buffer.from(svg)).png().toBuffer();
+}
+
+/** Sensible starting words from the agent's profile and (optionally) a listing. */
+export function defaultFields(id: DesignId, p: {
+  name?: string | null; phone?: string | null; company?: string | null; website?: string | null; city?: string | null; state?: string | null;
+}, listing?: { address?: string; price?: string | number; beds?: string | number; baths?: string | number; sqft?: string | number } | null): Record<string, string> {
+  const town = p.city || "Springfield";
+  const price = listing?.price ? (typeof listing.price === "number" ? `$${listing.price.toLocaleString("en-US")}` : String(listing.price)) : "";
+  const details = [listing?.beds && `${listing.beds} beds`, listing?.baths && `${listing.baths} baths`, listing?.sqft && `${Number(listing.sqft).toLocaleString("en-US")} sq ft`].filter(Boolean).join(" · ");
+  const agent = [p.name, p.phone].filter(Boolean).join(" · ");
+  const month = new Date().toLocaleString("en-US", { month: "long" });
+  switch (id) {
+    case "just_listed": return { headline: "JUST LISTED", address: listing?.address ?? "", price, details, agent };
+    case "luxury": return { headline: "Luxury Listing", address: listing?.address ?? "", price: price ? `Offered at ${price}` : "", details };
+    case "market_update": return { headline: `Market Update · ${month}`, title: `${town} Housing Market`, s1: "", s1l: "Median price", s1c: "", s2: "", s2l: "Days on market", s2c: "", s3: "", s3l: "Homes sold", s3c: "" };
+    case "neighborhood": return { headline: "Neighborhood Spotlight", name: town, highlights: "" };
+    default: return { headline: "Meet your agent", name: p.name ?? "", role: [p.city ? `Your ${p.city} REALTOR®` : "REALTOR®", p.company].filter(Boolean).join(" · "), phone: p.phone ?? "", website: (p.website ?? "").replace(/^https?:\/\//, "").replace(/\/$/, "") };
+  }
+}

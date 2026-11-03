@@ -1,0 +1,23 @@
+{
+  "title": "SparkReels template - Just Listed (16:9)",
+  "avatar": "05aa425c2c0e87466638c222fc9f2902",
+  "voice": "0f5cc0ea68ef439da2c2e8873f93a319",
+  "aspect": "16:9",
+  "scenes": [
+    {
+      "kind": "avatar",
+      "photo": "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=1920&q=80",
+      "say": "Hi, I'm Carmella with SparkReels Realty. Just listed: 42 Maple Lane in Springfield, offered at $749,000."
+    },
+    {
+      "kind": "image",
+      "photo": "https://images.unsplash.com/photo-1556911220-bff31c812dba?w=1920&q=80",
+      "say": "Three bedrooms, two and a half baths, and a bright open kitchen made for gathering."
+    },
+    {
+      "kind": "avatar",
+      "photo": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1920&q=80",
+      "say": "Homes like this don't last long. Call me today to book your private tour."
+    }
+  ]
+}

@@ -23,6 +23,8 @@ export interface Account {
   sparkPodcast: boolean;
   /** SparkReels mode: the account promotes SparkReels itself (2026-11-01). */
   sparkreelsMode: boolean;
+  /** Video templates, while being tested (2026-11-02). */
+  videoTemplates: boolean;
   level: AccessLevel;
   paid: boolean;
   /** Affiliate Program: paid, or canceled but paid through the period. */
@@ -47,6 +49,7 @@ function load(): Promise<Account | null> {
         campaignCalendar: !!a.campaignCalendar,
         sparkPodcast: !!a.sparkPodcast,
         sparkreelsMode: !!a.sparkreelsMode,
+        videoTemplates: !!a.videoTemplates,
         level,
         paid: isPaidLevel(level),
         affiliateEligible: !!a.affiliateEligible,
