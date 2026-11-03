@@ -11,13 +11,19 @@ import { LookPicker } from "@/components/halo/halo-sites-card";
  * Spark Podcast, step 1 (2026-10-30, the owner's approved mockup): source →
  * hosts → the conversation, edited line by line → Make episode. Behind the
  * "spark_podcast" switch (app/(dashboard)/podcast/page.tsx).
+ *
+ * 2026-11-02 (the owner's approved mockup): At the desk (side by side, with
+ * close-ups) or One at a time; partners (other SparkReels users who pressed
+ * Allow) above the ready-made co-hosts, with Invite a partner; an episode
+ * uses one long video.
  */
 
 type Source = "topic" | "url" | "spark" | "text";
 interface Turn { speaker: "host" | "guest"; text: string }
 interface CoHost { id: string; name: string; image: string | null; gender: string | null }
+interface Partner { id: string; rowId: string; name: string; fullName: string | null; email: string; role: string | null; status: string; image: string | null; ready: boolean; needs: string | null }
 interface Setup {
-  coHosts: CoHost[]; sets: { id: string; label: string; url: string }[];
+  coHosts: CoHost[]; partners: Partner[]; hasTwin: boolean; sets: { id: string; label: string; url: string }[];
   sparks: { id: string; title: string; createdAt: string }[];
   name: string | null; city: string | null; state: string | null; videosLeft: number | null; cost: number;
 }
@@ -44,6 +50,11 @@ export function PodcastStudio() {
   const [lookId, setLookId] = useState<string | null>(null);
   const [coHostId, setCoHostId] = useState<string | null>(null);
   const [setId, setSetId] = useState("warm");
+  const [layout, setLayout] = useState<"desk" | "studio">("desk");
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("");
+  const [inviting, setInviting] = useState(false);
 
   const [title, setTitle] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -51,11 +62,17 @@ export function PodcastStudio() {
   const [making, setMaking] = useState(false);
   const [made, setMade] = useState<{ videoId: string } | null>(null);
 
+  const loadSetup = () => fetch("/api/podcast/setup").then((r) => (r.ok ? r.json() : null)).then((d: Setup | null) => {
+    if (!d) { toast.error("Couldn't open Spark Podcast."); return null; }
+    setSetup(d);
+    if (!d.hasTwin) setLayout("studio");
+    setCoHostId((c) => c ?? d.partners.find((x) => x.ready)?.id ?? d.coHosts[0]?.id ?? null);
+    return d;
+  });
+
   useEffect(() => {
-    fetch("/api/podcast/setup").then((r) => (r.ok ? r.json() : null)).then((d: Setup | null) => {
-      if (!d) { toast.error("Couldn't open Spark Podcast."); return; }
-      setSetup(d);
-      setCoHostId((c) => c ?? d.coHosts[0]?.id ?? null);
+    loadSetup().then((d) => {
+      if (!d) return;
       if (d.city && !topic) setTopic(`Should you downsize now or wait? ${[d.city, d.state].filter(Boolean).join(", ")}`);
     }).catch(() => {});
     fetch("/api/avatar/looks").then((r) => (r.ok ? r.json() : null)).then((b) => {
@@ -66,7 +83,7 @@ export function PodcastStudio() {
       setTwinLookIds(ids);
       setTwinLookId(typeof b.twinLookId === "string" ? b.twinLookId : null);
       const wide = b.formatLooks?.wide as string | null | undefined;
-      setLookId((cur) => cur ?? (wide && ready.some((l) => l.id === wide) ? wide : ready[0]?.id ?? null));
+      setLookId((cur) => cur ?? (typeof b.twinLookId === "string" ? b.twinLookId : wide && ready.some((l) => l.id === wide) ? wide : ready[0]?.id ?? null));
     }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -85,12 +102,12 @@ export function PodcastStudio() {
   }
 
   async function make() {
-    if (!window.confirm(`Make this episode? It uses ${setup?.cost ?? 2} short videos from your plan.`)) return;
+    if (!window.confirm("Make this episode? It uses 1 long video from your plan.")) return;
     setMaking(true);
     try {
       const res = await fetch("/api/podcast/make", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, turns, lookId, coHostId, setId }),
+        body: JSON.stringify({ title, turns, lookId, coHostId, setId, layout }),
       });
       const out = await res.json().catch(() => ({}));
       if (!res.ok) { toast.error(out.error || "Couldn't make the episode."); return; }
@@ -99,9 +116,30 @@ export function PodcastStudio() {
     } finally { setMaking(false); }
   }
 
+  async function invite() {
+    setInviting(true);
+    try {
+      const res = await fetch("/api/podcast/partners", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail, role: inviteRole }) });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error(out.error || "Couldn't send it."); return; }
+      toast.success(out.hasAccount ? "Invitation sent." : "Invitation sent. They'll need a SparkReels account with a Digital Twin.");
+      setInviteOpen(false); setInviteEmail(""); setInviteRole("");
+      await loadSetup();
+    } finally { setInviting(false); }
+  }
+
+  async function removePartner(p: Partner) {
+    if (!window.confirm(`Remove ${p.name} as a partner?`)) return;
+    await fetch(`/api/podcast/partners?id=${encodeURIComponent(p.rowId)}`, { method: "DELETE" });
+    if (coHostId === p.id) setCoHostId(null);
+    await loadSetup();
+  }
+
   if (!setup) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-spark-amber" /></div>;
   const host = setup.name?.split(/\s+/)[0] || "You";
-  const guest = setup.coHosts.find((c) => c.id === coHostId)?.name || "Co-host";
+  const guest = setup.partners.find((c) => c.id === coHostId)?.name || setup.coHosts.find((c) => c.id === coHostId)?.name || "Co-host";
+  // At the desk, the host is their Digital Twin (each person is cut out of their own video).
+  const hostLooks = layout === "desk" ? looks.filter((l) => twinLookIds.includes(l.id)) : looks;
   const w = words(turns);
   const tooLong = w > 3 * 150 + 60;
   const market = [setup.city, setup.state].filter(Boolean).join(", ");
@@ -149,12 +187,64 @@ export function PodcastStudio() {
         {/* 2 Hosts */}
         <section className="rounded-2xl border border-spark-rule bg-white p-4">
           <p className="mb-2 text-[16px] font-bold text-spark-ink">2 · Who&apos;s talking?</p>
+          <p className="mb-1 text-[13px] font-semibold text-spark-ink-soft">Layout</p>
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            {([["desk", "At the desk", "Side by side, with close-ups"], ["studio", "One at a time", "Cuts between you"]] as const).map(([id, l, d]) => (
+              <button key={id} type="button" onClick={() => setLayout(id)} disabled={id === "desk" && !setup.hasTwin}
+                className={`overflow-hidden rounded-xl border-2 text-left disabled:opacity-50 ${layout === id ? "border-spark-amber shadow-[0_0_0_3px_#fbeacc]" : "border-spark-rule hover:border-spark-amber"}`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/assets/podcast-sets/layout-${id}.jpg`} alt="" className="aspect-video w-full bg-[#3a2b17] object-cover" />
+                <b className="block px-2 pt-1.5 text-[14.5px] text-spark-ink">{l}</b>
+                <span className="block px-2 pb-2 text-[12.5px] text-spark-ink-muted">{d}</span>
+              </button>
+            ))}
+          </div>
+          {!setup.hasTwin && <p className="-mt-1 mb-3 text-[12.5px] text-spark-ink-muted">At the desk needs your Digital Twin. <Link href="/settings#twin" className="underline">Make it in Settings</Link></p>}
+
           <p className="mb-1 text-[13px] font-semibold text-spark-ink-soft">You, the host · your voice</p>
           <div className="mb-3 flex flex-wrap items-center gap-1.5">
-            {looks.length ? <LookPicker looks={looks} twinLookId={twinLookId} twinLookIds={twinLookIds} fitShape="landscape" value={lookId} onChange={setLookId} />
+            {hostLooks.length ? <LookPicker looks={hostLooks} twinLookId={twinLookId} twinLookIds={twinLookIds} fitShape="landscape" value={hostLooks.some((l) => l.id === lookId) ? lookId : hostLooks[0].id} onChange={setLookId} />
               : <span className="text-[13px] text-spark-ink-muted">Your headshot. <Link href="/settings" className="underline">Add looks in Settings</Link></span>}
           </div>
-          <p className="mb-1 text-[13px] font-semibold text-spark-ink-soft">Co-host</p>
+
+          <p className="mb-1 text-[13px] font-semibold text-spark-ink-soft">Co-host · your partners</p>
+          <div className="mb-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {setup.partners.map((p) => (
+              <div key={p.id} className={`relative rounded-xl border-2 p-2 text-center ${coHostId === p.id ? "border-spark-amber bg-white" : "border-transparent bg-[#faf8f3]"}`}>
+                <button type="button" disabled={!p.ready} onClick={() => setCoHostId(p.id)} className="w-full disabled:cursor-default">
+                  {p.image
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={p.image} alt="" className="mx-auto mb-1 h-14 w-14 rounded-full object-cover" />
+                    : <span className="mx-auto mb-1 flex h-14 w-14 items-center justify-center rounded-full bg-[#1B5E82] text-[17px] font-extrabold text-white">{(p.fullName || p.name).split(/\s+/).map((x) => x[0]).join("").slice(0, 2).toUpperCase()}</span>}
+                  <b className="block truncate text-[14px] text-spark-ink">{p.name}</b>
+                  {p.role && <span className="block truncate text-[12px] text-spark-ink-muted">{p.role}</span>}
+                  <span className={`block text-[12px] font-bold ${p.ready ? "text-[#0f7a52]" : "text-[#b45309]"}`}>
+                    {p.ready ? "✓ Ready" : p.status === "invited" ? "Waiting for their yes" : p.status === "declined" ? "Said no" : p.needs === "twin" ? "Needs their twin" : p.needs === "twin_approval" ? "Twin not approved" : p.needs === "voice" ? "Needs their voice" : "Not ready"}
+                  </span>
+                </button>
+                <button type="button" aria-label={`Remove ${p.name}`} onClick={() => void removePartner(p)} className="absolute right-1 top-1 rounded p-0.5 text-spark-ink-faint hover:text-red-600"><Trash2 size={13} /></button>
+              </div>
+            ))}
+            <button type="button" onClick={() => setInviteOpen((v) => !v)}
+              className="flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-spark-rule bg-white p-2 text-[13.5px] font-bold text-[#A3660F] hover:border-spark-amber">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-spark-amber-tint"><Plus size={22} /></span>
+              Invite a partner
+            </button>
+          </div>
+          {inviteOpen && (
+            <div className="mb-3 rounded-xl border border-spark-rule bg-[#fffcf6] p-3">
+              <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                <label className="block"><span className="mb-1 block text-[13px] font-semibold text-spark-ink-soft">Their email</span>
+                  <input className={input} type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="name@company.com" /></label>
+                <label className="block"><span className="mb-1 block text-[13px] font-semibold text-spark-ink-soft">What they do</span>
+                  <input className={input} value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} placeholder="Mortgage lender" /></label>
+                <Button onClick={() => void invite()} loading={inviting} disabled={!inviteEmail.trim()}>Send invitation</Button>
+              </div>
+              <p className="mt-2 text-[12.5px] text-spark-ink-muted">Their twin is only used after they press Allow. They get a copy of every episode they&apos;re in.</p>
+            </div>
+          )}
+
+          <p className="mb-1 text-[13px] font-semibold text-spark-ink-soft">Or a ready-made co-host</p>
           <div className="mb-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
             {setup.coHosts.map((c) => (
               <button key={c.id} type="button" onClick={() => setCoHostId(c.id)} title={c.name}
@@ -222,7 +312,7 @@ export function PodcastStudio() {
               <>
                 <Button onClick={() => void make()} loading={making} disabled={tooLong || !coHostId || turns.some((t) => !t.text.trim())}>Make episode</Button>
                 <span className="text-[13px] text-spark-ink-muted">
-                  Uses {setup.cost} short videos{setup.videosLeft !== null ? ` · you have ${setup.videosLeft}` : ""}. 16:9, captions, about {Math.max(5, Math.round(w / 15))}–{Math.max(10, Math.round(w / 8))} minutes to make.
+                  Uses 1 long video{setup.videosLeft !== null ? ` · you have ${setup.videosLeft}` : ""}. 16:9, captions, about {Math.max(5, Math.round(w / 15))}–{Math.max(10, Math.round(w / 8))} minutes to make.
                 </span>
               </>
             )}

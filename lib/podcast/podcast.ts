@@ -22,8 +22,8 @@ export const PODCAST_FEATURE = "spark_podcast";
 export const PODCAST_LEVELS: readonly AccessLevel[] = ["producer", "influencer", "admin"];
 export const podcastPlanOk = (p: { subscription_tier?: string | null; role?: string | null } | null) =>
   PODCAST_LEVELS.includes(getAccessLevel(p));
-/** What one episode (up to 3 minutes) uses from the plan: two short videos. */
-export const PODCAST_SHORT_VIDEOS = 2;
+/** What one episode (up to 3 minutes) uses from the plan: one long video (2026-11-02, the owner's call; was two short). */
+export const PODCAST_LONG_VIDEOS = 1;
 export const PODCAST_MAX_MINUTES = 3;
 /** Studio mode takes at most 50 scenes. */
 const MAX_TURNS = 40;
@@ -100,12 +100,17 @@ export const FEELS: Record<string, string> = {
 export async function writeConversation(o: {
   topic: string; source?: string; minutes: number; feel: string;
   hostName: string; guestName: string; city?: string | null; state?: string | null; cta?: string | null;
+  /** A real partner (2026-11-02): what they do, e.g. "mortgage lender". */
+  guestRole?: string | null;
 }): Promise<Conversation> {
   const words = Math.round(Math.min(PODCAST_MAX_MINUTES, Math.max(1, o.minutes)) * 150);
   const market = [o.city, o.state].filter(Boolean).join(", ");
+  const coHost = o.guestRole
+    ? `CO-HOST: ${o.guestName}, a ${o.guestRole} the agent works with. They add their own professional perspective in general terms, give the co-host about a third of the talking, and never quote rates, fees or promises.`
+    : `CO-HOST: ${o.guestName}, a curious co-host who asks what buyers and sellers wonder about. Never an agent, never gives real estate advice.`;
   const system = `You write short two-person video podcast episodes for a real estate agent.
 HOST: ${o.hostName}, the agent${market ? ` in ${market}` : ""}. They are the expert.
-CO-HOST: ${o.guestName}, a curious co-host who asks what buyers and sellers wonder about. Never an agent, never gives real estate advice.
+${coHost}
 Style: ${FEELS[o.feel] ?? FEELS.chat}.
 Length: about ${words} spoken words in total, never more than ${words + 30}. ${Math.max(6, Math.round(words / 22))} to ${Math.min(MAX_TURNS, Math.round(words / 12))} turns, alternating, starting with the HOST welcoming people to the show.
 Rules: spoken English, short sentences, no stage directions, no emojis, no names of data vendors, no promises of results. Facts must be general or clearly framed as typical; never invent precise statistics. Each turn under 60 words.

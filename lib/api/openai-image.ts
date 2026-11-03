@@ -191,6 +191,34 @@ STRICT RULES:
   }
 }
 
+/**
+ * The Spark Podcast desk (2026-11-02): the front of a podcast desk with two
+ * microphones along the bottom of a wide frame, everything above it
+ * see-through, to lay over the two people. Null on failure.
+ */
+export async function generatePodcastDesk(): Promise<Buffer | null> {
+  const openai = getOpenAI();
+  if (!openai) return null;
+  const prompt = `Front view of a long modern podcast desk in warm walnut wood, seen straight on at seated eye level, spanning the whole width of the image and filling only the bottom fifth of it. Two black broadcast microphones on short desk arms rise from the desk, one about 30 percent from the left and one about 70 percent from the left, angled slightly toward the camera, their tops no higher than the bottom third of the image. Photorealistic, warm studio lighting.
+
+Everything above the desk and the microphones is completely transparent. No people, no chairs, no wall, no text, no logos.`;
+  try {
+    const result = await openai.images.generate({
+      model: IMAGE_MODEL,
+      prompt,
+      size: "1536x1024",
+      quality: "high",
+      background: "transparent",
+      output_format: "png",
+      n: 1,
+    } as Parameters<typeof openai.images.generate>[0]);
+    return await imageBytes((result as { data?: { b64_json?: string; url?: string }[] }).data?.[0]);
+  } catch (err) {
+    console.error("[openai-image] podcast desk failed:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 export async function generateImageBackground(opts: {
   template: string;
   scene?: string;

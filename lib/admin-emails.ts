@@ -1,7 +1,7 @@
 import {
   SIGNOFF_HTML, SIGNOFF_TEXT, previewEmails,
   notifyAffiliateApproved, notifyAffiliateCommission, notifyPostFailed, notifyTrialWindow,
-  sendAiQuestionsToVisitor, sendAutopilotWeek, sendFreeFollowupEmail, sendImportAddress, sendWelcomeEmail, sendVideoReadyEmail, sendAccountCleanupWarning,
+  sendAiQuestionsToVisitor, sendAutopilotWeek, sendPodcastPartnerInvite, sendFreeFollowupEmail, sendImportAddress, sendWelcomeEmail, sendVideoReadyEmail, sendAccountCleanupWarning,
   type CapturedEmail,
 } from "@/lib/email";
 
@@ -97,6 +97,8 @@ export const EMAIL_CATALOG: { key: string; name: string; goesTo: string; when: s
     build: () => notifyAffiliateApproved({ ...SAMPLE, refCode: "JANE20", appUrl: APP, claimToken: null }) },
   { key: "commission", name: "Commission earned", goesTo: "Affiliate", when: "Each commission",
     build: () => notifyAffiliateCommission({ ...SAMPLE, commissionCents: 2600, availableAt: "2026-11-24T00:00:00Z", appUrl: APP }) },
+  { key: "podcast-partner", name: "Podcast partner invitation", goesTo: "Someone an agent invites as co-host", when: "When the agent presses Invite in Spark Podcast",
+    build: () => sendPodcastPartnerInvite({ to: SAMPLE.email, hostName: "Jane Agent", role: "mortgage lender", allowUrl: `${APP}/podcast/allow?t=sample`, hasAccount: true }) },
   { key: "ai-questions", name: "AI questions", goesTo: "Website visitor", when: "Home page lead form",
     build: () => sendAiQuestionsToVisitor({
       ...SAMPLE, city: "Springfield",

@@ -532,6 +532,41 @@ export async function sendImportAddress({
   return !!res?.ok;
 }
 
+/**
+ * Spark Podcast partner invitation (2026-11-02): asks someone to let an agent
+ * use their Digital Twin and voice as the co-host. Nothing happens until they
+ * press Allow on the page the link opens.
+ */
+export async function sendPodcastPartnerInvite({
+  to, hostName, role, allowUrl, hasAccount,
+}: { to: string; hostName: string; role: string | null; allowUrl: string; hasAccount: boolean }): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+  const host = esc(hostName);
+  const res = await resendPost({
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to,
+      subject: `${hostName} would like you on their podcast`,
+      html: `
+        <p>Hi,</p>
+        <p><strong>${host}</strong> makes short video podcast episodes with SparkReels and would like you as
+        their co-host${role ? `, as their ${esc(role)}` : ""}.</p>
+        <p>If you say yes, ${host} can make episodes where your SparkReels Digital Twin talks in your own
+        cloned voice, on lines they write for you. You get a copy of every episode you're in, and you can
+        take your yes back any time.</p>
+        ${hasAccount ? "" : `<p>You'll need a SparkReels account with a Digital Twin and your voice set up first.</p>`}
+        <p><a href="${allowUrl}" style="display:inline-block;background:#c98a1b;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:bold">See the invitation</a></p>
+        <p>Nothing is made with your twin unless you press Allow.</p>
+        ${SIGNOFF_HTML}
+      `,
+    }),
+  }).catch(() => null);
+  return !!res?.ok;
+}
+
 export async function notifyBillingEvent({
   kind,
   name,

@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
 import { podcastSession } from "@/lib/podcast/session";
-import { listCoHosts, PODCAST_SHORT_VIDEOS, STUDIO_SETS } from "@/lib/podcast/podcast";
+import { listCoHosts, PODCAST_LONG_VIDEOS, STUDIO_SETS } from "@/lib/podcast/podcast";
+import { listPartners } from "@/lib/podcast/partners";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
 import { hasAdminPerks } from "@/lib/utils/roles";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/podcast/setup — co-hosts, studio sets, recent Sparks and videos left. */
+/** GET /api/podcast/setup — co-hosts (partners first), studio sets, recent Sparks and long videos left. */
 export async function GET() {
   const s = await podcastSession();
   if (!s.ok) return s.response;
-  const [coHosts, { data: prof }, { data: projects }] = await Promise.all([
+  const [coHosts, partners, { data: prof }, { data: projects }] = await Promise.all([
     listCoHosts().catch(() => []),
-    s.admin.from("profiles").select(`${ALLOWANCE_SELECT}, full_name, location_city, location_state, role`).eq("id", s.user.id).single(),
+    listPartners(s.admin, s.user.id).catch(() => []),
+    s.admin.from("profiles").select(`${ALLOWANCE_SELECT}, full_name, location_city, location_state, role, heygen_digital_twin_look_id`).eq("id", s.user.id).single(),
     s.admin.from("projects").select("id, title, created_at, ai_script").eq("user_id", s.user.id)
       .order("created_at", { ascending: false }).limit(30),
   ]);
@@ -26,9 +28,10 @@ export async function GET() {
     url: s.admin.storage.from("assets").getPublicUrl(`podcast-sets/${x.id}.png`).data.publicUrl,
   }));
   return NextResponse.json({
-    coHosts, sets, sparks,
+    coHosts, partners, sets, sparks,
+    hasTwin: !!(prof as { heygen_digital_twin_look_id?: string | null } | null)?.heygen_digital_twin_look_id,
     name: p?.full_name ?? null, city: p?.location_city ?? null, state: p?.location_state ?? null,
-    videosLeft: hasAdminPerks(p?.role) ? null : availableFor(prof as never, "short"),
-    cost: PODCAST_SHORT_VIDEOS,
+    videosLeft: hasAdminPerks(p?.role) ? null : availableFor(prof as never, "long"),
+    cost: PODCAST_LONG_VIDEOS,
   });
 }

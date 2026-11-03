@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { podcastSession } from "@/lib/podcast/session";
 import { listCoHosts, writeConversation } from "@/lib/podcast/podcast";
+import { listPartners, PARTNER_PREFIX } from "@/lib/podcast/partners";
 import { readPage } from "@/lib/halo/site-reader";
 import { resolveCta } from "@/lib/utils/default-cta";
 
@@ -43,13 +44,17 @@ export async function POST(req: NextRequest) {
   const { data: prof } = await s.admin.from("profiles")
     .select("full_name, company_name, location_city, location_state, default_cta, market_years").eq("id", s.user.id).single();
   const p = prof as { full_name: string | null; company_name: string | null; location_city: string | null; location_state: string | null; default_cta: string | null; market_years: string | null } | null;
-  const coHost = (await listCoHosts().catch(() => [])).find((c) => c.id === b.coHostId);
+  // A partner (2026-11-02) by their own first name and role; else a ready-made co-host.
+  const partner = (b.coHostId ?? "").startsWith(PARTNER_PREFIX)
+    ? (await listPartners(s.admin, s.user.id)).find((x) => x.id === b.coHostId && x.status === "allowed")
+    : null;
+  const coHost = partner ? null : (await listCoHosts().catch(() => [])).find((c) => c.id === b.coHostId);
   try {
     const cta = resolveCta(p?.default_cta, { city: p?.location_city, state: p?.location_state, name: p?.full_name, company: p?.company_name, years: p?.market_years });
     const convo = await writeConversation({
       topic: topic || "the main points of this material", source: material || undefined,
       minutes: Number(b.minutes) || 3, feel: b.feel ?? "chat",
-      hostName: p?.full_name?.split(/\s+/)[0] || "Your host", guestName: coHost?.name || "Co-host",
+      hostName: p?.full_name?.split(/\s+/)[0] || "Your host", guestName: partner?.name || coHost?.name || "Co-host", guestRole: partner ? (partner.role || "real estate professional") : null,
       city: p?.location_city, state: p?.location_state, cta,
     });
     return NextResponse.json(convo);
