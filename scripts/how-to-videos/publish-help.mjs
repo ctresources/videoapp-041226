@@ -25,21 +25,42 @@ async function put(bucket, p, file, type) {
   return `${SUPA}/storage/v1/object/public/${bucket}/${p}`;
 }
 
+// A sub-section's video (sections.json, 2026-11-03) has an "anchor", the id of
+// its paragraph on How It Works; it is stored as how-to/sec-<anchor>.mp4 and
+// listed in lib/help/how-to-section-videos.ts, leaving the step list alone.
 const rows = [];
+const sections = [];
 for (const v of videos) {
   const file = path.join(outDir, `${v.id}.mp4`);
   if (!fs.existsSync(file)) { console.log(v.id, "missing, skipped"); continue; }
-  const nn = String(v.step).padStart(2, "0");
+  const nn = v.anchor ? `sec-${v.anchor}` : `step-${String(v.step).padStart(2, "0")}`;
   const still = path.join(outDir, `${v.id}-poster.jpg`);
   execFileSync(ffmpegPath.path, ["-y", "-hide_banner", "-loglevel", "error", "-ss", "4", "-i", file, "-frames:v", "1", "-vf", "scale=960:-2", "-q:v", "4", still]);
   const probe = (() => { try { execFileSync(ffmpegPath.path, ["-i", file], { stdio: "pipe" }); } catch (e) { return String(e.stderr); } return ""; })();
   const [, h, m, s] = probe.match(/Duration: (\d+):(\d+):([\d.]+)/) ?? [0, 0, 0, 30];
   const secs = Math.round(+h * 3600 + +m * 60 + +s);
-  const src = await put("videos", `how-to/step-${nn}.mp4`, file, "video/mp4");
-  const poster = await put("assets", `how-to/step-${nn}.jpg`, still, "image/jpeg");
-  rows.push({ step: v.step, title: v.title, src, poster, seconds: secs });
-  console.log(`step ${nn} ${v.id} ${secs}s`);
+  const src = await put("videos", `how-to/${nn}.mp4`, file, "video/mp4");
+  const poster = await put("assets", `how-to/${nn}.jpg`, still, "image/jpeg");
+  (v.anchor ? sections : rows).push({ step: v.step, title: v.title, src, poster, seconds: secs, ...(v.anchor && { anchor: v.anchor }) });
+  console.log(`${nn} ${v.id} ${secs}s`);
 }
+
+if (sections.length) {
+  fs.writeFileSync("lib/help/how-to-section-videos.ts", `import type { HowToVideo } from "./how-to-videos";
+
+/**
+ * The how-to video for each sub-section of How It Works (2026-11-03, the
+ * owner's ask), keyed by the id of its paragraph on the page. Made by
+ * scripts/how-to-videos from sections.json, like the step videos. step is the
+ * step it sits in (0 for the parts before step 1).
+ */
+export const HOW_TO_SECTION_VIDEOS: Record<string, HowToVideo> = {
+${sections.map((r) => `  ${JSON.stringify(r.anchor)}: ${JSON.stringify(r)},`).join("\n")}
+};
+`);
+  console.log("wrote lib/help/how-to-section-videos.ts with", sections.length, "videos");
+}
+if (!rows.length) process.exit(0);
 
 const ts = `/**
  * The how-to video for each How It Works step (2026-11-01, the owner's ask):
@@ -47,7 +68,7 @@ const ts = `/**
  * with captions. Made by scripts/how-to-videos (re-run it when a screen
  * changes); these files live in storage apart from My Sparks.
  */
-export interface HowToVideo { step: number; title: string; src: string; poster: string; seconds: number }
+export interface HowToVideo { step: number; title: string; src: string; poster: string; seconds: number; anchor?: string }
 
 export const HOW_TO_VIDEOS: Record<number, HowToVideo> = {
 ${rows.map((r) => `  ${r.step}: ${JSON.stringify(r)},`).join("\n")}

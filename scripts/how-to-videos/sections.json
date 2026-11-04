@@ -1,0 +1,3422 @@
+[
+ {
+  "id": "getting-around",
+  "step": 0,
+  "title": "Getting Around",
+  "anchor": "getting-around",
+  "scenes": [
+   {
+    "say": "The menu is on the left and across the top, with the same pages in both.",
+    "do": [
+     {
+      "go": "/home"
+     },
+     "|",
+     {
+      "hover": "aside >> text:Spark Studio"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "aside >> text:Spark Insights"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "xpath=//a[normalize-space()='Spark Studio' and not(ancestor::aside)]"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "xpath=//a[normalize-space()='Spark Insights' and not(ancestor::aside)]"
+     }
+    ]
+   },
+   {
+    "say": "Home is where you land, and the logo always brings you back.",
+    "do": [
+     {
+      "hover": "aside >> text:Home"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "aside >> a >> nth=0"
+     }
+    ]
+   },
+   {
+    "say": "Settings has four tabs: Profile, Social Accounts, CRM and Billing.",
+    "do": [
+     {
+      "nav": "Settings"
+     },
+     {
+      "hover": "a[href=\"/settings/social\"]"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "a[href=\"/settings/crm\"]"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "a[href=\"/settings/billing\"]"
+     }
+    ]
+   },
+   {
+    "say": "At the top of Profile, Your studio shows what's still to set up, with a button for each.",
+    "do": [
+     {
+      "hover": "h~:^Your studio"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "btn:Add"
+     }
+    ]
+   },
+   {
+    "say": "Your initial, top right, has your plan and Sign Out.",
+    "do": [
+     {
+      "click": "btn:Account"
+     },
+     {
+      "wait": 1800
+     },
+     {
+      "key": "Escape"
+     }
+    ]
+   },
+   {
+    "say": "And the gold star is Sparklee, who answers out loud when you ask how to do something.",
+    "do": [
+     {
+      "hover": "btn:Ask Sparklee"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "home",
+  "step": 0,
+  "title": "Home — Tell Sparklee What You Want",
+  "anchor": "home",
+  "scenes": [
+   {
+    "say": "On Home, tell Sparklee what you want.",
+    "do": [
+     {
+      "go": "/home"
+     },
+     "|",
+     {
+      "hover": "h~:^What do you want to accomplish"
+     }
+    ]
+   },
+   {
+    "say": "Tap the mic and say it, or type it, then press Send.",
+    "do": [
+     {
+      "hover": "btn:Speak to Sparklee"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "ph:Speak or type your goal…"
+     },
+     {
+      "wait": 700
+     },
+     {
+      "hover": "btn:Send"
+     }
+    ]
+   },
+   {
+    "say": "For example: keep me visible to sellers in my town this week.",
+    "do": [
+     {
+      "type": "Keep me visible to sellers in my town this week",
+      "into": "ph:Speak or type your goal…",
+      "delay": 30
+     }
+    ]
+   },
+   {
+    "say": "Sparklee checks your plan, your videos left and your accounts, then shows her plan: each video, the day it posts, and where.",
+    "do": [
+     {
+      "hover": "btn:Send"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "text~:recommendation appears here"
+     }
+    ]
+   },
+   {
+    "say": "Edit plan changes a day or removes a step.",
+    "do": [
+     {
+      "hover": "text~:recommendation appears here",
+      "fx": 0.3
+     }
+    ]
+   },
+   {
+    "say": "Approve plan writes the drafts.",
+    "do": [
+     {
+      "hover": "text~:recommendation appears here",
+      "fx": 0.7
+     }
+    ]
+   },
+   {
+    "say": "No video is made yet, and nothing posts without your approval.",
+    "do": [
+     {
+      "hover": "text~:Nothing posts until you approve"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "home-dashboard",
+  "step": 0,
+  "title": "The Rest Of Home",
+  "anchor": "home-dashboard",
+  "scenes": [
+   {
+    "say": "Below Ask Sparklee, Needs Your Approval holds your drafts.",
+    "do": [
+     {
+      "go": "/home"
+     },
+     {
+      "scroll": "h~:^Needs Your Approval",
+      "block": "center"
+     },
+     "|",
+     {
+      "hover": "h~:^Needs Your Approval"
+     }
+    ]
+   },
+   {
+    "say": "Watch a finished one and press Approve, or press Make video on one that isn't made yet.",
+    "do": [
+     {
+      "hover": "text:Make video"
+     }
+    ]
+   },
+   {
+    "say": "Opportunities Sparklee Found are ideas from real signs, like a quiet week or a post that did well.",
+    "do": [
+     {
+      "hover": "h~:^Opportunities Sparklee Found"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "text~:quiet 12 days"
+     }
+    ]
+   },
+   {
+    "say": "Make draft hands one to Sparklee.",
+    "do": [
+     {
+      "hover": "btn:Make draft"
+     }
+    ]
+   },
+   {
+    "say": "Working For You shows what's being made and what's booked.",
+    "do": [
+     {
+      "hover": "h:Working For You"
+     }
+    ]
+   },
+   {
+    "say": "And This Week shows each day: green is posted, blue is booked, gold is waiting on you.",
+    "do": [
+     {
+      "scroll": "h~:^This Week",
+      "block": "center"
+     },
+     {
+      "hover": "h~:^This Week"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "btn:+ Open"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "two-twins",
+  "step": 4,
+  "title": "Two Twins, And Approving Yours",
+  "anchor": "two-twins",
+  "scenes": [
+   {
+    "say": "On paid plans you can have two twins: a vertical one, filmed with your phone upright, for Reels and Shorts, and a horizontal one for YouTube.",
+    "do": [
+     {
+      "go": "/create"
+     },
+     {
+      "nav": "Settings"
+     },
+     {
+      "scroll": "text:Vertical twin",
+      "block": "center"
+     },
+     "|",
+     {
+      "hover": "text:Vertical twin"
+     },
+     {
+      "wait": 1500
+     },
+     {
+      "hover": "text:Horizontal twin"
+     }
+    ]
+   },
+   {
+    "say": "Each video uses the one that fits, so you're full screen in both.",
+    "do": [
+     {
+      "hover": "text:One of each, and we use the one that fits the video."
+     }
+    ]
+   },
+   {
+    "say": "Each twin is trained and approved on its own.",
+    "do": [
+     {
+      "hover": "text:Digital Twin Active"
+     },
+     {
+      "wait": 1000
+     },
+     {
+      "hover": "btn:Train Digital Twin"
+     }
+    ]
+   },
+   {
+    "say": "When Settings shows Approval Required, press Approve My Digital Twin and follow the short approval on camera.",
+    "do": [
+     {
+      "hover": "text~:Consent approved"
+     }
+    ]
+   },
+   {
+    "say": "Until then, it can't be used in a video.",
+    "do": [
+     {
+      "hover": "text:Digital Twin Active"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "digital-twin-backgrounds",
+  "step": 4,
+  "title": "Backgrounds For Your Twin",
+  "anchor": "digital-twin-backgrounds",
+  "scenes": [
+   {
+    "say": "Your twin is filmed upright, so in a horizontal video your background can be taken away.",
+    "do": [
+     {
+      "go": "/create"
+     },
+     {
+      "nav": "Settings"
+     },
+     {
+      "scroll": "text:Wide videos",
+      "block": "center"
+     },
+     "|",
+     {
+      "hover": "text:Wide videos"
+     }
+    ]
+   },
+   {
+    "say": "In video setup, under Background, press On my background.",
+    "do": [
+     {
+      "hover": "btn:Me on my background"
+     }
+    ]
+   },
+   {
+    "say": "Choose Photos and footage to stand in front of the video's own clips, at the side or in a corner.",
+    "do": [
+     {
+      "hover": "btn:Me on my footage"
+     }
+    ]
+   },
+   {
+    "say": "Or pick a saved background or a color.",
+    "do": [
+     {
+      "hover": "text:Your backgrounds"
+     },
+     {
+      "wait": 700
+     },
+     {
+      "hover": "btn~:^Color >> nth=2"
+     }
+    ]
+   },
+   {
+    "say": "In Settings, Wide videos sets what new videos start on, and Your backgrounds keeps your pictures.",
+    "do": [
+     {
+      "hover": "btn:Me on my footage"
+     },
+     {
+      "wait": 700
+     },
+     {
+      "hover": "btn:Avatar in circle"
+     },
+     {
+      "wait": 700
+     },
+     {
+      "hover": "btn:Street"
+     }
+    ]
+   },
+   {
+    "say": "Press Describe, say a place, and press Make it.",
+    "do": [
+     {
+      "click": "btn:Describe"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "btn~:Make it"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "twin-outfits",
+  "step": 4,
+  "title": "Outfits For Your Twin",
+  "anchor": "twin-outfits",
+  "scenes": [
+   {
+    "say": "Want your twin in something else?",
+    "do": [
+     {
+      "go": "/create"
+     },
+     {
+      "nav": "Settings"
+     },
+     {
+      "scroll": "text:Outfits",
+      "block": "center"
+     },
+     "|",
+     {
+      "hover": "text~:Your twin in a different outfit",
+      "fx": 0.2
+     }
+    ]
+   },
+   {
+    "say": "In Settings, under Digital Twin, find Outfits.",
+    "do": [
+     {
+      "hover": "text:Outfits"
+     }
+    ]
+   },
+   {
+    "say": "Describe it, like a navy blazer over a white shirt, and press New outfit.",
+    "do": [
+     {
+      "type": "Navy blazer over a white shirt",
+      "into": "ph:Describe the outfit, e.g. navy blazer over a white shirt",
+      "delay": 35
+     },
+     {
+      "wait": 300
+     },
+     {
+      "hover": "btn:New outfit"
+     }
+    ]
+   },
+   {
+    "say": "In a minute or two it's ready, and it moves just like your twin.",
+    "do": [
+     {
+      "hover": "text~:Your twin in a different outfit",
+      "fx": 0.6
+     }
+    ]
+   },
+   {
+    "say": "Each outfit shows up as a look in video setup.",
+    "do": [
+     {
+      "hover": "text~:Your twin in a different outfit",
+      "fx": 0.4,
+      "fy": 0.8
+     }
+    ]
+   },
+   {
+    "say": "Your first new look each month is free.",
+    "do": [
+     {
+      "hover": "text~:Your first new look each month is free"
+     }
+    ]
+   },
+   {
+    "say": "Tap the bin to remove one.",
+    "do": [
+     {
+      "hover": "text:Outfits"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "review-link",
+  "step": 9,
+  "title": "Your Google Review Link",
+  "anchor": "review-link",
+  "scenes": [
+   {
+    "say": "Your Google review link lives at the bottom of Social Accounts in Settings.",
+    "do": [
+     {
+      "go": "/create"
+     },
+     {
+      "nav": "Settings"
+     },
+     {
+      "stab": "/settings/social"
+     },
+     {
+      "scroll": "#review-link",
+      "block": "start"
+     },
+     "|",
+     {
+      "hover": "h:Your Google review link"
+     }
+    ]
+   },
+   {
+    "say": "In your Google Business Profile, press Ask for reviews, then Copy link.",
+    "do": [
+     {
+      "hover": "ph:https://g.page/r/…/review"
+     }
+    ]
+   },
+   {
+    "say": "Paste it here and press Save.",
+    "do": [
+     {
+      "hover": "#review-link >> btn:Save"
+     }
+    ]
+   },
+   {
+    "say": "It becomes the gold button in your review request emails.",
+    "do": [
+     {
+      "hover": "h:Your Google review link"
+     }
+    ]
+   },
+   {
+    "say": "Under it, save your default review words and subject, and they fill in every time you ask for a review.",
+    "do": [
+     {
+      "hover": "#review-link textarea"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "btn:Save words"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "youtube-verify",
+  "step": 9,
+  "title": "When YouTube Won't Take Your Thumbnail",
+  "anchor": "youtube-verify",
+  "scenes": [
+   {
+    "say": "YouTube only takes your custom thumbnails from a phone-verified channel.",
+    "do": [
+     {
+      "go": "/create"
+     },
+     {
+      "nav": "Settings"
+     },
+     {
+      "stab": "/settings/social"
+     },
+     "|",
+     {
+      "hover": "#youtube",
+      "fx": 0.3,
+      "fy": 0.3
+     }
+    ]
+   },
+   {
+    "say": "Verify at youtube dot com slash verify, and check the picture at the top right is this channel.",
+    "do": [
+     {
+      "hover": "#youtube",
+      "fx": 0.6,
+      "fy": 0.5
+     }
+    ]
+   },
+   {
+    "say": "If it isn't, use a private window.",
+    "do": [
+     {
+      "hover": "#youtube",
+      "fx": 0.4,
+      "fy": 0.7
+     }
+    ]
+   },
+   {
+    "say": "One phone number verifies two channels a year.",
+    "do": [
+     {
+      "hover": "h:YouTube"
+     }
+    ]
+   },
+   {
+    "say": "If a thumbnail didn't go up, open the video's Publish window in My Sparks, and press Update it on YouTube under the thumbnail.",
+    "do": [
+     {
+      "go": "/videos"
+     },
+     {
+      "scroll": "h~:Videos — rendered",
+      "block": "start"
+     },
+     {
+      "click": "btn:Publish"
+     },
+     {
+      "wait": 1200
+     },
+     {
+      "hover": "text~:YouTube Thumbnail"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "my-content",
+  "step": 12,
+  "title": "Use Your Own Words",
+  "anchor": "my-content",
+  "scenes": [
+   {
+    "say": "Already written it?",
+    "do": [
+     {
+      "go": "/create"
+     },
+     "|",
+     {
+      "hover": "#brief-box",
+      "fx": 0.3
+     }
+    ]
+   },
+   {
+    "say": "In Spark Studio, open More options, and under Script source choose My Content, Forwarded in.",
+    "do": [
+     {
+      "click": "btn~:^More options"
+     },
+     {
+      "wait": 700
+     },
+     {
+      "scroll": "btn~:^My Content/Forwarded in",
+      "block": "center"
+     },
+     {
+      "click": "btn~:^My Content/Forwarded in"
+     },
+     {
+      "wait": 900
+     }
+    ]
+   },
+   {
+    "say": "Paste your words, or attach a PDF, a link, or an email you forwarded in.",
+    "do": [
+     {
+      "hover": "#spark-source",
+      "fx": 0.3,
+      "fy": 0.2
+     }
+    ]
+   },
+   {
+    "say": "Emails you forward show up here with a new badge.",
+    "do": [
+     {
+      "hover": "#spark-source",
+      "fx": 0.6,
+      "fy": 0.3
+     }
+    ]
+   },
+   {
+    "say": "On a video, choose Speak it word for word for a finished script, or Have AI write from it.",
+    "do": [
+     {
+      "hover": "btn~:^Speak it word for word"
+     },
+     {
+      "wait": 1200
+     },
+     {
+      "hover": "btn~:^Have AI write from it"
+     }
+    ]
+   },
+   {
+    "say": "Then press Write my script, and read it before anything is made.",
+    "do": [
+     {
+      "hover": "btn~:^Next"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "blog-page",
+  "step": 12,
+  "title": "A Blog Without A Video",
+  "anchor": "blog-page",
+  "scenes": [
+   {
+    "say": "To write a blog with no video, press the Blog card in Spark Studio, or start your sentence with create a blog.",
+    "do": [
+     {
+      "go": "/create"
+     },
+     "|",
+     {
+      "hover": "btn~:^Blog"
+     },
+     {
+      "wait": 300
+     },
+     {
+      "click": "btn~:^Blog"
+     },
+     {
+      "wait": 1500
+     }
+    ]
+   },
+   {
+    "say": "Say or type the topic, and check your town under Details.",
+    "do": [
+     {
+      "hover": "#brief-box",
+      "fx": 0.3
+     },
+     {
+      "wait": 1000
+     },
+     {
+      "scroll": "ph:Your city or area",
+      "block": "center"
+     },
+     {
+      "hover": "ph:Your city or area"
+     }
+    ]
+   },
+   {
+    "say": "Bringing your own words?",
+    "do": [
+     {
+      "scroll": "btn~:^My Content/Forwarded in",
+      "block": "center"
+     },
+     {
+      "click": "btn~:^My Content/Forwarded in"
+     },
+     {
+      "wait": 900
+     }
+    ]
+   },
+   {
+    "say": "Choose Use it as it is to publish your writing unchanged, or Write a new article from it for someone else's newsletter or a market report.",
+    "do": [
+     {
+      "hover": "btn:Paste text"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "btn:From email"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "btn:Use this text"
+     }
+    ]
+   },
+   {
+    "say": "Blog posts never use a video from your plan.",
+    "do": [
+     {
+      "hover": "btn:Write the blog"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "audience",
+  "step": 12,
+  "title": "Who It's For",
+  "anchor": "audience",
+  "scenes": [
+   {
+    "say": "Under Details, three optional pickers shape everything that's written: Audience, Tone, and Why.",
+    "do": [
+     {
+      "go": "/create"
+     },
+     {
+      "click": "btn~:^More options"
+     },
+     {
+      "wait": 700
+     },
+     {
+      "scroll": "#brief-audience",
+      "block": "center"
+     },
+     "|",
+     {
+      "hover": "#brief-audience select >> nth=0"
+     },
+     {
+      "wait": 800
+     },
+     {
+      "hover": "xpath=//select[option[normalize-space()='Friendly']]"
+     },
+     {
+      "wait": 800
+     },
+     {
+      "hover": "xpath=//select[option[normalize-space()='Get found']]"
+     }
+    ]
+   },
+   {
+    "say": "You can also just say them, like for first-time buyers.",
+    "do": [
+     {
+      "hover": "#brief-box",
+      "fx": 0.3
+     }
+    ]
+   },
+   {
+    "say": "Is your audience not on the list?",
+    "do": [
+     {
+      "hover": "#brief-audience select >> nth=0"
+     }
+    ]
+   },
+   {
+    "say": "Choose Add your own at the bottom of Audience and type it, like nurses relocating.",
+    "do": [
+     {
+      "select": "#brief-audience select >> nth=0",
+      "label": "Add your own…"
+     },
+     {
+      "wait": 700
+     },
+     {
+      "type": "Nurses relocating",
+      "into": "#brief-audience input",
+      "delay": 40
+     }
+    ]
+   },
+   {
+    "say": "It's saved to your account, on your phone and your computer.",
+    "do": [
+     {
+      "hover": "#brief-audience",
+      "fx": 0.5,
+      "fy": 0.3
+     }
+    ]
+   },
+   {
+    "say": "Choose it again to remove it.",
+    "do": [
+     {
+      "hover": "#brief-audience select >> nth=0"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "ask-sparklee",
+  "step": 13,
+  "title": "Ask Sparklee For Help",
+  "anchor": "ask-sparklee",
+  "scenes": [
+   {
+    "say": "Stuck on a page?",
+    "do": [
+     {
+      "go": "/home"
+     },
+     "|",
+     {
+      "hover": "h~:^What do you want to accomplish"
+     }
+    ]
+   },
+   {
+    "say": "Tap Ask Sparklee, the gold star at the top right, and ask out loud how to do something.",
+    "do": [
+     {
+      "hover": "btn:Ask Sparklee"
+     }
+    ]
+   },
+   {
+    "say": "She answers in a few seconds, out loud and on screen, from this guide.",
+    "do": [
+     {
+      "nav": "How It Works"
+     },
+     {
+      "hover": "btn:Ask Sparklee"
+     }
+    ]
+   },
+   {
+    "say": "Each conversation runs up to five minutes.",
+    "do": [
+     {
+      "hover": "btn:Ask Sparklee",
+      "fx": 0.7
+     }
+    ]
+   },
+   {
+    "say": "Tap Stop when you're done.",
+    "do": [
+     {
+      "hover": "btn:Ask Sparklee",
+      "fx": 0.3
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "sparklee-make-it",
+  "step": 13,
+  "title": "Sparklee, Make It",
+  "anchor": "sparklee-make-it",
+  "scenes": [
+   {
+    "say": "On paid plans, Sparklee can make the whole video herself.",
+    "do": [
+     {
+      "go": "/create"
+     },
+     "|",
+     {
+      "hover": "#brief-box",
+      "fx": 0.3
+     }
+    ]
+   },
+   {
+    "say": "Press Sparklee, make it under the box, and say it all at once: a market update for Springfield this week, horizontal, my twin, post it Friday.",
+    "do": [
+     {
+      "scroll": "btn:Sparklee, make it",
+      "block": "center"
+     },
+     {
+      "hover": "btn:Sparklee, make it"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "type": "A market update for Springfield this week, horizontal, my twin, post it Friday",
+      "into": "#brief-box",
+      "delay": 22
+     }
+    ]
+   },
+   {
+    "say": "She asks only for what's missing, then shows what she'll create and waits.",
+    "do": [
+     {
+      "hover": "#brief-box",
+      "fx": 0.6
+     }
+    ]
+   },
+   {
+    "say": "Press Create it, and in about ten minutes your video comes back as a card.",
+    "do": [
+     {
+      "hover": "btn:Sparklee, make it"
+     }
+    ]
+   },
+   {
+    "say": "Watch it, edit the thumbnail or title, then Approve to post.",
+    "do": [
+     {
+      "nav": "AutoSparks"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "topic-ideas",
+  "step": 13,
+  "title": "Ideas To Start From",
+  "anchor": "topic-ideas",
+  "scenes": [
+   {
+    "say": "No idea where to start?",
+    "do": [
+     {
+      "go": "/create"
+     },
+     "|",
+     {
+      "hover": "#brief-box",
+      "fx": 0.3
+     }
+    ]
+   },
+   {
+    "say": "The box shows a Try example that changes every few seconds.",
+    "do": [
+     {
+      "hover": "#brief-box",
+      "fx": 0.5
+     }
+    ]
+   },
+   {
+    "say": "Press the empty box to use it.",
+    "do": [
+     {
+      "hover": "#brief-box",
+      "fx": 0.2,
+      "fy": 0.4
+     }
+    ]
+   },
+   {
+    "say": "Under it, Quick win is a ready topic for your town in one press.",
+    "do": [
+     {
+      "hover": "btn:How Sparklee plans your week"
+     }
+    ]
+   },
+   {
+    "say": "What buyers ask AI shows real questions buyers ask.",
+    "do": [
+     {
+      "hover": "btn:Your Digital Twin in 3 steps"
+     }
+    ]
+   },
+   {
+    "say": "And Or try has ideas with your city filled in.",
+    "do": [
+     {
+      "hover": "btn:AutoSparks: 3 posts a week, hands-off"
+     }
+    ]
+   },
+   {
+    "say": "More ideas opens the whole list, with a search box.",
+    "do": [
+     {
+      "click": "btn~:^More ideas"
+     },
+     {
+      "wait": 900
+     }
+    ]
+   },
+   {
+    "say": "Tap one and it lands in the box, ready to add to.",
+    "do": [
+     {
+      "hover": "btn~:^Digital Twin Backgrounds"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "agent-intro",
+  "step": 13,
+  "title": "Agent Intro",
+  "anchor": "agent-intro",
+  "scenes": [
+   {
+    "say": "Agent Intro is a thirty-second video introducing you.",
+    "do": [
+     {
+      "go": "/create"
+     },
+     "|",
+     {
+      "hover": "#brief-box",
+      "fx": 0.3
+     }
+    ]
+   },
+   {
+    "say": "Tap the Agent Intro chip in Spark Studio.",
+    "do": [
+     {
+      "click": "btn~:^More ideas"
+     },
+     {
+      "wait": 900
+     }
+    ]
+   },
+   {
+    "say": "Your name, brokerage, area and years fill in from Settings.",
+    "do": [
+     {
+      "hover": "#all-ideas"
+     }
+    ]
+   },
+   {
+    "say": "Pick who you help most, and add something personal.",
+    "do": [
+     {
+      "hover": "#all-ideas"
+     }
+    ]
+   },
+   {
+    "say": "You get the intro script, plus a short and a long bio in your Share Kit.",
+    "do": [
+     {
+      "hover": "#all-ideas"
+     }
+    ]
+   },
+   {
+    "say": "With your Digital Twin it's made on our most lifelike avatar.",
+    "do": [
+     {
+      "hover": "#all-ideas"
+     }
+    ]
+   },
+   {
+    "say": "Producer and Influencer get one free every month.",
+    "do": [
+     {
+      "hover": "#all-ideas"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "ready-to-make",
+  "step": 15,
+  "title": "Ready To Make",
+  "anchor": "ready-to-make",
+  "scenes": [
+   {
+    "say": "Above the Spark Video button, Ready to make checks your voice, your look, your twin approval and your videos left.",
+    "do": [
+     {
+      "go": "/videos"
+     },
+     {
+      "click": "a:has-text('Continue editing')"
+     },
+     {
+      "wait": 2500
+     },
+     {
+      "click": "btn:Next · video setup"
+     },
+     {
+      "wait": 2500
+     },
+     {
+      "scroll": "text~:Ready to make",
+      "block": "center"
+     },
+     "|",
+     {
+      "hover": "text~:Ready to make"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "text~:Your voice"
+     }
+    ]
+   },
+   {
+    "say": "Anything not ready has a button that fixes it, like Approve now or Get more, and Spark Video stays off until it's all green.",
+    "do": [
+     {
+      "hover": "text~:Short videos left"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "text~:One thing left before Spark Video"
+     }
+    ]
+   },
+   {
+    "say": "Avatar video takes up to two hundred ninety words.",
+    "do": [
+     {
+      "scroll": "btn:Avatar video",
+      "block": "center"
+     },
+     {
+      "hover": "btn:Avatar video"
+     }
+    ]
+   },
+   {
+    "say": "If your script is longer, press Shorten to fit.",
+    "do": [
+     {
+      "hover": "btn:Shorten to fit"
+     }
+    ]
+   },
+   {
+    "say": "You can close the page while it's made; Sparklee tells you when it's ready.",
+    "do": [
+     {
+      "hover": "btn:Spark Video"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "halo-sites",
+  "step": 16,
+  "title": "AutoSparks: Halo Sites",
+  "anchor": "halo-sites",
+  "scenes": [
+   {
+    "say": "Have a Halo website?",
+    "do": [
+     {
+      "go": "/create"
+     },
+     {
+      "nav": "Settings"
+     },
+     {
+      "stab": "/settings/crm"
+     },
+     {
+      "scroll": "#halo",
+      "block": "start"
+     },
+     "|",
+     {
+      "hover": "h:Halo website"
+     }
+    ]
+   },
+   {
+    "say": "In Settings, under CRM, press Add your Halo site, type the address, and press Add.",
+    "do": [
+     {
+      "hover": "btn:Add your Halo site"
+     }
+    ]
+   },
+   {
+    "say": "Every morning SparkReels looks for what's new on it, like blog posts, guides and your market report, and turns them into video drafts on AutoSparks.",
+    "do": [
+     {
+      "nav": "AutoSparks"
+     }
+    ]
+   },
+   {
+    "say": "Choose which pages under Videos from, how many a month, and the day and time.",
+    "do": [
+     {
+      "hover": "h1:has-text('Your week')"
+     }
+    ]
+   },
+   {
+    "say": "Then set the look, avatar, size, accounts, captions and music every Halo video starts with.",
+    "do": [
+     {
+      "hover": "h1:has-text('Your week')"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "halo-drafts",
+  "step": 16,
+  "title": "Halo Drafts: Make, Watch, Approve",
+  "anchor": "halo-drafts",
+  "scenes": [
+   {
+    "say": "Each Halo draft shows its thumbnail, setup, and the post it came from.",
+    "do": [
+     {
+      "go": "/autosparks"
+     },
+     "|",
+     {
+      "hover": "h1:has-text('Your week')"
+     }
+    ]
+   },
+   {
+    "say": "Press Setup to change the look, size, picture or day.",
+    "do": []
+   },
+   {
+    "say": "Press Edit script to change the words, then Save Draft.",
+    "do": []
+   },
+   {
+    "say": "Nothing is made until you press Make video on the card, and a draft never makes a second video.",
+    "do": []
+   },
+   {
+    "say": "When it's done, press Watch, edit the thumbnail, title and caption, then Approve to post.",
+    "do": []
+   },
+   {
+    "say": "Don't post it yourself too.",
+    "do": []
+   }
+  ]
+ },
+ {
+  "id": "halo-post",
+  "step": 16,
+  "title": "Put It On Your Halo Post",
+  "anchor": "halo-post",
+  "scenes": [
+   {
+    "say": "Once your video is live on YouTube, put it on the Halo post it came from.",
+    "do": [
+     {
+      "go": "/autosparks"
+     },
+     "|",
+     {
+      "hover": "h1:has-text('Your week')"
+     }
+    ]
+   },
+   {
+    "say": "The card shows Put on my Halo post.",
+    "do": []
+   },
+   {
+    "say": "It writes the message for you, and on your phone Text Halo opens your messages with it filled in.",
+    "do": []
+   },
+   {
+    "say": "Once Halo adds it, the card says On your Halo post.",
+    "do": []
+   },
+   {
+    "say": "If it hasn't noticed yet, press It's on my post.",
+    "do": []
+   }
+  ]
+ },
+ {
+  "id": "halo-promo",
+  "step": 16,
+  "title": "Promo Video For Your Halo Page",
+  "anchor": "halo-promo",
+  "scenes": [
+   {
+    "say": "Are you a Halo affiliate?",
+    "do": [
+     {
+      "go": "/autosparks"
+     },
+     "|",
+     {
+      "hover": "h1:has-text('Your week')"
+     }
+    ]
+   },
+   {
+    "say": "Add your Halo referral page as a site, and it's marked Affiliate, with a Make promo video button.",
+    "do": []
+   },
+   {
+    "say": "Pick an angle, like Why I use Halo, and press Write it.",
+    "do": []
+   },
+   {
+    "say": "The script uses your referral code, and says out loud that you earn a referral fee.",
+    "do": []
+   },
+   {
+    "say": "It's set to post to Facebook, LinkedIn and Instagram, where other agents will see it.",
+    "do": []
+   }
+  ]
+ },
+ {
+  "id": "email-drafts",
+  "step": 16,
+  "title": "Email Drafts",
+  "anchor": "email-drafts",
+  "scenes": [
+   {
+    "say": "Every email you forward to your import address also becomes a video draft on AutoSparks, marked Email, about a minute after it arrives.",
+    "do": [
+     {
+      "go": "/autosparks"
+     },
+     "|",
+     {
+      "hover": "h1:has-text('Your week')"
+     }
+    ]
+   },
+   {
+    "say": "The script is written fresh from the email, so a market report is never posted word for word.",
+    "do": []
+   },
+   {
+    "say": "Setup, Make video and Approve to post work just like a Halo draft.",
+    "do": []
+   },
+   {
+    "say": "To turn it off, use the Forwarded emails switch.",
+    "do": []
+   }
+  ]
+ },
+ {
+  "id": "seller-updates",
+  "step": 16,
+  "title": "Seller Updates On AutoSparks",
+  "anchor": "seller-updates",
+  "scenes": [
+   {
+    "say": "Seller updates on AutoSparks send your weekly seller update by itself.",
+    "do": [
+     {
+      "go": "/autosparks"
+     },
+     "|",
+     {
+      "hover": "h1:has-text('Your week')"
+     }
+    ]
+   },
+   {
+    "say": "Turn it on, and pick the day, the time, and Avatar in circle or Email only.",
+    "do": []
+   },
+   {
+    "say": "Each listing with sellers from BoldTrail gets a card.",
+    "do": []
+   },
+   {
+    "say": "Type the week's numbers and what buyers said, then press Write it and make video.",
+    "do": []
+   },
+   {
+    "say": "Watch it, preview the email, and press Approve to send.",
+    "do": []
+   },
+   {
+    "say": "It goes to each seller through BoldTrail on its day.",
+    "do": []
+   }
+  ]
+ },
+ {
+  "id": "teleprompter",
+  "step": 18,
+  "title": "The Teleprompter",
+  "anchor": "teleprompter",
+  "scenes": [
+   {
+    "say": "Before you record, read your script in the box, or press Read it full screen to see it large and edit it there.",
+    "do": [
+     {
+      "go": "/create"
+     },
+     {
+      "click": "btn~:^Camera/"
+     },
+     {
+      "wait": 1500
+     },
+     {
+      "click": "btn:Paste my own script"
+     },
+     {
+      "wait": 800
+     },
+     {
+      "type": "Thinking about selling this winter? Here are three things buyers care about right now. First, price it right. Second, make it bright. Third, be flexible on showings.",
+      "into": "ph:Type your script, or tap the mic to speak it…",
+      "delay": 2
+     },
+     {
+      "wait": 1200
+     },
+     {
+      "scroll": "btn:Read it full screen",
+      "block": "center"
+     },
+     "|",
+     {
+      "hover": "ph:Type your script, or tap the mic to speak it…",
+      "fx": 0.3
+     },
+     {
+      "wait": 1500
+     },
+     {
+      "hover": "btn:Read it full screen"
+     }
+    ]
+   },
+   {
+    "say": "Then pick how it scrolls.",
+    "do": [
+     {
+      "hover": "btn~:^🎙 Flow"
+     }
+    ]
+   },
+   {
+    "say": "Flow follows your voice and keeps your line near the top.",
+    "do": [
+     {
+      "hover": "btn~:^🎙 Flow",
+      "fx": 0.3
+     }
+    ]
+   },
+   {
+    "say": "Auto scrolls at a steady speed: slow, medium, or fast.",
+    "do": [
+     {
+      "hover": "btn~:^Auto — Constant Speed"
+     }
+    ]
+   },
+   {
+    "say": "While you record in Auto, tap minus or plus to slow it down or speed it up.",
+    "do": [
+     {
+      "hover": "btn~:^Auto — Constant Speed",
+      "fx": 0.3
+     }
+    ]
+   },
+   {
+    "say": "If Flow feels behind you, switch to Auto.",
+    "do": [
+     {
+      "hover": "btn~:^🎙 Flow"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "btn~:^Auto — Constant Speed"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "behind-you",
+  "step": 18,
+  "title": "What's Behind You",
+  "anchor": "behind-you",
+  "scenes": [
+   {
+    "say": "In Set up your take, Behind you is what fills the screen while you talk in the corner.",
+    "do": [
+     {
+      "go": "/create"
+     },
+     {
+      "click": "btn~:^Camera/"
+     },
+     {
+      "wait": 1500
+     },
+     {
+      "click": "btn:Paste my own script"
+     },
+     {
+      "wait": 800
+     },
+     {
+      "scroll": "btn~:Just me",
+      "block": "center"
+     },
+     "|",
+     {
+      "hover": "btn~:Just me",
+      "fx": 0.3
+     }
+    ]
+   },
+   {
+    "say": "Just me is you, full screen.",
+    "do": [
+     {
+      "hover": "btn~:Just me"
+     }
+    ]
+   },
+   {
+    "say": "Or choose your photos, your own footage, or AI scenes made from your script.",
+    "do": [
+     {
+      "hover": "btn:Add photos"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "text~:Choose a clip"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "btn:Make scenes"
+     }
+    ]
+   },
+   {
+    "say": "Photos and footage are free; AI scenes use one short video.",
+    "do": [
+     {
+      "hover": "btn:Add photos"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "btn:Make scenes"
+     }
+    ]
+   },
+   {
+    "say": "Smooth skin softens fine lines while you record.",
+    "do": [
+     {
+      "scroll": "btn:Light",
+      "block": "center"
+     },
+     {
+      "hover": "btn:Light"
+     },
+     {
+      "wait": 700
+     },
+     {
+      "hover": "btn:More >> nth=0"
+     }
+    ]
+   },
+   {
+    "say": "And with a clip or scenes, tick Open on it to start on five seconds of it with a title.",
+    "do": [
+     {
+      "scroll": "btn:Make scenes",
+      "block": "center"
+     },
+     {
+      "hover": "btn:Make scenes"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "post-a-clip",
+  "step": 18,
+  "title": "Post A Video You Already Shot",
+  "anchor": "post-a-clip",
+  "scenes": [
+   {
+    "say": "Have a video you already shot?",
+    "do": [
+     {
+      "go": "/create"
+     },
+     "|",
+     {
+      "hover": "btn~:^Camera/"
+     }
+    ]
+   },
+   {
+    "say": "On a computer, open Camera and Teleprompter and press Post a video as is.",
+    "do": [
+     {
+      "click": "btn~:^Camera/"
+     },
+     {
+      "wait": 1300
+     },
+     {
+      "hover": "btn:Post a video as is"
+     },
+     {
+      "wait": 300
+     },
+     {
+      "click": "btn:Post a video as is"
+     },
+     {
+      "wait": 900
+     }
+    ]
+   },
+   {
+    "say": "Choose a clip from your computer, up to two minutes.",
+    "do": [
+     {
+      "hover": "text~:Choose a clip you already shot"
+     }
+    ]
+   },
+   {
+    "say": "Keep its own sound, or record a new voiceover.",
+    "do": [
+     {
+      "hover": "text~:Choose a clip you already shot",
+      "fx": 0.3
+     }
+    ]
+   },
+   {
+    "say": "Add a title, a hook and the city, then press Brand this clip.",
+    "do": [
+     {
+      "hover": "text~:Choose a clip you already shot",
+      "fx": 0.7
+     }
+    ]
+   },
+   {
+    "say": "Your logo and captions are added, and it's saved to My Sparks, ready to publish.",
+    "do": [
+     {
+      "nav": "My Sparks"
+     }
+    ]
+   },
+   {
+    "say": "It counts as a camera recording.",
+    "do": [
+     {
+      "scroll": "h~:Videos — rendered",
+      "block": "start"
+     },
+     {
+      "hover": "h~:Videos — rendered"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "photos-only-reel",
+  "step": 19,
+  "title": "Photos Only Reel: Classic Or Cinematic",
+  "anchor": "photos-only-reel",
+  "scenes": [
+   {
+    "say": "Photos only reel needs no script.",
+    "do": [
+     {
+      "go": "/create"
+     },
+     {
+      "click": "btn~:^Listings & photos"
+     },
+     {
+      "wait": 1500
+     },
+     "|",
+     {
+      "hover": "btn~:^Photos only reel"
+     },
+     {
+      "wait": 300
+     },
+     {
+      "click": "btn~:^Photos only reel"
+     },
+     {
+      "wait": 800
+     }
+    ]
+   },
+   {
+    "say": "Add up to twelve photos, or paste a Zillow or Redfin link and they're brought in for you.",
+    "do": [
+     {
+      "hover": "text~:Add photos (0/12)"
+     },
+     {
+      "wait": 1000
+     },
+     {
+      "hover": "ph:Paste a listing link to bring in its photos"
+     }
+    ]
+   },
+   {
+    "say": "Pick vertical or horizontal, a length, music, and a voiceover in your own voice if you like.",
+    "do": [
+     {
+      "scroll": "btn~:^Vertical · 9:16",
+      "block": "center"
+     },
+     {
+      "hover": "btn~:^Vertical · 9:16"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "btn~:^Horizontal · 16:9"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "scroll": "btn:30s",
+      "block": "center"
+     },
+     {
+      "hover": "btn:30s"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "btn~:^Type it"
+     }
+    ]
+   },
+   {
+    "say": "Then choose the Motion.",
+    "do": [
+     {
+      "scroll": "btn~:^Classic",
+      "block": "center"
+     },
+     {
+      "hover": "btn~:^Classic",
+      "fx": 0.3
+     }
+    ]
+   },
+   {
+    "say": "Classic is a slow pan across each photo, and it's free.",
+    "do": [
+     {
+      "hover": "btn~:^Classic"
+     }
+    ]
+   },
+   {
+    "say": "Cinematic turns each photo into real camera movement, and uses one short video.",
+    "do": [
+     {
+      "hover": "btn~:^Cinematic"
+     }
+    ]
+   },
+   {
+    "say": "Press Build the reel.",
+    "do": [
+     {
+      "hover": "btn:Build the reel"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "open-with-me",
+  "step": 19,
+  "title": "Open With Me In Front Of The Home",
+  "anchor": "open-with-me",
+  "scenes": [
+   {
+    "say": "Open with me in front of the home starts a listing video or a photo reel with a six-second shot of you at the front of the home, made with AI from your look and its front photo.",
+    "do": [
+     {
+      "go": "/create"
+     },
+     {
+      "click": "btn~:^Listings & photos"
+     },
+     {
+      "wait": 1500
+     },
+     {
+      "click": "btn~:^Photos only reel"
+     },
+     {
+      "wait": 800
+     },
+     {
+      "scroll": "btn:Full body",
+      "block": "center"
+     },
+     "|",
+     {
+      "hover": "btn:Full body",
+      "fy": -1
+     }
+    ]
+   },
+   {
+    "say": "Choose Full body, Chest up, or Off.",
+    "do": [
+     {
+      "hover": "btn:Full body"
+     },
+     {
+      "wait": 800
+     },
+     {
+      "hover": "btn:Chest up"
+     },
+     {
+      "wait": 800
+     },
+     {
+      "hover": "btn:Off >> nth=0"
+     }
+    ]
+   },
+   {
+    "say": "It uses your Digital Twin once it's approved, otherwise your headshot.",
+    "do": [
+     {
+      "hover": "btn:Full body"
+     }
+    ]
+   },
+   {
+    "say": "It works on vertical and horizontal videos.",
+    "do": [
+     {
+      "hover": "btn~:^Vertical · 9:16"
+     },
+     {
+      "wait": 700
+     },
+     {
+      "hover": "btn~:^Horizontal · 16:9"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "post-these-photos",
+  "step": 19,
+  "title": "Post These Photos",
+  "anchor": "post-these-photos",
+  "scenes": [
+   {
+    "say": "Want to post the photos themselves?",
+    "do": [
+     {
+      "go": "/create"
+     },
+     {
+      "click": "btn~:^Listings & photos"
+     },
+     {
+      "wait": 1500
+     },
+     {
+      "click": "btn~:^Photos only reel"
+     },
+     {
+      "wait": 800
+     },
+     "|",
+     {
+      "hover": "text~:Add photos (0/12)"
+     }
+    ]
+   },
+   {
+    "say": "Post these photos, at the foot of the form, sends them as one post to swipe through on Instagram, Facebook, LinkedIn, Threads, X or TikTok.",
+    "do": [
+     {
+      "hover": "btn:Build the reel"
+     }
+    ]
+   },
+   {
+    "say": "No video is made, and nothing comes out of your plan.",
+    "do": [
+     {
+      "hover": "btn:Build the reel"
+     }
+    ]
+   },
+   {
+    "say": "Pick the accounts, write one caption, and send.",
+    "do": [
+     {
+      "hover": "btn:Build the reel"
+     }
+    ]
+   },
+   {
+    "say": "The order you arranged them in is the swipe order.",
+    "do": [
+     {
+      "hover": "btn:Build the reel"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "quick-reels-templates",
+  "step": 19,
+  "title": "Quick Reels Templates",
+  "anchor": "quick-reels-templates",
+  "scenes": [
+   {
+    "say": "Quick Reels Templates, on Spark Studio's first screen, makes a short designed reel.",
+    "do": [
+     {
+      "go": "/create"
+     },
+     "|",
+     {
+      "hover": "a:has-text('Quick Reels Templates')"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "go": "/templates"
+     }
+    ]
+   },
+   {
+    "say": "Pick Just Listed, Luxury Listing, Market Update, Neighborhood Spotlight, or Agent Introduction.",
+    "do": [
+     {
+      "hover": "btn~:^Just Listed"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "btn~:^Luxury Listing"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "btn~:^Market Update"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "btn~:^Neighborhood Spotlight"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "btn~:^Agent Introduction"
+     }
+    ]
+   },
+   {
+    "say": "Your name, brokerage and a saved listing fill in the words, and you can change any of them.",
+    "do": [
+     {
+      "scroll": "select",
+      "block": "center"
+     },
+     {
+      "hover": "select"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "ph:Jane Smith · Smith Realty Group"
+     }
+    ]
+   },
+   {
+    "say": "Add up to twelve photos, choose the shape, a background color and music, and watch the preview change as you go.",
+    "do": [
+     {
+      "scroll": "btn:Vertical 9:16",
+      "block": "center"
+     },
+     {
+      "hover": "btn:Add"
+     },
+     {
+      "wait": 600
+     },
+     {
+      "hover": "btn:Vertical 9:16"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "btn:Navy"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "scroll": "btn:Digital Twin",
+      "block": "center"
+     },
+     {
+      "hover": "btn:On >> nth=0"
+     }
+    ]
+   },
+   {
+    "say": "Then Next, script, and Make video.",
+    "do": [
+     {
+      "hover": "btn:Next · script"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "article-tools",
+  "step": 20,
+  "title": "Edit Your Article And Its Pictures",
+  "anchor": "article-tools",
+  "scenes": [
+   {
+    "say": "To change your blog article, press Edit in the Share Kit.",
+    "do": [
+     {
+      "go": "/create/8b0204e0-884c-4ca8-b03f-17481e6ce7bf?step=5"
+     },
+     {
+      "wait": 1500
+     },
+     "|",
+     {
+      "hover": "h:Blog article"
+     },
+     {
+      "wait": 600
+     },
+     {
+      "hover": "btn:Edit"
+     },
+     {
+      "wait": 300
+     },
+     {
+      "click": "btn:Edit"
+     },
+     {
+      "wait": 900
+     }
+    ]
+   },
+   {
+    "say": "The introduction, body and conclusion become boxes you can type in, and Save keeps your changes.",
+    "do": [
+     {
+      "hover": "ph:Your post's headline",
+      "fx": 0.3
+     },
+     {
+      "wait": 1200
+     },
+     {
+      "hover": "btn:Save"
+     }
+    ]
+   },
+   {
+    "say": "Header image makes a real photo for the top of the article.",
+    "do": [
+     {
+      "hover": "text:Change header image"
+     }
+    ]
+   },
+   {
+    "say": "Then Moving header turns it into a short loop of slow camera movement, and Social teaser makes a vertical clip to post with your link.",
+    "do": [
+     {
+      "hover": "btn:Moving header"
+     },
+     {
+      "wait": 1200
+     },
+     {
+      "hover": "btn:Social teaser"
+     }
+    ]
+   },
+   {
+    "say": "None of them use a video from your plan.",
+    "do": [
+     {
+      "hover": "btn:Cancel"
+     },
+     {
+      "wait": 300
+     },
+     {
+      "click": "btn:Cancel"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "send-to-website",
+  "step": 20,
+  "title": "Send To Website",
+  "anchor": "send-to-website",
+  "scenes": [
+   {
+    "say": "Send to Website gets your article, your video, or both onto your site.",
+    "do": [
+     {
+      "go": "/create/8b0204e0-884c-4ca8-b03f-17481e6ce7bf?step=5"
+     },
+     {
+      "wait": 1500
+     },
+     "|",
+     {
+      "hover": "btn:Send to Website"
+     }
+    ]
+   },
+   {
+    "say": "Find it at the top of your Share Kit, or on any video in My Sparks.",
+    "do": [
+     {
+      "go": "/videos"
+     },
+     {
+      "scroll": "h~:Videos — rendered",
+      "block": "start"
+     },
+     {
+      "hover": "btn:Send to Website"
+     }
+    ]
+   },
+   {
+    "say": "With a Halo website, choose Update a post or New post, and Text Halo fills in the request for you.",
+    "do": [
+     {
+      "go": "/create/8b0204e0-884c-4ca8-b03f-17481e6ce7bf?step=5"
+     },
+     {
+      "wait": 1200
+     },
+     {
+      "click": "btn:Send to Website"
+     },
+     {
+      "wait": 1000
+     },
+     {
+      "hover": "a:has-text('Get Halo')"
+     }
+    ]
+   },
+   {
+    "say": "For any other website, press Copy as HTML, paste it into a new post, and publish it there.",
+    "do": [
+     {
+      "hover": "btn~:Another website"
+     }
+    ]
+   },
+   {
+    "say": "Then paste the post's address into Posted it.",
+    "do": [
+     {
+      "hover": "btn~:Another website",
+      "fx": 0.3
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "email-version",
+  "step": 20,
+  "title": "Turn Your Article Into An Email",
+  "anchor": "email-version",
+  "scenes": [
+   {
+    "say": "Email, in the article's buttons, turns your blog into a short email for your list, with a button to the full post.",
+    "do": [
+     {
+      "go": "/create/8b0204e0-884c-4ca8-b03f-17481e6ce7bf?step=5"
+     },
+     {
+      "wait": 1500
+     },
+     "|",
+     {
+      "hover": "btn:Email"
+     },
+     {
+      "wait": 300
+     },
+     {
+      "click": "btn:Email"
+     },
+     {
+      "wait": 1200
+     }
+    ]
+   },
+   {
+    "say": "Paste in the post's address on your site.",
+    "do": [
+     {
+      "hover": "#share-kit-email",
+      "fx": 0.3,
+      "fy": 0.3
+     }
+    ]
+   },
+   {
+    "say": "Send me a test to see it in a real inbox.",
+    "do": [
+     {
+      "hover": "#share-kit-email",
+      "fx": 0.6,
+      "fy": 0.5
+     }
+    ]
+   },
+   {
+    "say": "Copy as HTML drops it into the email tool you already use.",
+    "do": [
+     {
+      "hover": "btn:Write the email"
+     }
+    ]
+   },
+   {
+    "say": "And with BoldTrail connected, you can send it to up to ten people from your BoldTrail address.",
+    "do": [
+     {
+      "hover": "#share-kit-email",
+      "fx": 0.4,
+      "fy": 0.2
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "newsletter",
+  "step": 20,
+  "title": "A Newsletter From Several Posts",
+  "anchor": "newsletter",
+  "scenes": [
+   {
+    "say": "To make a newsletter, open My Sparks and press Make a newsletter above your blog posts.",
+    "do": [
+     {
+      "go": "/videos"
+     },
+     "|",
+     {
+      "hover": "h~:^Blog posts"
+     }
+    ]
+   },
+   {
+    "say": "Tick two to five posts, and press Make the newsletter.",
+    "do": [
+     {
+      "hover": "h~:^Blog posts"
+     }
+    ]
+   },
+   {
+    "say": "You get three subject lines, a short note from you, a few lines on each post with its own Read more button, and your sign-off.",
+    "do": [
+     {
+      "hover": "h~:^Blog posts"
+     }
+    ]
+   },
+   {
+    "say": "Paste each post's web address once.",
+    "do": [
+     {
+      "hover": "h~:^Blog posts"
+     }
+    ]
+   },
+   {
+    "say": "Then Copy as HTML, or Send me a test first.",
+    "do": [
+     {
+      "hover": "h~:^Blog posts"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "where-its-posted",
+  "step": 22,
+  "title": "Where It's Posted",
+  "anchor": "where-its-posted",
+  "scenes": [
+   {
+    "say": "At the top of the Publish window, Where it's posted is the record for that video: one line for each platform, posted, on its way, scheduled, or failed and why.",
+    "do": [
+     {
+      "go": "/videos"
+     },
+     {
+      "scroll": "h~:Videos — rendered",
+      "block": "start"
+     },
+     {
+      "click": "btn:Publish"
+     },
+     {
+      "wait": 1200
+     },
+     "|",
+     {
+      "hover": "text~:Not posted yet >> nth=0"
+     }
+    ]
+   },
+   {
+    "say": "A failed line has Retry.",
+    "do": [
+     {
+      "hover": "text:Posted >> nth=0"
+     }
+    ]
+   },
+   {
+    "say": "If a post fails after you leave, a red note appears at the top of My Sparks, and you get an email.",
+    "do": [
+     {
+      "key": "Escape"
+     },
+     {
+      "scroll": "h:My Sparks",
+      "block": "start"
+     },
+     {
+      "hover": "h:My Sparks"
+     }
+    ]
+   },
+   {
+    "say": "Sparklee leaves notes there too: Fixed for you, or Needs you, with the button to fix it.",
+    "do": [
+     {
+      "hover": "h:My Sparks",
+      "fx": 2
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "google-business",
+  "step": 22,
+  "title": "Google Business And Open Houses",
+  "anchor": "google-business",
+  "scenes": [
+   {
+    "say": "Google Business takes up to thirty seconds of video and no phone numbers.",
+    "do": [
+     {
+      "go": "/videos"
+     },
+     {
+      "scroll": "h~:Videos — rendered",
+      "block": "start"
+     },
+     {
+      "click": "btn:Publish"
+     },
+     {
+      "wait": 1200
+     },
+     "|",
+     {
+      "hover": "text~:Connect an account"
+     }
+    ]
+   },
+   {
+    "say": "So a longer video goes up as a photo post with your caption and a Learn more button.",
+    "do": [
+     {
+      "hover": "text~:Connect an account",
+      "fx": 0.3
+     }
+    ]
+   },
+   {
+    "say": "For an open house, tick Post to Google as an event, and add a name, the date, and the start and end times.",
+    "do": [
+     {
+      "hover": "text~:Connect an account"
+     }
+    ]
+   },
+   {
+    "say": "Google shows the date, and takes the post down by itself afterwards.",
+    "do": [
+     {
+      "hover": "text~:Connect an account"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "email-it",
+  "step": 22,
+  "title": "Email It",
+  "anchor": "email-it",
+  "scenes": [
+   {
+    "say": "Any finished video in My Sparks can be emailed.",
+    "do": [
+     {
+      "go": "/videos"
+     },
+     {
+      "scroll": "h~:Videos — rendered",
+      "block": "start"
+     },
+     "|",
+     {
+      "hover": "h~:Videos — rendered"
+     }
+    ]
+   },
+   {
+    "say": "Press Email it and add up to ten people: search BoldTrail by name, or add someone new.",
+    "do": [
+     {
+      "hover": "btn:Email it"
+     },
+     {
+      "wait": 300
+     },
+     {
+      "click": "btn:Email it"
+     },
+     {
+      "wait": 1800
+     },
+     {
+      "hover": "ph:First name"
+     },
+     {
+      "wait": 600
+     },
+     {
+      "hover": "ph:Email"
+     }
+    ]
+   },
+   {
+    "say": "SparkReels writes a short subject and note you can change or say out loud.",
+    "do": [
+     {
+      "hover": "textarea",
+      "fx": 0.3,
+      "fy": 0.3
+     }
+    ]
+   },
+   {
+    "say": "Put first name in curly brackets, and each person sees their own name.",
+    "do": [
+     {
+      "hover": "textarea",
+      "fx": 0.5,
+      "fy": 0.5
+     }
+    ]
+   },
+   {
+    "say": "The email shows your thumbnail with a Watch the video button.",
+    "do": [
+     {
+      "hover": "textarea",
+      "fx": 0.5,
+      "fy": 0.9
+     }
+    ]
+   },
+   {
+    "say": "Press Send email and confirm.",
+    "do": [
+     {
+      "hover": "btn:Send"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "screen-recorder",
+  "step": 23,
+  "title": "Record My Screen",
+  "anchor": "screen-recorder",
+  "scenes": [
+   {
+    "say": "Record My Screen shows a listing, a market report, or anything else on your screen while you talk.",
+    "do": [
+     {
+      "go": "/tools"
+     },
+     {
+      "click": "btn:For a video"
+     },
+     {
+      "click": "btn:Record My Screen"
+     },
+     {
+      "wait": 1200
+     },
+     "|",
+     {
+      "hover": "h:Record My Screen"
+     }
+    ]
+   },
+   {
+    "say": "Open it in Spark Tools, or under the script choices on the camera page.",
+    "do": [
+     {
+      "hover": "btn:Record My Screen"
+     },
+     {
+      "wait": 1200
+     },
+     {
+      "go": "/create"
+     },
+     {
+      "click": "btn~:^Camera/"
+     },
+     {
+      "wait": 1200
+     },
+     {
+      "hover": "btn:Record my screen"
+     }
+    ]
+   },
+   {
+    "say": "Tick Show me in a corner circle if you want to be in it.",
+    "do": [
+     {
+      "go": "/tools"
+     },
+     {
+      "click": "btn:For a video"
+     },
+     {
+      "click": "btn:Record My Screen"
+     },
+     {
+      "wait": 1200
+     },
+     {
+      "hover": "text:Show me in a corner circle"
+     }
+    ]
+   },
+   {
+    "say": "Press Start recording, pick the tab or window, talk as you go, and press Stop.",
+    "do": [
+     {
+      "hover": "btn:Start recording"
+     }
+    ]
+   },
+   {
+    "say": "Up to ten minutes, free, and saved to My Sparks.",
+    "do": [
+     {
+      "hover": "h:Record My Screen"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "google-reviews",
+  "step": 23,
+  "title": "Reply To Google Reviews",
+  "anchor": "google-reviews",
+  "scenes": [
+   {
+    "say": "Google Reviews, in Spark Tools under Reviews, shows the reviews on your Google Business profile, with your average.",
+    "do": [
+     {
+      "go": "/tools"
+     },
+     {
+      "click": "btn:Reviews"
+     },
+     {
+      "click": "btn:Google Reviews"
+     },
+     {
+      "wait": 1200
+     },
+     "|",
+     {
+      "hover": "btn:Google Reviews"
+     }
+    ]
+   },
+   {
+    "say": "Needs a reply is ticked, so you see only the ones you haven't answered.",
+    "do": [
+     {
+      "hover": "text~:Connect Google Business"
+     }
+    ]
+   },
+   {
+    "say": "On any review, Draft a reply writes one in your voice to edit, or Write my own gives you an empty box.",
+    "do": [
+     {
+      "hover": "text~:Connect Google Business"
+     }
+    ]
+   },
+   {
+    "say": "Nothing goes to Google until you press Post reply.",
+    "do": [
+     {
+      "hover": "text~:Connect Google Business"
+     }
+    ]
+   },
+   {
+    "say": "Read replies to low ratings with extra care.",
+    "do": [
+     {
+      "hover": "text~:Connect Google Business"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "google-review-video",
+  "step": 23,
+  "title": "Ask For A Google Review With A Video",
+  "anchor": "google-review-video",
+  "scenes": [
+   {
+    "say": "Ask for Google Review Video Email sends past clients a short video asking for a review, with a big gold button under it.",
+    "do": [
+     {
+      "go": "/tools"
+     },
+     {
+      "click": "btn:Reviews"
+     },
+     {
+      "click": "btn:Ask for Google Review Video Email"
+     },
+     {
+      "wait": 1200
+     },
+     "|",
+     {
+      "hover": "h:Ask for Google Review Video Email"
+     }
+    ]
+   },
+   {
+    "say": "Step one: pick up to ten people.",
+    "do": [
+     {
+      "hover": "ph:First name"
+     },
+     {
+      "wait": 600
+     },
+     {
+      "hover": "ph:Email"
+     }
+    ]
+   },
+   {
+    "say": "Step two: your video.",
+    "do": [
+     {
+      "scroll": "btn~:^Record it myself",
+      "block": "center"
+     },
+     {
+      "hover": "btn~:^Record it myself",
+      "fx": 0.2
+     }
+    ]
+   },
+   {
+    "say": "Record it yourself for free, use Avatar in circle, a photo reel, or a video you made.",
+    "do": [
+     {
+      "hover": "btn~:^Record it myself"
+     },
+     {
+      "wait": 700
+     },
+     {
+      "hover": "btn~:^Avatar in circle"
+     },
+     {
+      "wait": 700
+     },
+     {
+      "hover": "btn~:^Photo reel"
+     },
+     {
+      "wait": 700
+     },
+     {
+      "hover": "btn~:^Use a video I made"
+     }
+    ]
+   },
+   {
+    "say": "Make one general video and press Save as my review video, so it's ready every time.",
+    "do": [
+     {
+      "hover": "btn~:^Save as my default"
+     }
+    ]
+   },
+   {
+    "say": "Then check the email, and send.",
+    "do": [
+     {
+      "scroll": "btn:Send email",
+      "block": "center"
+     },
+     {
+      "hover": "btn:Send email"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "seller-update-tool",
+  "step": 23,
+  "title": "Seller Update",
+  "anchor": "seller-update-tool",
+  "scenes": [
+   {
+    "say": "Seller Update writes an update email for the people selling one of your listings.",
+    "do": [
+     {
+      "go": "/tools"
+     },
+     {
+      "click": "btn:Sellers & AI search"
+     },
+     {
+      "click": "btn:Seller Update"
+     },
+     {
+      "wait": 1200
+     },
+     "|",
+     {
+      "hover": "btn:Add a listing"
+     }
+    ]
+   },
+   {
+    "say": "Add the listing once.",
+    "do": [
+     {
+      "hover": "ph:12 Oak Lane"
+     },
+     {
+      "wait": 600
+     },
+     {
+      "hover": "ph:Dan and Lisa"
+     },
+     {
+      "wait": 600
+     },
+     {
+      "hover": "ph:$549,000"
+     }
+    ]
+   },
+   {
+    "say": "For each update, fill in views, saves, showings and offers, and type or say what buyers said.",
+    "do": [
+     {
+      "hover": "btn~:24 Shagbark"
+     }
+    ]
+   },
+   {
+    "say": "Last week's numbers show beside each box.",
+    "do": [
+     {
+      "hover": "btn~:24 Shagbark",
+      "fx": 0.8
+     }
+    ]
+   },
+   {
+    "say": "Record a video update opens the camera with a short script.",
+    "do": [
+     {
+      "hover": "btn:Add a listing"
+     }
+    ]
+   },
+   {
+    "say": "To send through BoldTrail, add the sellers in the orange box, then press Send to sellers through BoldTrail.",
+    "do": [
+     {
+      "hover": "btn:Save the listing"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "google-meet",
+  "step": 23,
+  "title": "Google Meet",
+  "anchor": "google-meet",
+  "scenes": [
+   {
+    "say": "Meet, in the top bar, starts a video call with a client.",
+    "do": [
+     {
+      "go": "/home"
+     },
+     "|",
+     {
+      "hover": "btn:Meet"
+     },
+     {
+      "wait": 300
+     },
+     {
+      "click": "btn:Meet"
+     },
+     {
+      "wait": 900
+     }
+    ]
+   },
+   {
+    "say": "Start now opens a new Google Meet in a new tab; copy the link and send it.",
+    "do": [
+     {
+      "hover": "text:Start now"
+     }
+    ]
+   },
+   {
+    "say": "Schedule for later asks for your client's name and email, the date and time, and opens Google Calendar with it filled in.",
+    "do": [
+     {
+      "hover": "text:Schedule for later"
+     }
+    ]
+   },
+   {
+    "say": "Press Save, then Send.",
+    "do": [
+     {
+      "hover": "text:Schedule for later",
+      "fx": 0.8
+     }
+    ]
+   },
+   {
+    "say": "The meeting shows on Spark Calendar as a gold camera on its day.",
+    "do": [
+     {
+      "key": "Escape"
+     },
+     {
+      "nav": "Spark Calendar"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "thumbnail-generator",
+  "step": 24,
+  "title": "Thumbnail Generator",
+  "anchor": "thumbnail-generator",
+  "scenes": [
+   {
+    "say": "The Thumbnail Generator makes the cover picture for a video.",
+    "do": [
+     {
+      "go": "/tools"
+     },
+     {
+      "click": "btn:For a video"
+     },
+     {
+      "click": "btn:Thumbnail"
+     },
+     {
+      "wait": 1200
+     },
+     "|",
+     {
+      "hover": "btn:Thumbnail"
+     }
+    ]
+   },
+   {
+    "say": "Pick the video, type a few words or let AI write them, and choose the photo.",
+    "do": [
+     {
+      "hover": "select"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "ph:3–4 words, or pick a project and AI writes them"
+     }
+    ]
+   },
+   {
+    "say": "Change the words or the photo any time, and press Update Thumbnail to redraw it in seconds.",
+    "do": [
+     {
+      "hover": "btn:Generate Thumbnail"
+     }
+    ]
+   },
+   {
+    "say": "The Market Badge is the city and state on it.",
+    "do": [
+     {
+      "hover": "ph:3–4 words, or pick a project and AI writes them",
+      "fx": 0.8
+     }
+    ]
+   },
+   {
+    "say": "Type a new one to change it, or clear both boxes to leave it off.",
+    "do": [
+     {
+      "hover": "select",
+      "fx": 0.8
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "banners",
+  "step": 24,
+  "title": "Banners",
+  "anchor": "banners",
+  "scenes": [
+   {
+    "say": "Banners makes the wide picture across the top of your YouTube channel, your LinkedIn profile, or your Facebook page, each at the right size.",
+    "do": [
+     {
+      "go": "/tools"
+     },
+     {
+      "click": "btn:Images & banners"
+     },
+     {
+      "click": "btn:Banners"
+     },
+     {
+      "wait": 1200
+     },
+     "|",
+     {
+      "hover": "btn~:^YouTube 2560"
+     },
+     {
+      "wait": 600
+     },
+     {
+      "hover": "btn~:^Facebook 1640"
+     },
+     {
+      "wait": 600
+     },
+     {
+      "hover": "btn~:^LinkedIn 1584"
+     }
+    ]
+   },
+   {
+    "say": "For YouTube, press Use this template, and your photo, logo, name and contact details fill in from Settings.",
+    "do": [
+     {
+      "hover": "btn~:^YouTube 2560"
+     },
+     {
+      "wait": 600
+     },
+     {
+      "scroll": "btn:Use this template",
+      "block": "center"
+     },
+     {
+      "hover": "btn:Use this template"
+     }
+    ]
+   },
+   {
+    "say": "Pick a color palette, or Custom for your own colors.",
+    "do": [
+     {
+      "scroll": "btn:Aa Ocean",
+      "block": "center"
+     },
+     {
+      "hover": "btn:Aa Ocean"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "btn:Aa Sunset"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "btn:Aa Custom"
+     }
+    ]
+   },
+   {
+    "say": "Then download it, or Download for Canva to change the text there.",
+    "do": [
+     {
+      "scroll": "btn:Generate Banner",
+      "block": "center"
+     },
+     {
+      "hover": "btn:Generate Banner"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "video-business-card",
+  "step": 24,
+  "title": "Video Business Card",
+  "anchor": "video-business-card",
+  "scenes": [
+   {
+    "say": "Video Business Card is two things.",
+    "do": [
+     {
+      "go": "/tools"
+     },
+     {
+      "click": "btn:Images & banners"
+     },
+     {
+      "click": "btn:Video Business Card"
+     },
+     {
+      "wait": 1200
+     },
+     "|",
+     {
+      "hover": "h:Video Business Card"
+     }
+    ]
+   },
+   {
+    "say": "Your card page shows your Agent Intro, your name and logo, and buttons to call, text, email, book a call, or save your contact.",
+    "do": [
+     {
+      "hover": "select"
+     },
+     {
+      "wait": 900
+     },
+     {
+      "hover": "text:Edit in Settings"
+     }
+    ]
+   },
+   {
+    "say": "Add a title and booking link, pick a color, and press Save card.",
+    "do": [
+     {
+      "scroll": "ph:REALTOR®",
+      "block": "center"
+     },
+     {
+      "hover": "ph:REALTOR®"
+     },
+     {
+      "wait": 600
+     },
+     {
+      "hover": "ph:calendly.com/your-name"
+     },
+     {
+      "wait": 600
+     },
+     {
+      "hover": "btn:Save card"
+     }
+    ]
+   },
+   {
+    "say": "Your video card is your video with your name strip and an end card with a QR code to your page.",
+    "do": [
+     {
+      "scroll": "btn:Make my video card",
+      "block": "center"
+     },
+     {
+      "hover": "btn:Make my video card"
+     }
+    ]
+   },
+   {
+    "say": "Share it with Copy, Text it, a QR code for print, or your email signature.",
+    "do": [
+     {
+      "hover": "btn:Copy"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "btn:Text it"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "btn:Download QR code"
+     },
+     {
+      "wait": 500
+     },
+     {
+      "hover": "btn~:Copy email signature"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "halo-affiliate",
+  "step": 29,
+  "title": "Your Halo Affiliate Link",
+  "anchor": "halo-affiliate",
+  "scenes": [
+   {
+    "say": "Also a Halo affiliate?",
+    "do": [
+     {
+      "go": "/affiliate"
+     },
+     "|",
+     {
+      "hover": "h:Affiliate Program"
+     }
+    ]
+   },
+   {
+    "say": "On the Affiliate page, put your Halo page or code in Your Halo affiliate link, and press Save.",
+    "do": []
+   },
+   {
+    "say": "Agents you refer to SparkReels then get your link on their Get Halo button.",
+    "do": []
+   },
+   {
+    "say": "Under it, Pressed Get Halo lists each agent who pressed it, so you can see who signed up.",
+    "do": []
+   }
+  ]
+ }
+]

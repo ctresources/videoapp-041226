@@ -86,8 +86,16 @@ let pos = { x: 640, y: 360 };
 const pause = (ms) => page.waitForTimeout(ms);
 async function moveTo(loc, opts = {}) {
   await loc.first().waitFor({ state: "visible", timeout: 4_000 });
-  const b = await loc.first().boundingBox();
+  let b = await loc.first().boundingBox();
   if (!b) return;
+  // Off screen, or under the sticky bar at the bottom (2026-11-03): bring it
+  // to the middle first, so the cursor (and a click) lands on the control.
+  if (b.y < 50 || b.y + b.height > 625) {
+    await loc.first().evaluate((el) => el.scrollIntoView({ behavior: "smooth", block: "center" }));
+    await pause(800);
+    b = await loc.first().boundingBox();
+    if (!b) return;
+  }
   const x = b.x + b.width * (opts.fx ?? 0.5), y = b.y + b.height * (opts.fy ?? 0.5);
   await page.mouse.move(x, y, { steps: opts.steps ?? 28 });
   pos = { x, y };
@@ -183,7 +191,7 @@ const SCRIPTS = {
 // Never pressed, whatever a move says: anything that saves, sends, connects,
 // buys, posts, trains, records or spends.
 // (A bare "Publish" only opens the Publish window, so it is allowed.)
-const NEVER = /spark video|publish to|delete|remove|disconnect|sign out|buy|get started|manage|train|approve|apply|save|update|generate|spark an image|import|^connect|request|new address|email this|make draft|skip|start recording|write my script|build|listen|copy|send|regenerate|retrain|upload|choose video/i;
+const NEVER = /spark video|publish to|delete|remove|disconnect|sign out|buy|get started|manage|train|approve|apply|save|update|generate|spark an image|import|^connect|request|new address|email this|make draft|skip|start recording|write my script|build|listen|copy|send(?! to website)|regenerate|retrain|upload|choose video|make video|make it|create it|new outfit|make my|post reply|draft a reply|write it|get photos|get ideas|text it|add photo/i;
 function target(spec) {
   let loc = page;
   for (const part of spec.split(" >> ")) {
@@ -211,6 +219,10 @@ async function run(a) {
   if (a === "|") return;
   if (a.go) { await page.goto(BASE + a.go); await settle(); return; }
   if (a.wait) { await pause(a.wait); return; }
+  // A key (Escape closes a menu) and a dropdown choice that only changes the
+  // page (sections.json, 2026-11-03). Neither saves anything.
+  if (a.key) { await page.keyboard.press(a.key); await pause(300); return; }
+  if (a.select) { const t = await firstVisible(target(a.select)); await moveTo(t); await t.selectOption({ label: a.label }); await pause(500); return; }
   if (a.nav) {
     const before = page.url();
     await click(link(a.nav));
@@ -224,7 +236,8 @@ async function run(a) {
   if (a.click) {
     const t = await firstVisible(target(a.click));
     const label = ((await t.innerText().catch(() => "")) || (await t.getAttribute("aria-label")) || "").trim();
-    if (NEVER.test(label)) { console.log(`refused to press "${label}"`); await moveTo(t); return; }
+    // Tool tabs whose names only look like an action.
+    if (NEVER.test(label) && !/^(Seller Update)$/.test(label)) { console.log(`refused to press "${label}"`); await moveTo(t); return; }
     await click(t); await pause(500); return;
   }
   if (a.type) {

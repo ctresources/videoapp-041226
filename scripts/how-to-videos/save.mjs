@@ -41,7 +41,8 @@ for (const v of videos) {
   const res = await context.request.post(`${BASE}/api/video/save-camera-recording`, {
     data: {
       storagePath, videoType: "youtube_16x9", screen: true,
-      title: `How to ${v.title.replace(/ — .*$/, "")} in SparkReels`.slice(0, 100),
+      // A sub-section video (sections.json) is named for its section, not "How to …".
+      title: (v.anchor ? `${v.title} — SparkReels How-To` : `How to ${v.title.replace(/ — .*$/, "")} in SparkReels`).slice(0, 100),
       script: v.scenes.map((s) => s.say ?? s).join(" "),
       idempotencyKey: `howto-${v.id}`,
     },

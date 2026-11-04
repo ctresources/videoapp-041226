@@ -4,7 +4,7 @@
  * with captions. Made by scripts/how-to-videos (re-run it when a screen
  * changes); these files live in storage apart from My Sparks.
  */
-export interface HowToVideo { step: number; title: string; src: string; poster: string; seconds: number }
+export interface HowToVideo { step: number; title: string; src: string; poster: string; seconds: number; anchor?: string }
 
 export const HOW_TO_VIDEOS: Record<number, HowToVideo> = {
   1: {"step":1,"title":"Set Your Market And Video Language","src":"https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/videos/how-to/step-01.mp4","poster":"https://fifryrqhrfnzbwpvvvkz.supabase.co/storage/v1/object/public/assets/how-to/step-01.jpg","seconds":20},

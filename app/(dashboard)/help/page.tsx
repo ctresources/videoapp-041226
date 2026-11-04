@@ -3,7 +3,7 @@ import Link from "next/link";
 import { canAccessFeature } from "@/lib/access";
 import { getServerAccess } from "@/lib/access-server";
 import { FreeOverview } from "@/components/help/free-overview";
-import { WatchVideo } from "@/components/help/watch-video";
+import { SectionVideo, WatchVideo } from "@/components/help/watch-video";
 import { HOW_TO_VIDEOS } from "@/lib/help/how-to-videos";
 import {
   Mic, Sparkles, Video, MonitorPlay, Wand2, PlayCircle, FileText,
@@ -103,7 +103,7 @@ function FullGuide() {
             2026-10-14. Not a numbered step, so the steps keep their numbers. */}
         <Card padding="sm">
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Before You Start</p>
-          <h2 className="text-base font-bold text-brand-text mb-3">Getting Around</h2>
+          <h2 className="text-base font-bold text-brand-text mb-3 scroll-mt-20" id="getting-around">Getting Around<SectionVideo id="getting-around" /></h2>
           <ul className="flex flex-col gap-2 text-sm text-slate-600 leading-relaxed list-disc pl-5">
             <li>
               <strong>The menu is on the left side and across the top</strong> on a computer, the same
@@ -157,7 +157,7 @@ function FullGuide() {
             step, so every step below keeps its number. */}
         <Card padding="sm">
           <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-1">Start Here</p>
-          <h2 className="text-base font-bold text-brand-text mb-3 scroll-mt-20" id="home">Home — Tell Sparklee What You Want</h2>
+          <h2 className="text-base font-bold text-brand-text mb-3 scroll-mt-20" id="home">Home — Tell Sparklee What You Want<SectionVideo id="home" /></h2>
           <ul className="flex flex-col gap-2 text-sm text-slate-600 leading-relaxed list-disc pl-5">
             <li>
               <strong>Ask Sparklee</strong> is the big box at the top: <em>What do you want to accomplish?</em>{" "}
@@ -184,8 +184,8 @@ function FullGuide() {
               <strong>Or create it yourself:</strong> the row under Ask Sparklee opens Spark Studio on Video /
               Reel, Camera, Blog or Listing, or Spark Tools, for when you want full control.
             </li>
-            <li>
-              <strong>Needs Your Approval</strong> lists drafts from AutoSparks, Halo, email and Sparklee, and
+            <li className="scroll-mt-20" id="home-dashboard">
+              <strong>Needs Your Approval</strong><SectionVideo id="home-dashboard" /> lists drafts from AutoSparks, Halo, email and Sparklee, and
               seller updates. A finished video has <strong>Watch</strong> and <strong>Approve</strong> right
               there; one not made yet has <strong>Make video</strong>, which opens AutoSparks.
             </li>
@@ -281,15 +281,15 @@ function FullGuide() {
               In <strong>Avatar in circle</strong>, the circle follows you as you move.
               You can delete your twin any time in Settings.
               {/* Two twins (2026-10-29, the owner's ask). */}
-              <span className="block mt-1.5">
-                <strong>Two twins, one of each shape.</strong> On paid plans, make a <strong>Vertical twin</strong>{" "}
+              <span className="block mt-1.5 scroll-mt-20" id="two-twins">
+                <strong>Two twins, one of each shape.</strong><SectionVideo id="two-twins" /> On paid plans, make a <strong>Vertical twin</strong>{" "}
                 (phone upright) for Reels and Shorts and a <strong>Horizontal twin</strong> (phone sideways) for
                 YouTube; each video uses the one that fits, so you&apos;re full screen in both. Each is trained and
                 approved on its own. With only an upright twin, a YouTube video shows you in a corner over
                 full-screen footage. On the free plan you have one twin: choose the shape you post most.
               </span>
               {/* Digital Twin backgrounds (2026-10-24, the owner's mockup; Photos & footage 2026-10-31). */}
-              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="digital-twin-backgrounds">Backgrounds for your twin</span>
+              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="digital-twin-backgrounds">Backgrounds for your twin<SectionVideo id="digital-twin-backgrounds" /></span>
               <span className="block mt-1">
                 Your twin is filmed upright, so in a horizontal video your own background can be taken away.
                 In video setup for a horizontal <strong>Avatar video</strong>, under <strong>Background</strong>,
@@ -314,7 +314,7 @@ function FullGuide() {
               </span>
               {/* Twin outfits (2026-10-28, the owner's ask). */}
               {/* Paid plans only (2026-10-28): data-paid-only keeps it out of a free account's Sparklee. */}
-              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="twin-outfits" data-paid-only="true">Outfits for your twin (paid plans)</span>
+              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="twin-outfits" data-paid-only="true">Outfits for your twin (paid plans)<SectionVideo id="twin-outfits" /></span>
               <span className="block mt-1" data-paid-only="true">
                 Want your twin in something else? In <strong>Settings → 4 · Digital Twin</strong>, under{" "}
                 <strong>Outfits</strong>, describe it (like <em>navy blazer over a white shirt</em>) and press{" "}
@@ -391,8 +391,8 @@ function FullGuide() {
               youtube.com/verify so your thumbnails are added automatically.
               {/* The two things that kept the owner's own channel unverified
                   for an afternoon (2026-10-13). */}
-              <span className="block mt-1.5">
-                <strong>Still not working?</strong> YouTube&apos;s verify page opens for whichever
+              <span className="block mt-1.5 scroll-mt-20" id="youtube-verify">
+                <strong>Still not working?</strong><SectionVideo id="youtube-verify" /> YouTube&apos;s verify page opens for whichever
                 channel your browser is on, so check the picture at its top right is this channel.
                 If it isn&apos;t, open the page in a private window signed in to this channel only.
                 And one phone number verifies two channels a year: if YouTube says yours is used
@@ -430,7 +430,7 @@ function FullGuide() {
               </span>
               {/* Moved here from Profile (2026-10-30, the owner's ask). */}
               <span className="block mt-1.5 scroll-mt-20" id="review-link">
-                <strong>Your Google review link</strong> is at the bottom of this tab (paid plans). In your
+                <strong>Your Google review link</strong><SectionVideo id="review-link" /> is at the bottom of this tab (paid plans). In your
                 Google Business Profile, press <strong>Ask for reviews</strong> → <strong>Copy link</strong>,
                 paste it here and press <strong>Save</strong>. It&apos;s the gold button in your review request
                 emails. Under it you can save your <strong>default review request words</strong> and subject,
@@ -626,8 +626,8 @@ function FullGuide() {
               </span>
               {/* The way in for people who did not start from nothing, which is
                   most people with an existing blog. */}
-              <span className="block mt-1.5">
-                <strong>Already written it?</strong>{" "}
+              <span className="block mt-1.5 scroll-mt-20" id="my-content">
+                <strong>Already written it?</strong><SectionVideo id="my-content" />{" "}
                 <strong>My Content/Forwarded in</strong> is the one place for it, the second
                 box under Script source. Paste your words in, or attach a PDF, a link, or an email you
                 forwarded to your import address (step 6). On a video you then say what happens to
@@ -640,8 +640,8 @@ function FullGuide() {
                 line spoken first, which also becomes the video&apos;s title. If an email&apos;s subject names a town, the city and state fill in
                 for you. Recording yourself has its own version of this, <strong>From a document</strong>.
               </span>
-              <span className="block mt-1.5">
-                On the <strong>Blog</strong> page the same tile is there, and you choose
+              <span className="block mt-1.5 scroll-mt-20" id="blog-page">
+                <SectionVideo id="blog-page" /> On the <strong>Blog</strong> page the same tile is there, and you choose
                 what happens to it: <strong>Use it as it is</strong>, which publishes your words
                 unchanged and takes seconds, or <strong>Write a new article from it</strong>, which
                 covers the same ground in your voice for your market. Use the first for your own
@@ -652,8 +652,8 @@ function FullGuide() {
               </span>
               {/* The brief. Three pickers that shape everything written
                   afterwards and were not mentioned anywhere on this page. */}
-              <span className="block mt-1.5">
-                <strong>Who is it for?</strong> <strong>Audience</strong>, <strong>Tone</strong> and{" "}
+              <span className="block mt-1.5 scroll-mt-20" id="audience">
+                <strong>Who is it for?</strong><SectionVideo id="audience" /> <strong>Audience</strong>, <strong>Tone</strong> and{" "}
                 <strong>Why</strong> are three optional pickers under Details. What
                 you choose shapes the script, the article and the Spark Tools afterwards. You can
                 also just say them:{" "}
@@ -667,8 +667,8 @@ function FullGuide() {
             <Step n={13} title="Speak It Or Type It — Your Choice" icon={Mic}>
               {/* Ask Sparklee, added 2026-10-14; her badge and the card on the
                   steps bar, 2026-10-15. */}
-              <span className="block mb-1.5">
-                Need help on a section? Tap <strong>Ask Sparklee</strong>, the gold star just under the top
+              <span className="block mb-1.5 scroll-mt-20" id="ask-sparklee">
+                <SectionVideo id="ask-sparklee" /> Need help on a section? Tap <strong>Ask Sparklee</strong>, the gold star just under the top
                 bar on the right of every page, and ask
                 out loud how to do something. She answers in a few seconds, out loud and on screen, from
                 this guide. Each conversation runs up to five minutes. Five conversations a day before you
@@ -696,8 +696,8 @@ function FullGuide() {
                 again. Say <em>&ldquo;Spark it&rdquo;</em> and it presses Next for you.
               </span>
               {/* Tell Sparklee, she does it (2026-10-26). */}
-              <span className="block mt-1.5">
-                <strong>Sparklee, make it</strong> (paid plans), the button under the box, has Sparklee
+              <span className="block mt-1.5 scroll-mt-20" id="sparklee-make-it">
+                <SectionVideo id="sparklee-make-it" /> <strong>Sparklee, make it</strong> (paid plans), the button under the box, has Sparklee
                 do the whole video herself. Say it all at once, for example{" "}
                 <em>&ldquo;Make a market update for Springfield this week, horizontal, my twin, post it
                 Friday&rdquo;</em>. She asks only for what&apos;s missing (the topic, or the town). Then
@@ -743,8 +743,8 @@ function FullGuide() {
                 anywhere on the page instead of tapping the mic. Once it says it has everything,
                 saying <strong>&ldquo;Spark it&rdquo;</strong> starts it too.
               </span>
-              <span className="block mt-1.5">
-                Prefer typing, or want a suggestion instead of a blank box? The box shows a{" "}
+              <span className="block mt-1.5 scroll-mt-20" id="topic-ideas">
+                <SectionVideo id="topic-ideas" /> Prefer typing, or want a suggestion instead of a blank box? The box shows a{" "}
                 <strong>Try</strong> example that changes every few seconds; press the empty box to use
                 the one showing, or just start typing. Under it is a{" "}
                 <strong>Quick win</strong>: a ready topic for your town in one press, with a new idea
@@ -752,7 +752,10 @@ function FullGuide() {
                 <strong>What buyers ask AI</strong> (step 25), and under that <strong>Or try</strong>:
                 ideas with your city filled in, with <strong>More ideas</strong> opening the whole list
                 and a search box. Tap one and it lands in the same box the mic writes into, so you can
-                add to it before you send. The first chip, <strong>👋 Agent Intro</strong>, is a short
+                add to it before you send.
+              </span>
+              <span className="block mt-1.5 scroll-mt-20" id="agent-intro">
+                <SectionVideo id="agent-intro" /> The first chip, <strong>👋 Agent Intro</strong>, is a short
                 video introducing you: your name, brokerage, area and years are filled in from Settings,
                 you pick who you help most and add anything personal or your profile link. It runs about{" "}
                 <strong>30 seconds</strong>. You get the intro script plus a short and a long bio
@@ -831,8 +834,8 @@ function FullGuide() {
                 <strong>Edit thumbnail</strong>, and if you&apos;ve left the app you get a{" "}
                 <strong>Your video is ready</strong> email instead.
               </span>
-              <span className="block mt-1.5">
-                Above the button, <strong>Ready to make</strong> checks your voice, that your look fits the
+              <span className="block mt-1.5 scroll-mt-20" id="ready-to-make">
+                <SectionVideo id="ready-to-make" /> Above the button, <strong>Ready to make</strong> checks your voice, that your look fits the
                 video&apos;s shape, your Digital Twin approval and your videos left. Anything not ready has a
                 button that fixes it (<strong>Approve now</strong>, <strong>Use the wide one</strong>,{" "}
                 <strong>Get more</strong>), and Spark Video stays off until it&apos;s all green, so nothing is
@@ -862,7 +865,7 @@ function FullGuide() {
               about a minute. Nothing is made, posted or charged until you approve it, and you can
               turn AutoSparks off at the top of that page.
               {/* Halo sites, promo videos and email drafts (2026-10-24, the owner's ask). */}
-              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="halo-sites">Halo sites</span>
+              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="halo-sites">Halo sites<SectionVideo id="halo-sites" /></span>
               <span className="block mt-1">
                 If you have a Halo website, add it in{" "}
                 <Link href="/settings/crm#halo" className="text-primary-600 font-medium hover:underline">Settings → 10 · CRM → Halo website</Link>,
@@ -886,8 +889,8 @@ function FullGuide() {
                 publish more than your month holds, the others wait under{" "}
                 <strong>Also new on your sites</strong>, and <strong>Use instead</strong> swaps one in.
               </span>
-              <span className="block mt-1.5">
-                Each Halo draft shows up under <strong>From your Halo sites</strong> with its thumbnail
+              <span className="block mt-1.5 scroll-mt-20" id="halo-drafts">
+                <SectionVideo id="halo-drafts" /> Each Halo draft shows up under <strong>From your Halo sites</strong> with its thumbnail
                 and setup at a glance, and a link to the post it came from. The script is written from
                 the post itself. The thumbnail uses the post&apos;s photo, or an AI picture of the town
                 when there isn&apos;t one, with your headshot on top. Press <strong>Setup</strong> to
@@ -946,7 +949,7 @@ function FullGuide() {
               </ol>
               {/* Seller Updates on AutoSparks (2026-10-26, the owner's mockup). */}
               <span className="block mt-1.5 scroll-mt-20" id="seller-updates">
-                <strong>Seller updates</strong> (on AutoSparks, paid plans) send your weekly seller update by
+                <strong>Seller updates</strong><SectionVideo id="seller-updates" /> (on AutoSparks, paid plans) send your weekly seller update by
                 itself. In the <strong>Seller updates</strong> box, turn it <strong>On</strong> and pick the
                 day and time, the video (<strong>Avatar in circle</strong> or <strong>Email only</strong>) and
                 whether the sellers also get a text. Every listing with its sellers added from BoldTrail gets a
@@ -966,8 +969,8 @@ function FullGuide() {
                 video is set to post by itself. Already posted it yourself? Press <strong>Skip</strong> on the
                 card instead of approving it.
               </span>
-              <span className="block mt-1.5">
-                After approving, you can still change <strong>Posts on</strong> until it&apos;s handed to your
+              <span className="block mt-1.5 scroll-mt-20" id="halo-post">
+                <SectionVideo id="halo-post" /> After approving, you can still change <strong>Posts on</strong> until it&apos;s handed to your
                 accounts. <strong>When to text Halo:</strong> after the video is published on your channel on its
                 day and time, not before, because until then the link doesn&apos;t play. Then the card shows{" "}
                 <strong>Put on my Halo post</strong> (it is on every Halo card, also for a video you posted
@@ -986,7 +989,7 @@ function FullGuide() {
                 <strong>Not yet</strong> undoes it). Finished cards (posted, and on your Halo post) fold into a{" "}
                 <strong>Done</strong> line once newer cards arrive; <strong>Show</strong> opens them again.
               </span>
-              <span className="block mt-3 font-semibold text-brand-text">Promo video for your Halo referral page</span>
+              <span className="block mt-3 font-semibold text-brand-text scroll-mt-20" id="halo-promo">Promo video for your Halo referral page<SectionVideo id="halo-promo" /></span>
               <span className="block mt-1">
                 Add your Halo referral page too. It is marked <strong>Affiliate</strong> and has a{" "}
                 <strong>Make promo video</strong> button. Pick an angle (<strong>Why I use Halo</strong>,{" "}
@@ -998,7 +1001,7 @@ function FullGuide() {
                 <strong>New script</strong> writes a fresh one. Promo videos are made when you ask, and
                 are not one of your Halo videos for the month.
               </span>
-              <span className="block mt-3 font-semibold text-brand-text">Email drafts</span>
+              <span className="block mt-3 font-semibold text-brand-text scroll-mt-20" id="email-drafts">Email drafts<SectionVideo id="email-drafts" /></span>
               <span className="block mt-1">
                 Every email you forward to your import address (step 6) also becomes a video draft in
                 the same list, marked <strong>Email</strong>, about a minute after it arrives. It is set
@@ -1070,8 +1073,8 @@ function FullGuide() {
               It records horizontal, up to 10 minutes, and finishes like any camera recording.
               </span>
               {/* The teleprompter's reading and speed controls (2026-10-21). */}
-              <span className="block mt-1.5">
-                <strong>Read your script first</strong> in the script box, or press{" "}
+              <span className="block mt-1.5 scroll-mt-20" id="teleprompter">
+                <SectionVideo id="teleprompter" /> <strong>Read your script first</strong> in the script box, or press{" "}
                 <strong>Read it full screen</strong> to see the whole script in large type and edit it
                 there; <strong>Done</strong> takes you back. Under it, <strong>Flow</strong> follows your
                 voice and keeps the line you&apos;re reading near the top, with the next lines below it.{" "}
@@ -1082,8 +1085,8 @@ function FullGuide() {
               </span>
               {/* Three things can be behind the speaker now, and one of them
                   costs something, on a screen whose headline is "free". */}
-              <span className="block mt-1.5">
-                <strong>Behind you</strong>, in Set up your take, is what fills the screen while you talk
+              <span className="block mt-1.5 scroll-mt-20" id="behind-you">
+                <SectionVideo id="behind-you" /> <strong>Behind you</strong>, in Set up your take, is what fills the screen while you talk
                 in the corner: <strong>Just me</strong> (you, full screen), <strong>Your photos</strong>{" "}
                 (up to 20), <strong>Your own footage</strong>, a video you shot that plays behind you
                 (silent, and it loops), or{" "}
@@ -1109,8 +1112,8 @@ function FullGuide() {
               </span>
               {/* Brand a clip I already shot, which How It Works never named
                   (2026-10-20, the owner's wording). Computers only. */}
-              <span className="block mt-1.5">
-                <strong>Post a video you already shot</strong> — on a computer, open{" "}
+              <span className="block mt-1.5 scroll-mt-20" id="post-a-clip">
+                <strong>Post a video you already shot</strong><SectionVideo id="post-a-clip" /> — on a computer, open{" "}
                 <strong>Camera/Teleprompter</strong> in Spark Studio and press{" "}
                 <strong>Post a video as is</strong> under the script choices, then{" "}
                 <strong>Choose a clip you already shot</strong> and pick a video from your computer: MP4,
@@ -1158,8 +1161,8 @@ function FullGuide() {
                 A video takes up to <strong>20 photos</strong>; Avatar video uses the first 15. When
                 your photos are enough to fill the video, no stock footage is added.
               </span>
-              <span className="block mt-1.5">
-                <strong>Photos only reel</strong> needs no script at all. Add up to 12 photos — upload
+              <span className="block mt-1.5 scroll-mt-20" id="photos-only-reel">
+                <SectionVideo id="photos-only-reel" /> <strong>Photos only reel</strong> needs no script at all. Add up to 12 photos — upload
                 them, or paste a Zillow or Redfin link and its photos are brought in for you — then pick the
                 format (<strong>Vertical</strong> or <strong>Horizontal</strong>), a length, music, and
                 whether it has a voiceover and a closing card with your ask and phone number. A
@@ -1180,8 +1183,8 @@ function FullGuide() {
                 plan. <strong>&ldquo;Photos animated with AI.&rdquo;</strong> is added to the
                 description, so the reel says what it is.
               </span>
-              <span className="block mt-1.5">
-                <strong>Open with me in front of the home</strong> (either kind, vertical or horizontal):
+              <span className="block mt-1.5 scroll-mt-20" id="open-with-me">
+                <SectionVideo id="open-with-me" /> <strong>Open with me in front of the home</strong> (either kind, vertical or horizontal):
                 your first photo becomes a 6-second shot of you at the front of the home, made with AI
                 from your look. Choose <strong>Full body</strong>, <strong>Chest up</strong> or{" "}
                 <strong>Off</strong>. It uses your Digital Twin once approved, otherwise your headshot.
@@ -1194,8 +1197,8 @@ function FullGuide() {
               </span>
               {/* The other thing the same photos can be. Said beside the reel
                   because it is the same form and the same set of pictures. */}
-              <span className="block mt-1.5">
-                <strong>Post these photos</strong>, at the foot of the form, sends the same photos as
+              <span className="block mt-1.5 scroll-mt-20" id="post-these-photos">
+                <SectionVideo id="post-these-photos" /> <strong>Post these photos</strong>, at the foot of the form, sends the same photos as
                 they are: one post to swipe through on Instagram, Facebook, LinkedIn, Threads, X or
                 TikTok. No video is made and nothing comes out of your plan. Pick the accounts, write
                 one caption for the post, and send. The order you arranged them in is the swipe order.
@@ -1203,7 +1206,7 @@ function FullGuide() {
                 accepts.
               </span>
               {/* Quick Reels Templates (2026-11-03, the owner's ask). */}
-              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="quick-reels-templates">Quick Reels Templates</span>
+              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="quick-reels-templates">Quick Reels Templates<SectionVideo id="quick-reels-templates" /></span>
               <span className="block mt-1.5">
                 <strong>Quick Reels Templates</strong>, the button on Spark Studio&apos;s first screen,
                 makes a short designed reel. Pick <strong>Just Listed</strong>, <strong>Luxury
@@ -1245,7 +1248,7 @@ function FullGuide() {
               <strong>AI answer blocks</strong>, built into every article (step 25). That is the shape an AI
               assistant quotes — <strong>AEO</strong> and <strong>GEO</strong>, alongside ordinary SEO.{" "}
               {/* Editing the article (2026-10-16). */}
-              To change the words, press <strong>Edit</strong> on the article. The introduction, body
+              <SectionVideo id="article-tools" /> To change the words, press <strong>Edit</strong> on the article. The introduction, body
               and conclusion become boxes you can type in, with headings marked <strong>##</strong>.{" "}
               <strong>Save</strong> keeps your changes, and Copy as HTML, the email version, the
               newsletter and BoldTrail all use them. The <strong>Headline</strong> box at the top of
@@ -1283,7 +1286,7 @@ function FullGuide() {
               </span>
               {/* Send to Website (2026-10-31, the owner's spec). */}
               <span id="send-to-website" className="block mt-1.5 scroll-mt-24">
-                <strong>Send to Website.</strong> At the top of your Share Kit, and on each video and article
+                <strong>Send to Website.</strong><SectionVideo id="send-to-website" /> At the top of your Share Kit, and on each video and article
                 in My Sparks, <strong>Send to Website</strong> gets an article, a video or both onto your
                 site. With a Halo website, pick <strong>My Halo website</strong>: <strong>Update a post</strong>{" "}
                 (the post a video was made from is picked for you) or <strong>New post</strong>, then{" "}
@@ -1306,8 +1309,8 @@ function FullGuide() {
               </span>
               {/* Says who sends it, because the button is called Email and the
                   natural guess is that we do. */}
-              <span className="block mt-1.5">
-                <strong>Email</strong>, in the article&apos;s row of buttons, turns the article into an
+              <span className="block mt-1.5 scroll-mt-20" id="email-version">
+                <SectionVideo id="email-version" /> <strong>Email</strong>, in the article&apos;s row of buttons, turns the article into an
                 email for your list: a short version with a button through to the full post. Paste in
                 the address of the post on your site and the button points there.{" "}
                 <strong>Send me a test</strong> sends it to the address you sign in with, so you can
@@ -1319,8 +1322,8 @@ function FullGuide() {
                 you.
               </span>
               {/* The newsletter from several posts, added 2026-10-15. */}
-              <span className="block mt-1.5">
-                <strong>A newsletter from several posts.</strong> In My Sparks, press{" "}
+              <span className="block mt-1.5 scroll-mt-20" id="newsletter">
+                <strong>A newsletter from several posts.</strong><SectionVideo id="newsletter" /> In My Sparks, press{" "}
                 <strong>Make a newsletter</strong> above your Blog posts, tick 2 to 5 of them, then{" "}
                 <strong>Make the newsletter</strong>. It writes three subject lines, the inbox preview,
                 a short note from you, a few lines on each post with its own <strong>Read more</strong>{" "}
@@ -1393,8 +1396,8 @@ function FullGuide() {
               </span>
               {/* The answer to "did it post?", which nothing gave once the
                   window was closed. */}
-              <span className="block mt-1.5">
-                <strong>Where it&apos;s posted</strong>, at the top of the window, is the record for
+              <span className="block mt-1.5 scroll-mt-20" id="where-its-posted">
+                <SectionVideo id="where-its-posted" /> <strong>Where it&apos;s posted</strong>, at the top of the window, is the record for
                 that video: one line for each platform, saying posted (with a link to the post), on
                 its way, scheduled, or failed and why. A failed line has <strong>Retry</strong>, which
                 sends the video to that one platform again. A posted line on Facebook or LinkedIn has{" "}
@@ -1425,8 +1428,8 @@ function FullGuide() {
                 cover, not only to YouTube. A vertical video gets a tall version of the same
                 thumbnail. Each platform decides whether to show it; some pick a frame of their own.
               </span>
-              <span className="block mt-1.5">
-                <strong>Google Business</strong> works differently. It takes no more than 30 seconds of
+              <span className="block mt-1.5 scroll-mt-20" id="google-business">
+                <SectionVideo id="google-business" /> <strong>Google Business</strong> works differently. It takes no more than 30 seconds of
                 video and no phone numbers, so a longer video goes up as a photo post with your caption,
                 any phone number left out, and a <strong>Learn more</strong> button to your blog post or
                 the video. A long caption is trimmed to fit Google&apos;s limit. A video too long for one of the other platforms is skipped there, with the
@@ -1445,7 +1448,7 @@ function FullGuide() {
               </span>
               {/* Email it, added 2026-10-15. */}
               <span className="block mt-1.5 scroll-mt-20" id="email-it">
-                <strong>Email it.</strong> Any finished video in My Sparks can be emailed. Press{" "}
+                <strong>Email it.</strong><SectionVideo id="email-it" /> Any finished video in My Sparks can be emailed. Press{" "}
                 <strong>Email it</strong> and add up to 10 people: search your BoldTrail by name or email
                 (people you&apos;ve sent a video to before, and your sellers, are one tap), or{" "}
                 <strong>Add someone new</strong> with their name and email. Someone new is only saved to
@@ -1478,7 +1481,7 @@ function FullGuide() {
               <strong>Images &amp; banners</strong> (AI images, banners, Channel Name, LinkedIn Profile),{" "}
               <strong>Reviews</strong> (Google Reviews, Ask for Google Review Video Email) and <strong>Sellers &amp; AI search</strong> (Seller Update,
               AI Answer Blocks). Pick a group, then a tool.{" "}
-              <strong>Record My Screen</strong> is the simple screen recorder: tick or untick{" "}
+              <SectionVideo id="screen-recorder" /> <strong>Record My Screen</strong> is the simple screen recorder: tick or untick{" "}
               <strong>Show me in a corner circle</strong>, press <strong>Start recording</strong>, pick the tab or window
               to show, talk as you go, and press Stop. Up to 10 minutes, free, saved to My Sparks with Watch,
               Download, Publish and Email it. Showing a web page? Open it in another tab first and pick that tab:
@@ -1494,8 +1497,8 @@ function FullGuide() {
               <strong>&ldquo;Improve With AI Tools&rdquo;</strong> and it opens the right tool with that project
               already loaded.
               {/* Added once the owner had seen it show their real reviews. */}
-              <span className="block mt-1.5">
-                <strong>Google Reviews</strong> shows the reviews on your Google Business profile,
+              <span className="block mt-1.5 scroll-mt-20" id="google-reviews">
+                <SectionVideo id="google-reviews" /> <strong>Google Reviews</strong> shows the reviews on your Google Business profile,
                 with your average and how many there are. It needs Google Business connected
                 (step 9). <strong>Needs a reply</strong> is ticked to begin with, so you see only
                 the ones you haven&apos;t answered; untick it to see them all. On any review,{" "}
@@ -1507,7 +1510,7 @@ function FullGuide() {
               </span>
               {/* Ask for Google Review Video Email (2026-10-27). */}
               <span className="block mt-1.5 scroll-mt-20" id="google-review-video">
-                <strong>Ask for Google Review Video Email</strong> sends past clients a short video asking for a
+                <SectionVideo id="google-review-video" /> <strong>Ask for Google Review Video Email</strong> sends past clients a short video asking for a
                 review, with a big gold <strong>Leave me a Google review</strong> button under it. First save your
                 link in Settings under <strong>Your Google review link</strong> (in your Google Business Profile:{" "}
                 <strong>Ask for reviews</strong> → <strong>Copy link</strong>). Then, in four steps:{" "}
@@ -1533,8 +1536,8 @@ function FullGuide() {
               </span>
               {/* Seller Update, added 2026-10-15; any day, From your listings
                   and the video update the same day. */}
-              <span className="block mt-1.5">
-                <strong>Seller Update</strong> writes an update email to the people selling one of
+              <span className="block mt-1.5 scroll-mt-20" id="seller-update-tool">
+                <SectionVideo id="seller-update-tool" /> <strong>Seller Update</strong> writes an update email to the people selling one of
                 your listings, whenever you want to send one. Add the listing once: the address, the
                 sellers&apos; first names, the list price and the date it was listed. If you&apos;ve
                 already made a video or reel of it in Listings &amp; photos, pick it under{" "}
@@ -1584,8 +1587,8 @@ function FullGuide() {
                 </li>
               </ul>
               {/* The menu's Meet button, 2026-10-20; the owner's wording. */}
-              <span className="block mt-1.5">
-                <strong>Google Meet</strong> — <strong>Meet</strong> in the top bar on a computer, or in
+              <span className="block mt-1.5 scroll-mt-20" id="google-meet">
+                <SectionVideo id="google-meet" /> <strong>Google Meet</strong> — <strong>Meet</strong> in the top bar on a computer, or in
                 the menu on your phone. <strong>Start now</strong> opens a new Google Meet in a new tab;
                 copy the link and send it to your client. <strong>Schedule for later</strong> asks for your
                 client&apos;s name and email, the date, the time and how long, then opens Google Calendar
@@ -1618,8 +1621,8 @@ function FullGuide() {
               </span>
               {/* Not described anywhere until now. The badge is the part people
                   ask about: it used to come back even with both boxes empty. */}
-              <span className="block mt-1.5">
-                The <strong>Thumbnail Generator</strong> makes the cover picture for a video. Pick
+              <span className="block mt-1.5 scroll-mt-20" id="thumbnail-generator">
+                <SectionVideo id="thumbnail-generator" /> The <strong>Thumbnail Generator</strong> makes the cover picture for a video. Pick
                 the video, type the few words you want on it or leave that blank and AI writes
                 them, and choose the photo. Afterwards you can change the words or the photo and
                 press <strong>Update Thumbnail</strong>, which redraws it in seconds on the same
@@ -1628,8 +1631,8 @@ function FullGuide() {
                 title and description match, or clear both boxes and press Update Thumbnail to
                 leave the badge off.
               </span>
-              <span className="block mt-1.5">
-                <strong>Banners</strong> makes the wide image across the top of your YouTube channel,
+              <span className="block mt-1.5 scroll-mt-20" id="banners">
+                <SectionVideo id="banners" /> <strong>Banners</strong> makes the wide image across the top of your YouTube channel,
                 your LinkedIn profile or your Facebook page, each at the size that site wants. For
                 YouTube, press <strong>Use this template</strong> and your photo, logo, name and contact
                 details fill in from Settings. Change any of it, and everything stays inside the part
@@ -1641,7 +1644,7 @@ function FullGuide() {
               </span>
               {/* The Video Business Card (2026-10-30). */}
               <span className="block mt-1.5 scroll-mt-20" id="video-business-card">
-                <strong>Video Business Card</strong> (paid plans; Spark Tools → <strong>Images &amp; banners</strong>) is two
+                <SectionVideo id="video-business-card" /> <strong>Video Business Card</strong> (paid plans; Spark Tools → <strong>Images &amp; banners</strong>) is two
                 things that work together. Your <strong>card page</strong> at sparkreels.ai/card/your-name shows
                 your <strong>Agent Intro</strong> (or a video you pick), your name, brokerage and logo, round{" "}
                 <strong>Call</strong>, <strong>Text</strong>, <strong>Email</strong> and <strong>Website</strong>{" "}
@@ -1749,8 +1752,8 @@ function FullGuide() {
               <strong>Affiliate</strong> page, connect your bank with Stripe to get paid. Payouts are
               sent monthly. If the email hasn&apos;t arrived, look in spam.
               {/* The owner's ask (2026-10-24). */}
-              <span className="block mt-1.5">
-                <strong>Also a Halo affiliate?</strong> On the <strong>Affiliate</strong> page, put your Halo
+              <span className="block mt-1.5 scroll-mt-20" id="halo-affiliate">
+                <strong>Also a Halo affiliate?</strong><SectionVideo id="halo-affiliate" /> On the <strong>Affiliate</strong> page, put your Halo
                 page (like <em>halo-your-name.huzi.site</em>) or your Halo code in{" "}
                 <strong>Your Halo affiliate link</strong> and press <strong>Save</strong>. Agents you refer to
                 SparkReels then get your link on their <strong>Get Halo</strong> button. With only a code,

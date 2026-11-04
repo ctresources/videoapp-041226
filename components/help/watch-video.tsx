@@ -3,6 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Play, X } from "lucide-react";
 import type { HowToVideo } from "@/lib/help/how-to-videos";
+import { HOW_TO_SECTION_VIDEOS } from "@/lib/help/how-to-section-videos";
+
+/**
+ * A sub-section's own button (2026-11-03): the same "▶ Watch video 0:28",
+ * placed beside a paragraph's heading on How It Works. Nothing when that
+ * section has no video yet.
+ */
+export function SectionVideo({ id }: { id: string }) {
+  const video = HOW_TO_SECTION_VIDEOS[id];
+  if (!video) return null;
+  return <span className="mx-1.5 inline-block align-middle"><WatchVideo video={video} /></span>;
+}
 
 /**
  * "▶ Watch video 0:32" beside a How It Works step title (2026-11-01, the
@@ -35,7 +47,7 @@ export function WatchVideo({ video }: { video: HowToVideo }) {
           <div className="w-full max-w-[900px] overflow-hidden rounded-2xl bg-[#0f0d0b] shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
             <div className="flex items-center gap-2.5 px-4 py-3 text-white">
               <b className="truncate text-[15px]">{video.title}</b>
-              <span className="shrink-0 text-[13px] text-[#cdbf9f]">Step {video.step} · {length}</span>
+              <span className="shrink-0 text-[13px] text-[#cdbf9f]">{video.step > 0 ? `Step ${video.step} · ` : ""}{length}</span>
               <button type="button" onClick={() => setOpen(false)} aria-label="Close"
                 className="ml-auto flex shrink-0 items-center gap-1 rounded-[10px] bg-[#2a2219] px-3 py-1.5 text-[14px] font-semibold">
                 <X size={14} /> Close

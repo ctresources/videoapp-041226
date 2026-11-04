@@ -13,8 +13,10 @@ const browser = await chromium.launch({ headless: false });
 const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 const page = await context.newPage();
 await page.goto(`${BASE}/login`);
-console.log("Waiting for you to sign in (up to 10 minutes)…");
-const deadline = Date.now() + 10 * 60_000;
+// HOWTO_SIGNIN_MINUTES waits longer, for when the owner is away from the screen.
+const MINUTES = Number(process.env.HOWTO_SIGNIN_MINUTES) || 10;
+console.log(`Waiting for you to sign in (up to ${MINUTES} minutes)…`);
+const deadline = Date.now() + MINUTES * 60_000;
 let signedIn = false;
 while (Date.now() < deadline) {
   const url = page.url();
@@ -22,7 +24,7 @@ while (Date.now() < deadline) {
   await page.waitForTimeout(1000);
 }
 if (!signedIn) {
-  console.log("Not signed in after 10 minutes; nothing saved.");
+  console.log(`Not signed in after ${MINUTES} minutes; nothing saved.`);
   await browser.close();
   process.exit(1);
 }
