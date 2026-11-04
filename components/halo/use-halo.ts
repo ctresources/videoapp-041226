@@ -130,6 +130,13 @@ export function useHalo(userId: string | undefined) {
         d.videoReady = f?.render_status === "completed" && !!f.video_url;
         d.videoFailed = f?.render_status === "failed";
         d.posts = rows.filter((p) => p.video_id === v).map(({ platform, post_status, scheduled_at }) => ({ platform, post_status, scheduled_at }));
+        // Still a draft here, but its video is already out on an account
+        // (posted by hand from My Sparks, 2026-11-04): the card shows it as
+        // posted, so it doesn't offer Approve to post a second time.
+        if (d.status === "draft" && d.posts.some((p) => p.post_status === "posted" || p.post_status === "posting")) {
+          d.status = "posted";
+          d.video_id = v;
+        }
       }
     }
     setDrafts(list);

@@ -536,6 +536,20 @@ export async function POST(req: NextRequest) {
       await admin.from("projects")
         .update({ status: scheduledAt ? "ready" : "posted" })
         .eq("id", video.project_id);
+      // Posted by hand from My Sparks while its AutoSparks card was still a
+      // draft (2026-11-04, the owner's Blue Bell card): the card says so too,
+      // instead of still offering Approve to post. Approved cards post
+      // themselves and are left to lib/halo/post.ts.
+      await admin.from("autopilot_drafts")
+        .update({
+          status: scheduledAt ? "scheduled" : "posted",
+          video_id: videoId,
+          posted_at: new Date().toISOString(),
+          post_error: null,
+        })
+        .eq("project_id", video.project_id)
+        .eq("user_id", user.id)
+        .eq("status", "draft");
     }
   }
 
