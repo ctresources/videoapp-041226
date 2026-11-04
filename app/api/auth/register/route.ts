@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyNewUser } from "@/lib/email";
 import { screenSignup, canonicalEmail } from "@/lib/spam-guards";
@@ -61,11 +62,13 @@ export async function POST(req: NextRequest) {
     })
     .eq("id", data.user.id);
 
-  // Deliberately not awaited — the owner notification must not slow signup.
-  // The .catch() is load-bearing: an unhandled rejection from this floating
-  // promise is fatal in Node >=15 and would kill the request mid-flight.
-  notifyNewUser({ name: fullName, email, provider: "email" }).catch((err) =>
-    console.error("[register] new-user notification failed:", err),
+  // Not awaited, so the owner alert never slows signup — but handed to
+  // waitUntil (2026-11-03): a bare floating promise can be cut off once the
+  // response is sent, which is how a free signup's alert never arrived.
+  waitUntil(
+    notifyNewUser({ name: fullName, email, provider: "email" }).catch((err) =>
+      console.error("[register] new-user notification failed:", err),
+    ),
   );
   await maybeNotifyCapacity(admin);
 

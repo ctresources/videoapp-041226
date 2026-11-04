@@ -2,6 +2,7 @@ import { hasAdminPerks } from "@/lib/utils/roles";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { notifyNewUser } from "@/lib/email";
 import { attributeReferral } from "@/lib/affiliate-attribution";
 import { hasCapacityForNewUser, maybeNotifyCapacity } from "@/lib/capacity";
@@ -105,12 +106,14 @@ export async function GET(req: NextRequest) {
   if (user) {
     if (isNew) {
       const name = (user.user_metadata?.full_name as string | null) ?? null;
-      // Deliberately not awaited, but the .catch() is load-bearing: an
-      // unhandled rejection from this floating promise is fatal in Node >=15,
-      // and killing the request here would skip the email_canonical write
-      // below — leaving the signup guard blind to this inbox.
-      notifyNewUser({ name, email: user.email ?? null, provider: "google" }).catch((err) =>
-        console.error("[auth/callback] new-user notification failed:", err),
+      // Not awaited, but handed to waitUntil (2026-11-03) so the send isn't
+      // cut off when the redirect goes out. The .catch() is still load-bearing:
+      // an unhandled rejection is fatal in Node >=15 and would skip the
+      // email_canonical write below.
+      waitUntil(
+        notifyNewUser({ name, email: user.email ?? null, provider: "google" }).catch((err) =>
+          console.error("[auth/callback] new-user notification failed:", err),
+        ),
       );
       // Affiliate attribution from the sr_ref cookie set at ?ref= visit time.
       await attributeReferral(admin, user.id, user.email, req.cookies.get("sr_ref")?.value);

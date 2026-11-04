@@ -72,12 +72,17 @@ export async function notifyNewUser({
   email: string | null;
   provider: "email" | "google";
 }) {
-  if (!RESEND_API_KEY) return;
+  if (!RESEND_API_KEY) {
+    console.error("[new-user-alert] not sent: RESEND_API_KEY is not set");
+    return;
+  }
 
   const displayName = name || "(no name)";
   const displayEmail = email || "(no email)";
 
-  await resendPost({
+  // Logged either way (2026-11-03): a signup alert that never arrived left no
+  // trace, because a refused send was dropped without a word.
+  const res = await resendPost({
     method: "POST",
     headers: {
       Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -96,7 +101,16 @@ export async function notifyNewUser({
         </table>
       `,
     }),
-  }).catch(() => {});
+  }).catch((err) => {
+    console.error("[new-user-alert] network error:", err);
+    return null;
+  });
+  if (res && !res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error(`[new-user-alert] refused ${res.status}: ${detail.slice(0, 300)}`);
+  } else if (res) {
+    console.log(`[new-user-alert] sent (${provider})`);
+  }
 }
 
 /** Someone joined the waitlist because the beta was full. */
@@ -585,7 +599,10 @@ export async function notifyBillingEvent({
   /** When their access actually ends, for a scheduled cancellation. */
   periodEnd?: string | null;
 }) {
-  if (!RESEND_API_KEY) return;
+  if (!RESEND_API_KEY) {
+    console.error(`[billing-alert] ${kind} not sent: RESEND_API_KEY is not set`);
+    return;
+  }
 
   const copy = BILLING_COPY[kind];
   const who = name || email || "(unknown account)";
@@ -598,7 +615,7 @@ export async function notifyBillingEvent({
     periodEnd ? ["Access until", periodEnd] : null,
   ].filter(Boolean) as [string, string][];
 
-  await resendPost({
+  const res = await resendPost({
     method: "POST",
     headers: {
       Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -617,8 +634,16 @@ export async function notifyBillingEvent({
     }),
     // Never let a notification failure take down a webhook. Stripe retries any
     // non-2xx, so a throw here would replay the whole event — re-running the
-    // profile write for the sake of an email that did not send.
-  }).catch(() => {});
+    // profile write for the sake of an email that did not send. Logged instead
+    // (2026-11-03), so a missing alert leaves a trace.
+  }).catch((err) => {
+    console.error(`[billing-alert] ${kind} network error:`, err);
+    return null;
+  });
+  if (res && !res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error(`[billing-alert] ${kind} refused ${res.status}: ${detail.slice(0, 300)}`);
+  }
 }
 
 /**
