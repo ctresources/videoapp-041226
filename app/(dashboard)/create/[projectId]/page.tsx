@@ -1888,6 +1888,15 @@ export default function ProjectEditorPage() {
     try {
       // Persist edited title/description first — the render reads them from the DB.
       await saveContentEdits(project);
+      // The script edits too, as the box promises (2026-11-04, the owner's
+      // ask): Spark It used to make the video from the edited words without
+      // saving them, so AutoSparks and the next visit still had the old
+      // script. The same save as the Save button; a failure doesn't stop the video.
+      await fetch("/api/project/save-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id, script: editedScript, cta: editedCta, ctaOff, ctaEdited, hook: selectedHook }),
+      }).catch(() => null);
       // Build the full video script: hook → body → CTA. Contact info is
       // deliberately NOT included — it is display-only (the end-frame contact
       // card renders it); anything in this script gets spoken by the avatar.
