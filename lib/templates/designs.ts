@@ -46,7 +46,9 @@ export const DESIGNS: Design[] = [
     fields: [{ key: "headline", label: "Label" }, { key: "title", label: "Title" },
       { key: "s1", label: "Number 1", placeholder: "$412K" }, { key: "s1l", label: "What it is", placeholder: "Median price" }, { key: "s1c", label: "Change", placeholder: "Up 4%" },
       { key: "s2", label: "Number 2" }, { key: "s2l", label: "What it is" }, { key: "s2c", label: "Change" },
-      { key: "s3", label: "Number 3" }, { key: "s3l", label: "What it is" }, { key: "s3c", label: "Change" }, ...CONTACT] },
+      { key: "s3", label: "Number 3" }, { key: "s3l", label: "What it is" }, { key: "s3c", label: "Change" },
+      // Shown under the numbers as "Source: …" (2026-11-03, the owner's ask); AI search fills it.
+      { key: "source", label: "Source", placeholder: "Redfin · September 2026" }, ...CONTACT] },
   { id: "neighborhood", name: "Neighborhood Spotlight", blurb: "The place name big, three highlights, agent in the corner.", photos: "place",
     fields: [{ key: "headline", label: "Label" }, { key: "name", label: "Neighborhood" }, { key: "highlights", label: "Highlights (comma between)", placeholder: "Walkable, Top schools, Riverfront park" }, ...CONTACT] },
   { id: "agent_intro", name: "Agent Introduction", blurb: "Big portrait, name, brokerage, phones and website, with their logo.", photos: "none",
@@ -209,6 +211,8 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
   } else if (id === "market_update") {
     const stats = [1, 2, 3].map((i) => ({ v: g(`s${i}`), l: g(`s${i}l`), c: g(`s${i}c`) })).filter((s) => s.v);
     const changeColor = (c: string) => (/^\s*(-|down)/i.test(c) ? "#ff8a80" : "#6fd39a");
+    // "Redfin · September 2026" → "Source: Redfin · September 2026", under the boxes.
+    const src = g("source") ? `Source: ${g("source").replace(/^source:\s*/i, "")}` : "";
     if (v) {
       defs.push(`<linearGradient id="pan" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sh("#0e121a")}" stop-opacity="0.96"/><stop offset="0.8" stop-color="${sh("#0e121a")}" stop-opacity="0.9"/><stop offset="1" stop-color="${sh("#0e121a")}" stop-opacity="0"/></linearGradient>`);
       put("panel", `<rect x="0" y="0" width="${W}" height="${H * 0.56}" fill="url(#pan)"/>`);
@@ -225,6 +229,7 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
         put(`stat${i}`, line(s.l, sx + 14, ty + 100, fit(s.l, tw - 28, 20, 12, "text"), "#c9cfdb", "text"));
         put(`stat${i}`, line(s.c, sx + 14, ty + 132, fit(s.c, tw - 28, 20, 12, "text"), changeColor(s.c), "text"));
       });
+      if (src) put("source", line(src, x, ty + H * 0.15 + 34, fit(src, W * 0.86, 20, 12, "text"), "#c9cfdb", "text"));
       // Bottom right, just above the name and phones.
       const cd = W * 0.4;
       circle = { cx: W - W * 0.05 - cd / 2, cy: H * 0.828 - cd / 2, d: cd };
@@ -247,6 +252,7 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
         put(`stat${i}`, line(s.l, sx + 14, ty + 104, fit(s.l, tw - 28, 19, 12, "text"), "#c9cfdb", "text"));
         put(`stat${i}`, line(s.c, sx + 14, ty + 140, fit(s.c, tw - 28, 19, 12, "text"), changeColor(s.c), "text"));
       });
+      if (src) put("source", line(src, x, ty + H * 0.3 + 30, fit(src, maxW, 18, 11, "text"), "#c9cfdb", "text"));
       // In the bottom right corner.
       const cd = W * 0.24;
       circle = { cx: W - W * 0.04 - cd / 2, cy: H - W * 0.04 - cd / 2, d: cd };
@@ -378,7 +384,7 @@ export function defaultFields(id: DesignId, p: {
   switch (id) {
     case "just_listed": return { headline: "JUST LISTED", address: listing?.address ?? "", price, details, ...contact };
     case "luxury": return { headline: "Luxury Listing", address: listing?.address ?? "", price: price ? `Offered at ${price}` : "", details, ...contact };
-    case "market_update": return { headline: `Market Update · ${month}`, title: `${town} Housing Market`, s1: "", s1l: "Median price", s1c: "", s2: "", s2l: "Days on market", s2c: "", s3: "", s3l: "Homes sold", s3c: "", ...contact };
+    case "market_update": return { headline: `Market Update · ${month}`, title: `${town} Housing Market`, s1: "", s1l: "Median price", s1c: "", s2: "", s2l: "Days on market", s2c: "", s3: "", s3l: "Homes sold", s3c: "", source: "", ...contact };
     case "neighborhood": return { headline: "Neighborhood Spotlight", name: town, highlights: "", ...contact };
     default: return { headline: "Meet your agent", name: p.name ?? "", role: [p.city ? `Your ${p.city} REALTOR®` : "REALTOR®", p.company].filter(Boolean).join(" · "), phones, website: (p.website ?? "").replace(/^https?:\/\//, "").replace(/\/$/, "") };
   }

@@ -45,6 +45,7 @@ function steps(id: DesignId, v: boolean): Step[] {
       ["stat0", { scale: 0.8, opacity: 0, transformOrigin: "50% 50%" }, 1.0, 0.5, "back.out(2)"],
       ["stat1", { scale: 0.8, opacity: 0, transformOrigin: "50% 50%" }, 1.25, 0.5, "back.out(2)"],
       ["stat2", { scale: 0.8, opacity: 0, transformOrigin: "50% 50%" }, 1.5, 0.5, "back.out(2)"],
+      ["source", { opacity: 0 }, 1.8, 0.6],
       ["foot", { opacity: 0 }, 1.8, 0.6],
       ["contact", contactIn, 2.0, 0.7],
     ];

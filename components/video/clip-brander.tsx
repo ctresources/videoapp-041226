@@ -15,16 +15,17 @@ import { LiveTranscriber } from "@/lib/utils/voice-follow";
 import { extractSpeechWav, ClipAudioUnavailable } from "@/lib/utils/clip-audio";
 
 /**
- * Two minutes.
+ * Eight minutes (2026-11-03, the owner's ask; was two).
  *
  * The compositing runs in real time — a clip is re-recorded as it plays — so
- * the tab has to stay open and in front for the whole of it. Two minutes is
- * about as long as anyone will watch a progress bar without touching
- * anything, and a backgrounded tab throttles requestAnimationFrame, which
- * drops frames into the file rather than failing loudly.
+ * the tab has to stay open and in front for the whole of it: a backgrounded
+ * tab throttles requestAnimationFrame, which drops frames into the file
+ * rather than failing loudly.
  */
-const MAX_SECONDS = 120;
+const MAX_SECONDS = 480;
 const MAX_MB = 500;
+/** 166 → "2:46". */
+const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 
 /** The formats a browser can be relied on to decode. */
 const ACCEPTED = ["video/mp4", "video/webm", "video/quicktime"];
@@ -334,10 +335,7 @@ export function ClipBrander({ photos = [], title, brief }: {
       return;
     }
     if (secs > MAX_SECONDS) {
-      setError(
-        `That clip is ${Math.round(secs)}s. This tool handles up to ${MAX_SECONDS}s — ` +
-        `it re-records the video as it plays, so anything longer means sitting here too long.`,
-      );
+      setError(`That clip is ${mmss(secs)}. Clips can be up to ${MAX_SECONDS / 60} minutes — trim it and try again.`);
       setPhase("pick");
       return;
     }
@@ -532,7 +530,7 @@ export function ClipBrander({ photos = [], title, brief }: {
             {phase === "checking" ? "Reading that clip…" : "Choose a clip you already shot"}
           </span>
           <span className="text-[11px] text-spark-ink-faint">
-            MP4, MOV or WebM · up to {MAX_SECONDS}s · max {MAX_MB} MB
+            MP4, MOV or WebM · up to {MAX_SECONDS / 60} min · max {MAX_MB} MB
           </span>
           <input
             type="file"
@@ -549,7 +547,7 @@ export function ClipBrander({ photos = [], title, brief }: {
           <div className="flex items-center gap-2">
             <Film size={15} className="shrink-0 text-spark-amber" />
             <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-spark-ink">{fileName}</p>
-            <span className="text-[11px] text-spark-ink-faint">{Math.round(duration)}s</span>
+            <span className="text-[11px] text-spark-ink-faint">{mmss(duration)}</span>
           </div>
           {/* Names only what this particular clip will actually get. It used
               to promise "photos as b-roll" to everyone, including the many
@@ -575,8 +573,8 @@ export function ClipBrander({ photos = [], title, brief }: {
                 ? "Nothing is being added — this will re-record the clip as it is."
                 : `${list.charAt(0).toUpperCase()}${list.slice(1)} get burned in.`;
             })()}{" "}
-            It plays through once in real time — about {Math.round(duration)} seconds — so leave
-            this tab open and in front until it finishes.
+            It plays through once in real time — about {mmss(duration)} — so stay on this page,
+            with this tab in front, until it finishes.
           </p>
 
           {/* MLS listing media generally may not identify the agent. The toggle

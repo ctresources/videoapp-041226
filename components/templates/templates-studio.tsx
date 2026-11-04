@@ -7,6 +7,7 @@ import { ImagePlus, Loader2, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { BackgroundPicker } from "@/components/templates/background-picker";
+import { LookPicker } from "@/components/halo/halo-sites-card";
 
 /**
  * Video templates (2026-11-02, the owner's approved mockup): pick a design,
@@ -20,6 +21,7 @@ interface Design { id: DesignId; name: string; blurb: string; photos: "listing" 
 interface Listing { id: string; address: string; price: string | number; beds: string | number; baths: string | number; sqft: string | number; photos: string[] }
 interface Setup { designs: Design[]; listings: Listing[]; videosLeft: number | null; accent: string; faces?: { twin: boolean; avatar: boolean } }
 interface Found { period: string; source: string; sourceUrl: string }
+type LookItem = { id: string; name: string; preview_image_url: string | null; status: string | null; shape?: "landscape" | "portrait" | "square" | null };
 
 const input = "w-full rounded-[10px] border border-spark-rule bg-[#fdfbf7] px-3 py-2 text-[16px] text-spark-ink outline-none focus:border-[#A3660F]";
 const chip = (on: boolean) => `rounded-xl border px-3.5 py-2 text-[15px] font-semibold ${on ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]" : "border-spark-rule bg-white text-spark-ink-soft hover:border-spark-amber"}`;
@@ -49,9 +51,35 @@ export function TemplatesStudio() {
   const [bg, setBg] = useState("");
   const [music, setMusic] = useState(true);
   const [openWithMe, setOpenWithMe] = useState(false);
+  // Agent Introduction: which of their looks is in the big circle (2026-11-03, the owner's ask).
+  const [looks, setLooks] = useState<LookItem[] | null>(null);
+  const [twinLookId, setTwinLookId] = useState<string | null>(null);
+  const [twinIds, setTwinIds] = useState<string[]>([]);
+  const [lookId, setLookId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const d = setup?.designs.find((x) => x.id === design) ?? null;
+  const pickedLook = design === "agent_intro" ? looks?.find((l) => l.id === lookId) ?? null : null;
+
+  useEffect(() => {
+    if (design !== "agent_intro" || looks !== null || !setup) return;
+    fetch("/api/avatar/looks").then((r) => (r.ok ? r.json() : null)).then((b) => {
+      if (!b) { setLooks([]); return; }
+      const ids: string[] = Array.isArray(b.twinLookIds) ? b.twinLookIds : [];
+      // Twins only when they can be used (paid plan, approved); twins first.
+      const ready = ((b.looks ?? []) as LookItem[])
+        .filter((l) => !l.status || l.status === "completed" || l.status === "active")
+        .filter((l) => setup.faces?.twin || !ids.includes(l.id));
+      setLooks([...ready.filter((l) => ids.includes(l.id)), ...ready.filter((l) => !ids.includes(l.id))]);
+      setTwinIds(ids);
+      const twin = typeof b.twinLookId === "string" ? b.twinLookId : null;
+      setTwinLookId(twin);
+      // Start on the one the video would use anyway: the twin, else the headshot for this shape.
+      const tall = b.formatLooks?.tall as string | null | undefined, wide = b.formatLooks?.wide as string | null | undefined;
+      const start = [setup.faces?.twin ? twin : null, shape === "vertical" ? tall : wide, wide, tall].find((x) => x && ready.some((l) => l.id === x));
+      setLookId(start ?? ready[0]?.id ?? null);
+    }).catch(() => setLooks([]));
+  }, [design, looks, setup, shape]);
   // The background color travels with the words (fields.bg), kept across designs.
   const words = bg ? { ...fields, bg } : fields;
 
@@ -89,7 +117,7 @@ export function TemplatesStudio() {
     const t = setTimeout(async () => {
       setPreviewing(true);
       try {
-        const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "preview", design, shape, fields: words, photo: photos[0] ?? null }) });
+        const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "preview", design, shape, fields: words, photo: photos[0] ?? null, head: pickedLook?.preview_image_url ?? null }) });
         if (!r.ok) return;
         const url = URL.createObjectURL(await r.blob());
         setPreview((old) => { if (old) URL.revokeObjectURL(old); return url; });
@@ -97,7 +125,7 @@ export function TemplatesStudio() {
     }, 700);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setup, design, shape, fields, photos, bg]);
+  }, [setup, design, shape, fields, photos, bg, pickedLook?.preview_image_url]);
 
   async function upload(files: FileList | null) {
     if (!files?.length) return;
@@ -140,6 +168,8 @@ export function TemplatesStudio() {
         ...f, s1: n.s1, s1c: n.s1c, s2: n.s2, s2c: n.s2c, s3: n.s3, s3c: n.s3c,
         // The month the numbers are for, not this month.
         ...(n.period ? { headline: `Market Update · ${n.period.replace(/\s+\d{4}$/, "")}` } : {}),
+        // Quoted on the video under the numbers (2026-11-03, the owner's ask).
+        source: [n.source, n.period].filter(Boolean).join(" · "),
       }));
       setFound({ period: n.period, source: n.source, sourceUrl: n.sourceUrl });
       setScript(null);
@@ -150,7 +180,7 @@ export function TemplatesStudio() {
     if (!window.confirm("Make this video? It uses 1 short video from your plan.")) return;
     setMaking(true);
     try {
-      const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "make", design, shape, fields: words, photos, script, face, music, openWithMe }) });
+      const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "make", design, shape, fields: words, photos, script, face, music, openWithMe, ...(pickedLook && { lookId: pickedLook.id }) }) });
       const out = await r.json().catch(() => ({}));
       if (!r.ok) { toast.error(out.error || "Couldn't make the video."); return; }
       setMade(out.videoId);
@@ -265,7 +295,14 @@ export function TemplatesStudio() {
             <button type="button" className={chip(!openWithMe)} onClick={() => setOpenWithMe(false)}>Off</button>
           </div>
 
-          {setup.faces?.twin && setup.faces.avatar && (
+          {d.id === "agent_intro" && looks && looks.length > 0 ? (
+            <>
+              <p className="mb-1.5 mt-4 text-[17px] font-bold text-spark-ink">Your photo</p>
+              <div className="flex flex-wrap gap-2">
+                <LookPicker looks={looks} twinLookId={twinLookId} twinLookIds={twinIds} fitShape={shape === "vertical" ? "portrait" : "landscape"} value={lookId} onChange={setLookId} />
+              </div>
+            </>
+          ) : setup.faces?.twin && setup.faces.avatar && d.id !== "agent_intro" && (
             <>
               <p className="mb-1.5 mt-4 text-[17px] font-bold text-spark-ink">On screen</p>
               <div className="flex flex-wrap gap-2">

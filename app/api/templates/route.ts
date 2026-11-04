@@ -58,7 +58,8 @@ export async function POST(req: NextRequest) {
 
   if (b.action === "preview") {
     const photo = typeof b.photo === "string" && /^https:\/\//.test(b.photo) ? b.photo : null;
-    const img = await previewImage({ design, shape, fields, photo, p });
+    const head = typeof b.head === "string" && /^https:\/\//.test(b.head) ? b.head : null;
+    const img = await previewImage({ design, shape, fields, photo, p, head });
     return new NextResponse(new Uint8Array(img), { headers: { "Content-Type": "image/jpeg", "Cache-Control": "no-store" } });
   }
   if (b.action === "script") {
@@ -87,7 +88,8 @@ export async function POST(req: NextRequest) {
     const head = (fields.headline || d.name).toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
     const title = String(b.title ?? "").trim().slice(0, 100) || [head, fields.address || fields.name || fields.title].filter(Boolean).join(": ");
     const face = b.face === "avatar" ? "avatar" : b.face === "twin" ? "twin" : undefined;
-    const r = await makeTemplateVideo(s.admin, s.user, { design, shape, fields, photos, script: String(b.script ?? ""), title, face, music: b.music !== false, openWithMe: b.openWithMe === true });
+    const r = await makeTemplateVideo(s.admin, s.user, { design, shape, fields, photos, script: String(b.script ?? ""), title, face, music: b.music !== false, openWithMe: b.openWithMe === true,
+      lookId: typeof b.lookId === "string" ? b.lookId.slice(0, 80) : undefined });
     if ("error" in r) return NextResponse.json({ error: r.error, code: r.code }, { status: r.status });
     return NextResponse.json(r);
   }

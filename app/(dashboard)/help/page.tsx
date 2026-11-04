@@ -1117,7 +1117,7 @@ function FullGuide() {
                 <strong>Camera/Teleprompter</strong> in Spark Studio and press{" "}
                 <strong>Post a video as is</strong> under the script choices, then{" "}
                 <strong>Choose a clip you already shot</strong> and pick a video from your computer: MP4,
-                MOV or WebM, up to 2 minutes and 500 MB. Keep the clip&apos;s own sound or record a new
+                MOV or WebM, up to 8 minutes and 500 MB. Keep the clip&apos;s own sound or record a new
                 voiceover, add a title, a hook and the city, then press <strong>Brand this clip</strong>.
                 Your logo is added, captions are written from what&apos;s said, and the finished video is
                 saved to <strong>My Sparks</strong>, ready to publish. It counts as a camera recording,
@@ -1214,7 +1214,10 @@ function FullGuide() {
                 or <strong>Agent Introduction</strong>. Your name, brokerage, phones and a saved listing
                 fill in the words on screen, and you can change any of them. On Market Update,{" "}
                 <strong>AI search</strong> finds the area&apos;s latest median price, days on market and
-                homes sold, and shows where they came from so you can check them first.
+                homes sold, and shows where they came from so you can check them first. The source
+                and month go on the video under the numbers, as <strong>Source:</strong>; edit or clear
+                it in the <strong>Source</strong> box. On Agent Introduction, <strong>Your photo</strong>{" "}
+                picks which of your looks is in the big circle.
               </span>
               <span className="block mt-1.5">
                 Add up to 12 photos; each slowly zooms and fades into the next. Then choose{" "}

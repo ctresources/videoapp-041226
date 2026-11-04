@@ -3,7 +3,8 @@ import os from "os";
 import path from "path";
 import sharp from "sharp";
 import type { createAdminClient } from "@/lib/supabase/admin";
-import { generateVideoV3, lookOrientation, searchBackgroundMusic } from "@/lib/api/heygen";
+import { generateVideoV3, getAvatarLooks, lookOrientation, searchBackgroundMusic } from "@/lib/api/heygen";
+import { isTwinLook, twinLookIds } from "@/lib/utils/twin-looks";
 import { generateSeoData } from "@/lib/api/perplexity";
 import { mixBackgroundMusic } from "@/lib/utils/mix-music";
 import { generateTwinBackdrop } from "@/lib/api/openai-image";
@@ -106,7 +107,7 @@ export interface TemplateRecord {
   circle?: Circle;
 }
 
-const PROFILE = `${ALLOWANCE_SELECT}, role, subscription_tier, full_name, company_name, phone, company_phone, mobile_phone, website, location_city, location_state, brand_colors, logo_url, photo_wide_url, photo_tall_url, avatar_url, heygen_voice_id, voice_sample_url, heygen_look_wide, heygen_look_tall, heygen_digital_twin_look_id, twin_consent_needed`;
+const PROFILE = `${ALLOWANCE_SELECT}, role, subscription_tier, full_name, company_name, phone, company_phone, mobile_phone, website, location_city, location_state, brand_colors, logo_url, photo_wide_url, photo_tall_url, avatar_url, heygen_voice_id, voice_sample_url, heygen_look_wide, heygen_look_tall, heygen_digital_twin_look_id, twin_consent_needed, heygen_photo_id, heygen_twin2_look_id, twin_outfit_look_ids, twin2_consent_needed`;
 export interface TemplateProfile {
   role: string | null; subscription_tier: string | null; full_name: string | null; company_name: string | null;
   phone: string | null; company_phone: string | null; mobile_phone: string | null; website: string | null;
@@ -114,6 +115,7 @@ export interface TemplateProfile {
   photo_wide_url: string | null; photo_tall_url: string | null; avatar_url: string | null;
   heygen_voice_id: string | null; voice_sample_url: string | null; heygen_look_wide: string | null; heygen_look_tall: string | null;
   heygen_digital_twin_look_id: string | null; twin_consent_needed: boolean | null;
+  heygen_photo_id: string | null; heygen_twin2_look_id: string | null; twin_outfit_look_ids: string[] | null; twin2_consent_needed: boolean | null;
 }
 export async function templateProfile(admin: Admin, userId: string) {
   const { data } = await admin.from("profiles").select(PROFILE).eq("id", userId).single();
@@ -162,6 +164,8 @@ export async function makeTemplateVideo(admin: Admin, user: { id: string }, o: {
   music?: boolean;
   /** "Open with me": a short cinematic shot of the agent first (2026-11-03). */
   openWithMe?: boolean;
+  /** A look the agent picked (Agent Introduction, 2026-11-03): a photo look, twin or outfit of their own. */
+  lookId?: string;
 }): Promise<{ videoId: string; projectId: string } | { error: string; status: number; code?: string }> {
   const d = designById(o.design);
   if (!d) return { error: "Pick a design.", status: 400 };
@@ -179,8 +183,21 @@ export async function makeTemplateVideo(admin: Admin, user: { id: string }, o: {
 
   // Who's on screen: their pick; else their approved Digital Twin, else the headshot look for this shape.
   const faces = facesOf(p);
-  const twinOk = faces.twin && (o.face !== "avatar" || !faces.avatar);
-  const lookId = twinOk ? p.heygen_digital_twin_look_id! : (o.shape === "vertical" ? p.heygen_look_tall ?? p.heygen_look_wide : p.heygen_look_wide ?? p.heygen_look_tall);
+  let twinOk = faces.twin && (o.face !== "avatar" || !faces.avatar);
+  let lookId = twinOk ? p.heygen_digital_twin_look_id! : (o.shape === "vertical" ? p.heygen_look_tall ?? p.heygen_look_wide : p.heygen_look_wide ?? p.heygen_look_tall);
+  // A look they picked: only one of their own (every customer's looks sit on one HeyGen account).
+  const asked = (o.lookId ?? "").trim();
+  if (asked && asked !== lookId) {
+    const own = p.heygen_photo_id ? (await getAvatarLooks(p.heygen_photo_id).catch(() => [])).map((l) => l.id) : [];
+    if (!own.includes(asked) && !twinLookIds(p).includes(asked)) return { error: "That photo isn't on your account. Pick another.", status: 400 };
+    const twin = isTwinLook(asked, p);
+    if (twin && !canUseDigitalTwin(p.subscription_tier, p.role)) return { error: "Your Digital Twin comes with a paid plan. Pick a photo look.", status: 403 };
+    if (twin && (asked === p.heygen_twin2_look_id ? p.twin2_consent_needed : p.twin_consent_needed)) {
+      return { error: "Your Digital Twin needs your one-time approval first. Approve it in Settings.", status: 409, code: "twin_consent_required" };
+    }
+    lookId = asked;
+    twinOk = twin;
+  }
   if (!lookId) return { error: "Add your headshot in Settings first.", status: 409, code: "no_headshot" };
   const voiceId = await ensureVoiceForRender({ id: user.id, heygen_voice_id: p.heygen_voice_id, voice_sample_url: p.voice_sample_url });
   if (!voiceId) return { error: "Set up your voice in Settings first.", status: 409 };
@@ -401,7 +418,9 @@ export async function rewordTemplateVideo(admin: Admin, userId: string, rowId: s
 }
 
 /** A still preview: the first photo (or the intro background), the agent's headshot in the circle, and the words. */
-export async function previewImage(o: { design: DesignId; shape: Shape; fields: Record<string, string>; photo?: string | null; p: TemplateProfile | null }): Promise<Buffer> {
+export async function previewImage(o: { design: DesignId; shape: Shape; fields: Record<string, string>; photo?: string | null; p: TemplateProfile | null;
+  /** The picked look's picture, for the circle (Agent Introduction). */
+  head?: string | null }): Promise<Buffer> {
   const { w, h } = SIZE[o.shape];
   const accent = accentOf(o.p);
   const d = designById(o.design)!;
@@ -412,7 +431,7 @@ export async function previewImage(o: { design: DesignId; shape: Shape; fields: 
   const logo = o.p?.logo_url ? await fetch(o.p.logo_url).then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => (b ? Buffer.from(b) : null)).catch(() => null) : null;
   const { png, circle } = await wordsLayer(o.design, o.shape, o.fields, accent, logo);
   const dd = Math.round(circle.d);
-  const headUrl = o.p?.photo_tall_url || o.p?.avatar_url || o.p?.photo_wide_url;
+  const headUrl = o.head || o.p?.photo_tall_url || o.p?.avatar_url || o.p?.photo_wide_url;
   const head = headUrl ? await fetch(headUrl).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null) : null;
   const disc = await sharp(head ? Buffer.from(head) : { create: { width: dd, height: dd, channels: 4, background: "#9a8f80" } } as never)
     .resize(dd, dd, { fit: "cover", position: "top" })
