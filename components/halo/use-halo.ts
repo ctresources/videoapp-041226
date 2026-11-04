@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { createClient } from "@/lib/supabase/client";
 import type { HaloSettings, HaloSetup, PromoAngle } from "@/lib/halo";
+import { scriptPrint } from "@/lib/utils/script-print";
 
 /**
  * Everything the AutoSparks page shows about Halo (2026-10-24): settings,
@@ -50,6 +51,8 @@ export interface HaloDraft {
   /** The card's video: finished and failed, for the status line. */
   videoReady?: boolean;
   videoFailed?: boolean;
+  /** The script was edited after this video was made. */
+  scriptChanged?: boolean;
 }
 export interface HaloPageItem { id: string; url: string; kind: string; title: string | null; image_url: string | null }
 export interface Look { id: string; name: string; preview_image_url: string | null; status: string | null; shape?: "landscape" | "portrait" | "square" | null }
@@ -115,12 +118,12 @@ export function useHalo(userId: string | undefined) {
     if (vids.length) {
       const [{ data: posts }, { data: files }] = await Promise.all([
         sb.from("social_posts").select("video_id, platform, post_status, scheduled_at, platform_post_id").in("video_id", vids),
-        sb.from("generated_videos").select("id, video_url, render_status").in("id", vids),
+        sb.from("generated_videos").select("id, video_url, render_status, script_print:metadata->>script_print").in("id", vids),
       ]);
       type P = { video_id: string; platform: string; post_status: string; scheduled_at: string | null; platform_post_id: string | null };
       const rows = (posts ?? []) as P[];
       const yt = new Map(rows.filter((p) => p.platform === "youtube" && p.platform_post_id).map((p) => [p.video_id, `https://youtu.be/${p.platform_post_id}`]));
-      const file = new Map(((files ?? []) as { id: string; video_url: string | null; render_status: string | null }[]).map((f) => [f.id, f]));
+      const file = new Map(((files ?? []) as unknown as { id: string; video_url: string | null; render_status: string | null; script_print: string | null }[]).map((f) => [f.id, f]));
       for (const d of list) {
         const v = vidOf(d);
         if (!v) continue;
@@ -129,6 +132,9 @@ export function useHalo(userId: string | undefined) {
         d.videoUrl = f?.video_url ?? null;
         d.videoReady = f?.render_status === "completed" && !!f.video_url;
         d.videoFailed = f?.render_status === "failed";
+        // Script edited after the video was made (2026-11-04): older videos
+        // have no print, so they never show it.
+        d.scriptChanged = !!f?.script_print && scriptPrint(d.projects?.ai_script as Record<string, unknown> | null) !== f.script_print;
         d.posts = rows.filter((p) => p.video_id === v).map(({ platform, post_status, scheduled_at }) => ({ platform, post_status, scheduled_at }));
         // Still a draft here, but its video is already out on an account
         // (posted by hand from My Sparks, 2026-11-04): the card shows it as

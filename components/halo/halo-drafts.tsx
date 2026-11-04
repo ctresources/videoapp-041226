@@ -463,6 +463,14 @@ export function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; hal
             </a>
           )}
           {d.post_error && <p className="mt-1.5 text-[13px] text-red-600">{d.post_error}</p>}
+          {/* Script edited after the video was made (2026-11-04, the owner's ask). */}
+          {d.scriptChanged && (d.status === "draft" || d.status === "approved") && (
+            <p className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[13px] text-amber-900">
+              {d.status === "draft"
+                ? "Script changed after this video was made. The video still has the old words. Press Remake to use the new script."
+                : "Script changed after this video was made. It will post with the old words."}
+            </p>
+          )}
         </div>
       </div>
 

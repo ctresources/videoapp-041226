@@ -38,6 +38,7 @@ import { isTwinLook, pickTwin } from "@/lib/utils/twin-looks";
 import { canAccessFeature, getAccessLevel, isPaidLevel } from "@/lib/access";
 import { friendlyRenderError } from "@/lib/utils/render-errors";
 import { addSparkleeNote } from "@/lib/sparklee-notes";
+import { scriptPrint } from "@/lib/utils/script-print";
 import { parseOpenerStyle, welcomeLine } from "@/lib/api/agent-opener";
 import { standardMaxWords, standardMaxMinutes, clampScript, WPM } from "@/lib/utils/video-length";
 
@@ -1495,6 +1496,8 @@ export async function startRender(
           render_status: "rendering",
           metadata: {
             dimension, orientation, city, state, title,
+            // The script it was made from, so a later edit shows on the card.
+            ...(scriptPrint(aiScript) && { script_print: scriptPrint(aiScript) }),
             ...(typeof musicUrl === "string" && musicUrl.trim() && { music_url: musicUrl.trim() }),
             // Direct Video is a bare talking head — the webhook composites this
             // media as background b-roll behind the avatar PiP. Both can be set
@@ -1771,6 +1774,8 @@ export async function startRender(
         render_status: "rendering",
         metadata: {
           dimension, orientation, city, state, title,
+          // The script it was made from, so a later edit shows on the card.
+          ...(scriptPrint(aiScript) && { script_print: scriptPrint(aiScript) }),
           // The photos this video was actually built from, cropped to frame.
           // The Direct path has always recorded these; the agent path did not,
           // so the Share Kit had no idea a listing video even had photos and
