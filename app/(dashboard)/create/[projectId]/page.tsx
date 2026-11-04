@@ -3626,6 +3626,15 @@ export default function ProjectEditorPage() {
                       sits with the settings it makes irrelevant, and the
                       footer turns into Open Camera when it is picked. */}
                   <div className="flex flex-none items-center gap-3">
+                    {/* Save beside the script itself (2026-11-04, the owner's
+                        ask): the top Save was out of sight while editing. */}
+                    <button
+                      onClick={() => void handleSaveDraft()}
+                      disabled={savingDraft || !editedScript.trim()}
+                      className="flex flex-none items-center gap-1.5 rounded-lg border border-spark-amber px-3 py-1.5 text-[12px] font-bold text-spark-amber transition-colors hover:bg-spark-amber-tint disabled:opacity-40"
+                    >
+                      {savingDraft ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Save
+                    </button>
                     <button
                       onClick={() => copyToClipboard(editedScript, "Script")}
                       className="flex flex-none items-center gap-1 text-[11px] font-medium text-spark-amber hover:text-spark-blue"
