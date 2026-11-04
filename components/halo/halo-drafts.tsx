@@ -243,8 +243,29 @@ function haloTextNote(d: HaloDraft) {
   return `After it's published on your channel on ${when(d.slot_at)}, come back here and press Put on my Halo post to text Halo the link.`;
 }
 
+/** Its time has passed: it posts as soon as it's approved (2026-11-04). */
+function isPast(d: HaloDraft) {
+  return Date.parse(d.slot_at) <= Date.now() + 10 * 60_000;
+}
+/** "on Wed, Nov 11, 9 AM", or "right away" once that time has passed. */
+function postsAt(d: HaloDraft) {
+  return isPast(d) ? "right away" : `on ${when(d.slot_at)}`;
+}
+
 /** The day and time it posts, editable until it is handed to the accounts. */
 function WhenInput({ d, halo }: { d: HaloDraft; halo: Halo }) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Saved as soon as a time is picked, not only on leaving the box
+  // (2026-11-04, the owner's ask); earlier today is fine.
+  const save = (value: string) => {
+    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+    if (!value) return;
+    const at = new Date(value);
+    if (Number.isNaN(at.getTime())) return;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (at.getTime() < today.getTime()) { toast.error("Pick today or later."); return; }
+    if (at.toISOString() !== new Date(d.slot_at).toISOString()) void halo.setWhen(d, at.toISOString());
+  };
   return (
     <label className="flex flex-wrap items-center gap-2 text-[13px] text-spark-ink-soft">
       <span className="font-semibold text-spark-ink">Posts on</span>
@@ -252,13 +273,17 @@ function WhenInput({ d, halo }: { d: HaloDraft; halo: Halo }) {
         type="datetime-local"
         key={d.slot_at}
         defaultValue={localInput(d.slot_at)}
-        onBlur={(e) => {
-          if (!e.target.value) return;
-          const iso = new Date(e.target.value).toISOString();
-          if (iso !== new Date(d.slot_at).toISOString()) void halo.setWhen(d, iso);
+        onChange={(e) => {
+          const v = e.target.value;
+          if (timer.current) clearTimeout(timer.current);
+          timer.current = setTimeout(() => save(v), 1200);
         }}
+        onBlur={(e) => save(e.target.value)}
         className="rounded-lg border border-spark-rule bg-white px-2 py-1 text-[13px] text-spark-ink outline-none focus:border-spark-amber"
       />
+      {isPast(d) && (
+        <span className="text-spark-ink-muted">{d.status === "approved" ? "Posting now." : "Posts as soon as you approve it."}</span>
+      )}
     </label>
   );
 }
@@ -537,6 +562,13 @@ export function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; hal
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setRemakeOpen(true); setOpen(true); }}>
                   <RefreshCw size={13} /> Remake
                 </Button>
+                {/* On the Halo post only, no accounts (2026-11-04, the owner's ask). */}
+                {d.source === "halo" && (
+                  <Button size="sm" variant="outline" onClick={() => {
+                    if (!window.confirm("Finish this one without posting it to your accounts? The video stays in My Sparks.")) return;
+                    void halo.haloOnly(d);
+                  }}>Done, Halo only</Button>
+                )}
               </>
             )}
             <Button size="sm" variant="outline" onClick={() => setOpen((o) => !o)}>{open ? "Close setup" : "Setup"}</Button>
@@ -561,7 +593,7 @@ export function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; hal
                 ? "Make video makes it for you to watch. Nothing posts until you approve it."
                 : !d.madeVideo.ready
                   ? "When it's done, watch it here, then press Approve to post. Nothing posts until you approve it."
-                  : <>Watch it first. <strong>Approve to post</strong> and it posts by itself on {when(d.slot_at)}
+                  : <>Watch it first. <strong>Approve to post</strong> and it posts by itself {postsAt(d)}
                       {d.setup.platforms?.length ? ` to ${PLATFORM_ORDER.filter((p) => (d.setup.platforms ?? []).includes(p)).map((p) => PLATFORM_LABELS[p]).join(", ")}` : ""}.
                       {" "}<strong>Don&apos;t post this video yourself</strong> from My Sparks, or it will go up twice.
                       {d.source === "halo" && <>{" "}{haloTextNote(d)}</>}</>}

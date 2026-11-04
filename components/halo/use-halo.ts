@@ -332,6 +332,13 @@ export function useHalo(userId: string | undefined) {
     return { ...r.out, status: r.status };
   }, [loadDrafts]);
 
+  /** Done, Halo only (2026-11-04): finished without posting to any account. */
+  const haloOnly = useCallback(async (d: HaloDraft) => {
+    const r = await draftAction({ draftId: d.id, action: "haloOnly" });
+    if (r.ok) toast.success("Done. It's on your Halo post only.");
+    void loadDrafts();
+  }, [draftAction, loadDrafts]);
+
   /** It's on my post (or not yet): stops the card asking to text Halo. */
   const markOnHalo = useCallback(async (d: HaloDraft, value: boolean) => {
     setDrafts((list) => list.map((x) => (x.id === d.id ? { ...x, on_halo_at: value ? new Date().toISOString() : null } : x)));
@@ -349,7 +356,7 @@ export function useHalo(userId: string | undefined) {
 
   return {
     loaded, settings, sites, drafts, pages, looks, twinLookId, twinLookIds, connected,
-    saveSettings, addSite, removeSite, patchSetup, setWhen, setPicture, skip, deletePost, useInstead, make, remake, approve, promo, markOnHalo,
+    saveSettings, addSite, removeSite, patchSetup, setWhen, setPicture, skip, deletePost, useInstead, make, remake, approve, promo, markOnHalo, haloOnly,
     reload: loadAll,
     reloadDrafts: loadDrafts,
   };

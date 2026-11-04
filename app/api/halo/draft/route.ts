@@ -19,6 +19,7 @@ export const maxDuration = 120;
  * { draftId, action: "picture", picture, pictureUrl? }  rebuild the thumbnail
  * { draftId, action: "delete" }               an approved one: stop it posting
  * { draftId, action: "skip" }                 set aside; its day is filled again
+ * { draftId, action: "haloOnly" }             finished: on the Halo post, no accounts
  * { action: "use", pageId, replaceDraftId? }  a page from "Also new on your
  *        sites": into the first open day, or in place of a draft not yet approved
  */
@@ -49,6 +50,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ onHalo: on });
   }
 
+  /**
+   * Done, Halo only (2026-11-04, the owner's ask): the video is on (or going
+   * on) the Halo post and nowhere else. The card finishes without posting to
+   * any account; the video stays in My Sparks.
+   */
+  if (action === "haloOnly") {
+    if (d.source !== "halo" || !editable || !d.project_id) {
+      return NextResponse.json({ error: "This one can't be finished that way." }, { status: 409 });
+    }
+    const { data: made } = await s.admin.from("generated_videos").select("id")
+      .eq("project_id", d.project_id).eq("user_id", s.user.id).eq("render_status", "completed")
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (!made) return NextResponse.json({ error: "Make the video first." }, { status: 409 });
+    await s.admin.from("autopilot_drafts").update({
+      status: "posted", video_id: (made as { id: string }).id, posted_at: new Date().toISOString(), post_error: null,
+    }).eq("id", d.id).eq("status", d.status);
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "setup") {
     // Approved but not yet posted: only the words may still change, since the
     // video is already made (2026-10-26).
@@ -68,8 +88,11 @@ export async function POST(req: NextRequest) {
     const movable = editable || (d.status === "approved" && !d.posted_at);
     if (!movable) return NextResponse.json({ error: "It's already scheduled on your accounts." }, { status: 409 });
     const at = typeof body.slotAt === "string" ? new Date(body.slotAt) : null;
-    if (!at || Number.isNaN(at.getTime()) || at.getTime() < Date.now() + 30 * 60_000) {
-      return NextResponse.json({ error: "Pick a time at least half an hour from now." }, { status: 400 });
+    // Earlier today is fine (2026-11-04, the owner's ask): a time that has
+    // passed posts as soon as it's approved (lib/halo/post.ts posts it now).
+    // The page keeps it to today or later; this only stops a far-off date.
+    if (!at || Number.isNaN(at.getTime()) || at.getTime() < Date.now() - 24 * 3600_000) {
+      return NextResponse.json({ error: "Pick today or later." }, { status: 400 });
     }
     const { error } = await s.admin.from("autopilot_drafts").update({ slot_at: at.toISOString() }).eq("id", d.id);
     if (error) return NextResponse.json({ error: /unique|duplicate/i.test(error.message) ? "Another Halo video already has that time." : "Couldn't save the time." }, { status: 400 });
