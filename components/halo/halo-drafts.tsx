@@ -437,6 +437,15 @@ export function Card({ d, halo, needsVideo, onOutOfVideos }: { d: HaloDraft; hal
     // No video left for it: the Upgrade / Buy popup (2026-10-24). Not when its
     // video is already made: posting that one uses nothing.
     if (kind === "make" && needsVideo && !d.madeVideo) { onOutOfVideos(); return; }
+    // Check the date first (2026-11-04, the owner's ask): she approved one
+    // meaning today and it was set for next week.
+    if (kind === "approve") {
+      const to = PLATFORM_ORDER.filter((p) => (d.setup.platforms ?? []).includes(p)).map((p) => PLATFORM_LABELS[p]).join(", ");
+      const ask = isPast(d)
+        ? `This posts right away${to ? ` to ${to}` : ""}. Is that right?`
+        : `This posts ${when(d.slot_at)}${to ? ` to ${to}` : ""}. Is that the right date and time?`;
+      if (!window.confirm(ask)) return;
+    }
     setApproving(true);
     const err = kind === "make" ? await halo.make(d) : await halo.approve(d);
     setApproving(false);
