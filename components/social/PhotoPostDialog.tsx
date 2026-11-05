@@ -33,7 +33,18 @@ interface Props {
   defaultCaption?: string;
   /** The picture was drawn by AI, which some platforms ask to be told. */
   aiMade?: boolean;
+  /** The window's heading, in place of "Post this photo". */
+  heading?: string;
+  /** A blog's link (2026-11-04): given, a link box shows and fills the caption's "Read it:" line. */
+  link?: string;
   onClose: () => void;
+}
+
+/** The caption with its "Read it:" line set to this link, or taken out. */
+function withLink(caption: string, url: string) {
+  const line = url.trim() ? `Read it: ${url.trim()}` : "";
+  if (/^Read it:.*$/m.test(caption)) return caption.replace(/^Read it:.*$/m, line).replace(/\n{3,}/g, "\n\n").trim();
+  return line ? `${caption.trim()}\n\n${line}` : caption;
 }
 
 const label = (platform: string) => partnerPlatform(platform)?.label ?? platform;
@@ -42,7 +53,8 @@ const names = (platforms: string[]) => {
   return list.length <= 2 ? list.join(" and ") : `${list.length} platforms`;
 };
 
-export function PhotoPostDialog({ photos, defaultCaption = "", aiMade = false, onClose }: Props) {
+export function PhotoPostDialog({ photos, defaultCaption = "", aiMade = false, heading, link: linkProp, onClose }: Props) {
+  const [link, setLink] = useState(linkProp ?? "");
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [allowed, setAllowed] = useState(true);
   const [limit, setLimit] = useState<number | null>(null);
@@ -137,7 +149,7 @@ export function PhotoPostDialog({ photos, defaultCaption = "", aiMade = false, o
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="text-lg font-semibold text-brand-text">
-            {photos.length > 1 ? `Post ${photos.length} photos` : "Post this photo"}
+            {heading ?? (photos.length > 1 ? `Post ${photos.length} photos` : "Post this photo")}
           </h2>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 hover:bg-slate-100">
             <X size={18} className="text-slate-400" />
@@ -207,6 +219,18 @@ export function PhotoPostDialog({ photos, defaultCaption = "", aiMade = false, o
                     <p className="mt-1.5 text-xs text-slate-500">Instagram takes the first {INSTAGRAM_MAX_PHOTOS}.</p>
                   )}
                 </div>
+
+                {linkProp !== undefined && (
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-500">Blog link</label>
+                    <input
+                      value={link}
+                      onChange={(e) => { setLink(e.target.value); setCaption((c) => withLink(c, e.target.value)); }}
+                      placeholder="Paste your blog post's link"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-500">Caption</label>

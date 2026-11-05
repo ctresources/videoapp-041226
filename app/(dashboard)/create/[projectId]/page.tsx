@@ -24,6 +24,7 @@ import { emailAsHtml, emailAsText, type EmailVersion } from "@/lib/utils/email-h
 import { articleHeadline } from "@/lib/utils/article-headline";
 import { PublishToBlog } from "@/components/blog/publish-to-blog";
 import { SendToWebsiteButton } from "@/components/website/send-to-website";
+import { BlogSocialButton } from "@/components/social/blog-social";
 import { BoldTrailSend, postBoldTrailEmail } from "@/components/email/boldtrail-send";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT, UPLOAD_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
@@ -4467,7 +4468,11 @@ export default function ProjectEditorPage() {
                 by text, or copy for any other site. */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-[14.5px] font-bold tracking-[-0.01em] text-spark-ink">Your Share Kit</h2>
-              <SendToWebsiteButton projectId={project.id} />
+              <div className="flex flex-wrap items-center gap-2">
+                {/* A blog to the social accounts as a picture post (2026-11-04). */}
+                {(script.blog_intro || script.blog_body) && <BlogSocialButton projectId={project.id} />}
+                <SendToWebsiteButton projectId={project.id} />
+              </div>
             </div>
             {/* Does not claim a video when there isn't one. Arriving here on
                 the blog route, "written with your video" names something that

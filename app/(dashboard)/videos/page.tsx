@@ -28,6 +28,7 @@ import { videoStatus, type PostRow } from "@/lib/utils/video-status";
 import { VideoStatusLine } from "@/components/ui/video-status-line";
 import { ThumbnailEditButton } from "@/components/social/thumbnail-edit-button";
 import { SendToWebsiteButton } from "@/components/website/send-to-website";
+import { BlogSocialButton } from "@/components/social/blog-social";
 import { OlderList, splitRecent, type OlderItem } from "@/components/videos/older-list";
 import { partnerPlatform } from "@/lib/utils/social-platforms";
 import { RewordButton } from "@/components/templates/reword-dialog";
@@ -1055,6 +1056,13 @@ function VideosContent() {
                     {deletingDraftId === d.id ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
                   </Button>
                 </div>
+                {/* A blog to the social accounts as a picture post (2026-11-04). */}
+                {s.key === "blogs" && (
+                  <div className="mt-1.5" onClick={picking ? (e) => e.stopPropagation() : undefined}>
+                    <BlogSocialButton projectId={d.id}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-spark-rule bg-white px-2 py-1.5 text-[12.5px] font-medium text-spark-ink hover:border-spark-amber hover:text-spark-amber disabled:opacity-50" />
+                  </div>
+                )}
               </Card>
               );
             })}
