@@ -4470,7 +4470,7 @@ export default function ProjectEditorPage() {
               <h2 className="text-[14.5px] font-bold tracking-[-0.01em] text-spark-ink">Your Share Kit</h2>
               <div className="flex flex-wrap items-center gap-2">
                 {/* A blog to the social accounts as a picture post (2026-11-04). */}
-                {(script.blog_intro || script.blog_body) && <BlogSocialButton projectId={project.id} />}
+                <BlogSocialButton projectId={project.id} />
                 <SendToWebsiteButton projectId={project.id} />
               </div>
             </div>

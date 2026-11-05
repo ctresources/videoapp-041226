@@ -35,7 +35,7 @@ async function loadPost(projectId: string): Promise<Post | string> {
   const photo = str(ai.blog_header_url) || str(p.thumbnail_url);
   if (!photo) return "Add a header picture to the article first.";
   const headline = str(ai.blog_headline) || str(ai.title) || str(p.title);
-  const about = str(seo.meta_description) || summary(str(ai.blog_intro) || str(ai.blog_body));
+  const about = str(seo.meta_description) || summary(str(ai.blog_intro) || str(ai.blog_body) || str(seo.youtube_description));
   // Where the blog is: pasted in Send to Website, texted to Halo, or the Halo
   // post it came from.
   let link = "";

@@ -1040,11 +1040,6 @@ function VideosContent() {
                       {s.key === "blogs" ? <FileText size={12} /> : <Pencil size={12} />} {s.cta}
                     </Button>
                   </Link>
-                  {/* Send to Website (2026-10-31). */}
-                  {s.key === "blogs" && (
-                    <SendToWebsiteButton projectId={d.id}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-spark-rule bg-white px-2 py-1.5 text-[12.5px] font-medium text-spark-ink hover:border-spark-amber hover:text-spark-amber" />
-                  )}
                   <Button
                     size="sm"
                     variant="ghost"
@@ -1056,11 +1051,14 @@ function VideosContent() {
                     {deletingDraftId === d.id ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
                   </Button>
                 </div>
-                {/* A blog to the social accounts as a picture post (2026-11-04). */}
+                {/* Send to Website (2026-10-31) and, beside it, Post to socials
+                    (2026-11-04), the same width each. */}
                 {s.key === "blogs" && (
-                  <div className="mt-1.5" onClick={picking ? (e) => e.stopPropagation() : undefined}>
+                  <div className="mt-1.5 grid grid-cols-2 gap-1.5" onClick={picking ? (e) => e.stopPropagation() : undefined}>
+                    <SendToWebsiteButton projectId={d.id}
+                      className="flex items-center justify-center gap-1.5 rounded-lg border border-spark-rule bg-white px-2 py-1.5 text-[12.5px] font-medium text-spark-ink hover:border-spark-amber hover:text-spark-amber" />
                     <BlogSocialButton projectId={d.id}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-spark-rule bg-white px-2 py-1.5 text-[12.5px] font-medium text-spark-ink hover:border-spark-amber hover:text-spark-amber disabled:opacity-50" />
+                      className="flex items-center justify-center gap-1.5 rounded-lg border border-spark-rule bg-white px-2 py-1.5 text-[12.5px] font-medium text-spark-ink hover:border-spark-amber hover:text-spark-amber disabled:opacity-50" />
                   </div>
                 )}
               </Card>
@@ -1425,8 +1423,13 @@ function VideosContent() {
                       )}
                       {/* Send to Website (2026-10-31): Halo by text, or copy for any site. */}
                       {video.project_id && (
-                        <SendToWebsiteButton projectId={video.project_id}
-                          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-[13px] font-medium text-spark-ink hover:border-spark-amber hover:text-spark-amber" />
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <SendToWebsiteButton projectId={video.project_id}
+                            className="flex items-center justify-center gap-1.5 rounded-lg border border-spark-rule bg-white px-2 py-1.5 text-[13px] font-medium text-spark-ink hover:border-spark-amber hover:text-spark-amber" />
+                          {/* Its blog as a picture post (2026-11-04). */}
+                          <BlogSocialButton projectId={video.project_id}
+                            className="flex items-center justify-center gap-1.5 rounded-lg border border-spark-rule bg-white px-2 py-1.5 text-[13px] font-medium text-spark-ink hover:border-spark-amber hover:text-spark-amber disabled:opacity-50" />
+                        </div>
                       )}
                       {/* Emailed (2026-10-29, the owner's ask). */}
                       {emailed[video.id] && (
