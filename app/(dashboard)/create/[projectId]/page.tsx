@@ -4468,11 +4468,13 @@ export default function ProjectEditorPage() {
                 by text, or copy for any other site. */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-[14.5px] font-bold tracking-[-0.01em] text-spark-ink">Your Share Kit</h2>
-              <div className="flex flex-wrap items-center gap-2">
-                {/* A blog to the social accounts as a picture post (2026-11-04). */}
-                <BlogSocialButton projectId={project.id} />
-                <SendToWebsiteButton projectId={project.id} />
-              </div>
+              {/* With an article they sit in its button row instead (2026-11-05). */}
+              {!(script.blog_intro || script.blog_body) && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <BlogSocialButton projectId={project.id} />
+                  <SendToWebsiteButton projectId={project.id} />
+                </div>
+              )}
             </div>
             {/* Does not claim a video when there isn't one. Arriving here on
                 the blog route, "written with your video" names something that
@@ -5198,6 +5200,10 @@ export default function ProjectEditorPage() {
                       >
                         <Mail size={12} /> Email
                       </button>
+                      {/* With the article's other options (2026-11-05, the
+                          owner's ask), not up by the Share Kit heading. */}
+                      <BlogSocialButton projectId={project.id} />
+                      <SendToWebsiteButton projectId={project.id} />
                     </>
                   )}
                   <button
