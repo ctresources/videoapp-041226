@@ -518,7 +518,7 @@ ${pipMode
 - No other text on this card. Narration begins immediately on the first frame — never hold a silent intro.
 
 FINAL SCENE — CTA CONTACT CARD${params.logoUrl ? `
-- Display the attached agent/brokerage logo prominently (top-left or top-center).` : ""}
+- Display the attached agent/brokerage logo LARGE and prominently (top-left or top-center): at least one fifth of the frame width, about one and a half times a typical logo size, never small or tucked into a corner.` : ""}
 - On-screen only, never narrated: ${contactLine}
 - Show phone numbers exactly as provided — no leading "1", no country code.
 - Bold CTA headline: "${ctaText}"

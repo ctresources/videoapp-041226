@@ -984,8 +984,12 @@ export class BrandedComposite {
 
     // Logo watermark — top right
     if (showBrand && this.logo) {
-      const lw = W * 0.11;
-      const lh = lw * (this.logo.height / this.logo.width);
+      // 1.5x since 2026-11-06 (the owner's ask), with a tall logo capped so
+      // it stays in the corner and off the face.
+      let lw = W * 0.165;
+      let lh = lw * (this.logo.height / this.logo.width);
+      const maxH = H * 0.12;
+      if (lh > maxH) { lw *= maxH / lh; lh = maxH; }
       ctx.globalAlpha = 0.92;
       ctx.drawImage(this.logo, W - lw - W * 0.02, H * 0.03, lw, lh);
       ctx.globalAlpha = 1;

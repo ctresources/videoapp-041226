@@ -405,13 +405,14 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
     defs.push(`<linearGradient id="ib" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${b0}"/><stop offset="1" stop-color="${b1}"/></linearGradient><radialGradient id="ir" cx="0.25" cy="0.4" r="0.6"><stop offset="0" stop-color="${accent}" stop-opacity="0.28"/><stop offset="1" stop-color="${accent}" stop-opacity="0"/></radialGradient>`);
     put("bg", `<path d="${holed}" fill-rule="evenodd" fill="url(#ib)"/><path d="${holed}" fill-rule="evenodd" fill="url(#ir)"/>`);
     if (v) {
+      // Up a little since the logo went 1.5x (2026-11-06), so it fits under them.
       const x = W / 2;
-      put("kicker", line(g("headline").toUpperCase(), x, H * 0.57, fit(g("headline").toUpperCase(), W * 0.86, 28, 16, "text", 4), accent, "text", "middle", 4));
-      put("name", line(g("name"), x, H * 0.65, fit(g("name"), W * 0.9, 76, 36, "display"), "#fff", "display", "middle"));
+      put("kicker", line(g("headline").toUpperCase(), x, H * 0.54, fit(g("headline").toUpperCase(), W * 0.86, 28, 16, "text", 4), accent, "text", "middle", 4));
+      put("name", line(g("name"), x, H * 0.62, fit(g("name"), W * 0.9, 76, 36, "display"), "#fff", "display", "middle"));
       const r = wrap(g("role"), W * 0.86, 30, 18, 2, "text");
-      r.lines.forEach((l, i) => put("role", line(l, x, H * 0.705 + i * r.size * 1.3, r.size, "#e9dcc3", "text", "middle")));
-      put("phones", line(g("phones"), x, H * 0.81, fit(g("phones"), W * 0.88, 30, 16, "text"), "#fff", "text", "middle"));
-      put("website", line(g("website"), x, H * 0.86, fit(g("website"), W * 0.86, 28, 16, "text"), "#fff", "text", "middle"));
+      r.lines.forEach((l, i) => put("role", line(l, x, H * 0.675 + i * r.size * 1.3, r.size, "#e9dcc3", "text", "middle")));
+      put("phones", line(g("phones"), x, H * 0.78, fit(g("phones"), W * 0.88, 30, 16, "text"), "#fff", "text", "middle"));
+      put("website", line(g("website"), x, H * 0.83, fit(g("website"), W * 0.86, 28, 16, "text"), "#fff", "text", "middle"));
     } else {
       const x = W * 0.46, maxW = W * 0.5;
       put("kicker", line(g("headline").toUpperCase(), x, H * 0.3, fit(g("headline").toUpperCase(), maxW, 28, 14, "text", 4), accent, "text", "start", 4));
@@ -432,16 +433,31 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
   return { circle, svg, ring: ringSvg };
 }
 
+/**
+ * Agent Introduction's logo box (1.5x since 2026-11-06, the owner's ask):
+ * tall, centered at the bottom under the website; wide, top right.
+ */
+export function introLogoBox(shape: Shape): { w: number; h: number; top: number } {
+  const { w: W, h: H } = SIZE[shape];
+  if (shape === "vertical") {
+    const w = Math.round(W * 0.48), top = Math.round(H * 0.85);
+    return { w, h: Math.min(Math.round(w * 0.5), Math.round(H * 0.985) - top), top };
+  }
+  const w = Math.round(W * 0.21);
+  return { w, h: Math.round(w * 0.5), top: Math.round(H * 0.06) };
+}
+
 /** The words layer as a see-through PNG, with the logo placed for Agent Introduction. */
 export async function wordsLayer(id: DesignId, shape: Shape, f: Record<string, string>, accent?: string, logo?: Buffer | null, at?: Circle | null): Promise<{ png: Buffer; circle: Circle }> {
   const { svg, circle } = layout(id, shape, f, accent, at);
   const base = sharp(Buffer.from(svg));
   if (id === "agent_intro" && logo) {
-    const { w: W, h: H } = SIZE[shape];
-    const lw = Math.round(shape === "vertical" ? W * 0.32 : W * 0.14);
-    const lp = await sharp(logo).resize({ width: lw, height: Math.round(lw * 0.5), fit: "inside" }).png().toBuffer();
+    const { w: W } = SIZE[shape];
+    const box = introLogoBox(shape);
+    const lw = box.w;
+    const lp = await sharp(logo).resize({ width: box.w, height: box.h, fit: "inside" }).png().toBuffer();
     const meta = await sharp(lp).metadata();
-    const top = shape === "vertical" ? Math.round(H * 0.9) : Math.round(H * 0.06);
+    const top = box.top;
     const left = shape === "vertical" ? Math.round((W - (meta.width ?? lw)) / 2) : Math.round(W - W * 0.04 - (meta.width ?? lw));
     return { png: await base.composite([{ input: lp, top, left }]).png().toBuffer(), circle };
   }

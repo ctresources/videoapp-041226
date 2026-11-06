@@ -1,6 +1,6 @@
 import { strToU8, zipSync } from "fflate";
 import type { createAdminClient } from "@/lib/supabase/admin";
-import { layout, SIZE, type Circle, type DesignId, type Shape } from "@/lib/templates/designs";
+import { introLogoBox, layout, SIZE, type Circle, type DesignId, type Shape } from "@/lib/templates/designs";
 
 /**
  * Animated words for video templates (2026-11-03, the owner's pick after the
@@ -96,9 +96,11 @@ export function animatedProject(o: {
   let { svg } = layout(o.design, o.shape, o.fields, o.accent, o.circle);
   // The logo goes in the page itself (same place as the still version).
   if (o.design === "agent_intro" && o.logo) {
-    const lw = Math.round(v ? W * 0.32 : W * 0.14), lh = Math.round(lw * 0.5);
+    // The same box as the still version (1.5x since 2026-11-06).
+    const box = introLogoBox(o.shape);
+    const lw = box.w, lh = box.h;
     const x = v ? Math.round((W - lw) / 2) : Math.round(W - W * 0.04 - lw);
-    const y = v ? Math.round(H * 0.9) : Math.round(H * 0.06);
+    const y = box.top;
     const img = `<g id="logo"><image href="data:image/png;base64,${o.logo.toString("base64")}" x="${x}" y="${y}" width="${lw}" height="${lh}" preserveAspectRatio="${v ? "xMidYMin" : "xMaxYMin"} meet"/></g>`;
     svg = svg.replace(/<\/svg>$/, `${img}</svg>`);
   }

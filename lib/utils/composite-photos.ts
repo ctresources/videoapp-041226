@@ -509,9 +509,10 @@ export async function compositePhotos(
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const sharp = ((await import("sharp")) as any).default;
               cardLogoPath = join(dir, "card-logo.png");
-              const logoH = Math.round(S * 0.12);
+              // 1.5x since 2026-11-06 (the owner's ask); the words move down under it.
+              const logoH = Math.round(S * 0.18);
               await fs.writeFile(cardLogoPath, await sharp(Buffer.from(await res.arrayBuffer()))
-                .resize({ height: logoH, width: Math.round(areaW * 0.6), fit: "inside" }).png().toBuffer());
+                .resize({ height: logoH, width: Math.round(areaW * 0.9), fit: "inside" }).png().toBuffer());
               y = Math.round(outH * 0.16) + logoH + Math.round(S * 0.04);
             }
           }
