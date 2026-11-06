@@ -28,6 +28,17 @@ function steps(id: DesignId, v: boolean): Step[] {
       ["details", { y: 16, opacity: 0 }, 1.9, 0.6],
       ["contact", contactIn, 2.2, 0.7, "power2.out"],
     ];
+    // Open House (2026-11-06): the gold day-and-time bar pops in after the address.
+    case "open_house": return [
+      ["fade", { opacity: 0 }, 0.1, 0.8],
+      ["top", { opacity: 0 }, 0.1, 0.8],
+      ["label", { x: -70, opacity: 0 }, 0.2, 0.7, "back.out(1.6)"],
+      ["addr", rise, 0.9, 0.7, "power3.out"],
+      ["when", { scaleX: 0.2, opacity: 0, transformOrigin: "0% 50%" }, 1.4, 0.6, "back.out(1.8)"],
+      ["price", { y: 16, opacity: 0 }, 1.9, 0.6],
+      ["details", { y: 16, opacity: 0 }, 2.1, 0.6],
+      ["contact", contactIn, 2.3, 0.7, "power2.out"],
+    ];
     case "luxury": return [
       ["bartop", { y: -140 }, 0, 0.9, "power3.out"],
       ["barbot", { y: 140 }, 0, 0.9, "power3.out"],

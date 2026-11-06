@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open House template — mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#24221e; --muted:#6b665c; --rule:#e8e2d6; --amber:#c98a1b; --amberdk:#A3660F; --tint:#fbeacc; --gold:#e7b84a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f6f3ec; font-family:Montserrat,system-ui,sans-serif; color:var(--ink); padding:28px 16px 60px; }
+  .wrap { max-width:1100px; margin:0 auto; display:flex; flex-direction:column; gap:34px; }
+  .label { font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--amberdk); margin:0 0 10px; }
+  .shapes { display:grid; grid-template-columns:2fr 1fr; gap:20px; align-items:end; }
+  @media (max-width:760px) { .shapes { grid-template-columns:1fr; } }
+
+  .f { position:relative; border-radius:12px; overflow:hidden; background:#222 center/cover no-repeat; color:#fff; container-type:inline-size; }
+  .f.h { aspect-ratio:16/9; } .f.v { aspect-ratio:9/16; }
+  .agent { position:absolute; border-radius:50%; border:1.2cqw solid var(--gold); background:#c9b49a url(https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&q=70) center/cover; }
+  .disp { font-family:"Archivo Black",sans-serif; }
+
+  /* Open House, horizontal */
+  .h .ribbon { position:absolute; left:5cqw; top:7cqw; background:var(--gold); color:#14100a; font-family:"Archivo Black"; font-size:3.6cqw; letter-spacing:.15cqw; padding:1cqw 2cqw; border-radius:.6cqw; }
+  .h .top { position:absolute; left:0; right:0; top:0; height:24%; background:linear-gradient(rgba(0,0,0,.6),transparent); }
+  .h .contact { position:absolute; right:4cqw; top:4.2cqw; text-align:right; font-size:1.6cqw; line-height:1.5; }
+  .h .contact span { color:#e6dfd2; font-size:1.45cqw; }
+  .h .fade { position:absolute; left:0; right:0; bottom:0; height:52%; background:linear-gradient(transparent, rgba(0,0,0,.72) 45%, rgba(0,0,0,.86)); }
+  .h .agent { left:3.5cqw; bottom:3cqw; width:19cqw; height:19cqw; }
+  .h .words { position:absolute; left:27cqw; right:4cqw; bottom:3.4cqw; }
+  .h .addr { font-size:4.1cqw; line-height:1.1; }
+  .h .when { display:inline-block; margin:1.3cqw 0 1.1cqw; background:var(--gold); color:#14100a; font-family:"Archivo Black"; font-size:3.1cqw; padding:.9cqw 2cqw; border-radius:.8cqw; }
+  .h .meta { font-size:2cqw; color:#f1ece2; }
+  .h .meta b { color:var(--gold); font-family:"Archivo Black"; font-weight:400; font-size:2.6cqw; margin-right:1.2cqw; }
+
+  /* Open House, vertical */
+  .v .ribbon { position:absolute; left:5cqw; top:5cqw; background:var(--gold); color:#14100a; font-family:"Archivo Black"; font-size:5.6cqw; letter-spacing:.3cqw; padding:1.6cqw 3cqw; border-radius:1cqw; }
+  .v .fade { position:absolute; left:0; right:0; bottom:0; height:44%; background:linear-gradient(transparent, rgba(0,0,0,.72) 40%, rgba(0,0,0,.88)); }
+  .v .agent { right:5cqw; top:calc(58% - 18cqw); width:36cqw; height:36cqw; }
+  .v .words { position:absolute; left:6cqw; right:6cqw; bottom:4cqw; }
+  .v .addr { font-size:6cqw; line-height:1.12; }
+  .v .when { margin:2.4cqw 0 2cqw; background:var(--gold); color:#14100a; font-family:"Archivo Black"; font-size:5cqw; line-height:1.15; padding:2cqw 3cqw; border-radius:1.4cqw; }
+  .v .meta { font-size:3.4cqw; color:#f1ece2; }
+  .v .meta b { display:block; color:var(--gold); font-family:"Archivo Black"; font-weight:400; font-size:6.4cqw; }
+  .v .contact { margin-top:3cqw; font-size:3cqw; line-height:1.45; }
+  .v .contact span { color:#e6dfd2; font-size:2.7cqw; }
+  .cap { font-size:13px; color:var(--muted); margin-top:6px; }
+
+  /* Studio */
+  .picker { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; }
+  @media (max-width:900px) { .picker { grid-template-columns:repeat(3,1fr); } }
+  @media (max-width:520px) { .picker { grid-template-columns:repeat(2,1fr); } }
+  .pk { border:2px solid var(--rule); border-radius:12px; background:#fff; padding:12px; }
+  .pk b { display:block; font-size:16px; }
+  .pk span { display:block; font-size:13px; color:var(--muted); line-height:1.35; margin-top:2px; }
+  .pk.on { border-color:var(--amber); box-shadow:0 0 0 3px var(--tint); }
+  .pk.new { position:relative; }
+  .pk.new::after { content:"NEW"; position:absolute; top:-9px; right:10px; background:var(--amber); color:#fff; font-size:10px; font-weight:700; letter-spacing:.06em; padding:2px 7px; border-radius:20px; }
+  .card { background:#fff; border:1px solid var(--rule); border-radius:18px; padding:18px; max-width:540px; }
+  .card h3 { margin:0 0 4px; font-size:17px; }
+  .g { display:grid; grid-template-columns:1fr 1fr; gap:0 12px; }
+  .g .full { grid-column:1 / -1; }
+  .card label { display:block; font-size:14px; font-weight:600; color:#55524b; margin:10px 0 4px; }
+  input, select { width:100%; border:1px solid var(--rule); border-radius:10px; padding:10px 12px; font-size:15px; background:#fdfbf7; font-family:inherit; }
+  input::placeholder { color:#a9a397; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div>
+    <p class="label">1 · Open House, both shapes</p>
+    <div class="shapes">
+      <div>
+        <div class="f h" style="background-image:url(https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=1200&q=70)">
+          <div class="top"></div>
+          <div class="ribbon">OPEN HOUSE</div>
+          <div class="contact">Jane Smith · Smith Realty Group<br><span>Mobile (555) 010-2030 · Office (555) 010-9000</span></div>
+          <div class="fade"></div>
+          <div class="agent"></div>
+          <div class="words">
+            <div class="addr disp">42 Maple Lane, Springfield</div>
+            <div class="when">SATURDAY, NOV 8 · 1–4 PM</div>
+            <div class="meta"><b>$749,000</b>3 beds · 2.5 baths · 2,140 sq ft</div>
+          </div>
+        </div>
+        <p class="cap">Horizontal 16:9</p>
+      </div>
+      <div>
+        <div class="f v" style="background-image:url(https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=900&q=70)">
+          <div class="ribbon">OPEN HOUSE</div>
+          <div class="fade"></div>
+          <div class="agent"></div>
+          <div class="words">
+            <div class="addr disp">42 Maple Lane, Springfield</div>
+            <div class="when">SATURDAY, NOV 8<br>1–4 PM</div>
+            <div class="meta"><b>$749,000</b>3 beds · 2.5 baths · 2,140 sq ft</div>
+            <div class="contact">Jane Smith · Smith Realty Group<br><span>Mobile (555) 010-2030 · Office (555) 010-9000</span></div>
+          </div>
+        </div>
+        <p class="cap">Vertical 9:16</p>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="label">2 · The designs, now six</p>
+    <div class="picker">
+      <div class="pk"><b>Just Listed</b><span>Agent in a circle, gold label, address and price over the photos.</span></div>
+      <div class="pk on"><b>Open House</b><span>Gold label, address, and the day and time in a gold bar.</span></div>
+      <div class="pk"><b>Luxury Listing</b><span>Cinema bars, elegant type, gold accents.</span></div>
+      <div class="pk"><b>Market Update</b><span>Three numbers on screen while the agent explains them.</span></div>
+      <div class="pk"><b>Neighborhood Spotlight</b><span>The place name big, three highlights, agent in the corner.</span></div>
+      <div class="pk"><b>Agent Introduction</b><span>Big portrait, name, brokerage, phones and website, with their logo.</span></div>
+    </div>
+  </div>
+
+  <div>
+    <p class="label">3 · Words on screen for Open House</p>
+    <div class="card">
+      <label style="margin-top:0">From a saved listing</label>
+      <select><option>42 Maple Lane, Springfield</option></select>
+      <h3 style="margin-top:14px">Words on screen</h3>
+      <div class="g">
+        <div class="full"><label>Label</label><input value="OPEN HOUSE"></div>
+        <div class="full"><label>Address</label><input value="42 Maple Lane, Springfield"></div>
+        <div><label>Date</label><input placeholder="Saturday, Nov 8"></div>
+        <div><label>Time</label><input placeholder="1–4 PM"></div>
+        <div class="full"><label>Price</label><input value="$749,000"></div>
+        <div class="full"><label>Details</label><input value="3 beds · 2.5 baths · 2,140 sq ft"></div>
+        <div class="full"><label>Your name and brokerage</label><input value="Jane Smith · Smith Realty Group"></div>
+        <div class="full"><label>Phones</label><input value="Mobile (555) 010-2030 · Office (555) 010-9000"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

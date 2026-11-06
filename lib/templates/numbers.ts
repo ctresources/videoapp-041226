@@ -2,8 +2,8 @@ import { perplexityChat } from "@/lib/api/perplexity";
 
 /**
  * "Look up numbers" on the Market Update template (2026-11-03): the latest
- * median price, days on market and homes sold for an area, from a published
- * source found by web search. A figure the source doesn't state stays blank;
+ * median price, days on market and homes sold for an area, from Redfin,
+ * Zillow, Realtor.com, Homes.com or NARRPR, found by web search. A figure the source doesn't state stays blank;
  * the source is shown under the boxes so the agent checks it before making
  * the video (these numbers go out under their name).
  */
@@ -15,6 +15,28 @@ export interface MarketNumbers {
 }
 
 const clip = (v: unknown, n: number) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+
+/**
+ * The only sites the numbers may come from (2026-11-06, the owner's ask).
+ * The search is limited to them, told to quote only them, and an answer
+ * naming anything else is thrown away.
+ */
+const SOURCES = [
+  { domain: "redfin.com", name: /redfin/i },
+  { domain: "zillow.com", name: /zillow/i },
+  { domain: "realtor.com", name: /realtor\.com/i },
+  { domain: "homes.com", name: /homes\.com/i },
+  { domain: "narrpr.com", name: /narrpr|\bRPR\b/i },
+];
+function allowedSource(url: string, name: string): boolean {
+  if (url) {
+    try {
+      const host = new URL(url).hostname.toLowerCase();
+      return SOURCES.some((s) => host === s.domain || host.endsWith(`.${s.domain}`));
+    } catch { return false; }
+  }
+  return SOURCES.some((s) => s.name.test(name));
+}
 
 export async function lookUpMarketNumbers(area: string): Promise<MarketNumbers | null> {
   const where = area.trim().slice(0, 120);
@@ -35,11 +57,13 @@ RULES:
 - Every figure must be stated in the source. If one isn't, leave it "".
 - Values at most 14 characters.
 - "period" is the month and year the figures cover, like "September 2026".
-- "source" is the publisher's name (e.g. "Redfin", "Bright MLS"), "sourceUrl" the page.
+- Use ONLY these sources: Redfin (redfin.com), Zillow (zillow.com), Realtor.com, Homes.com, or NARRPR (narrpr.com). Never quote any other site, MLS, news story or report.
+- "source" is the site's name (e.g. "Redfin", "Zillow"), "sourceUrl" the page on that site.
+- If none of those five sites states the figures, return all fields "".
 
 Return ONLY this JSON: {"period":"","source":"","sourceUrl":"","s1":"","s1c":"","s2":"","s2c":"","s3":"","s3c":""}`,
     },
-  ], "sonar");
+  ], "sonar", { search_domain_filter: SOURCES.map((s) => s.domain) });
   let text = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
   const a = text.indexOf("{"), b = text.lastIndexOf("}");
   if (a !== -1 && b !== -1) text = text.slice(a, b + 1);
@@ -51,5 +75,10 @@ Return ONLY this JSON: {"period":"","source":"","sourceUrl":"","s1":"","s1c":"",
   };
   // A change with no figure would print under nothing.
   for (const k of ["s1", "s2", "s3"] as const) if (!out[k]) out[`${k}c` as "s1c"] = "";
+  // From one of the five sites, or not at all.
+  if (!allowedSource(out.sourceUrl, out.source)) {
+    console.warn(`[templates] numbers from an unlisted source dropped: ${out.source} ${out.sourceUrl}`);
+    return null;
+  }
   return out;
 }

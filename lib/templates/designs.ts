@@ -16,7 +16,7 @@ const opentype = ((opentypeNs as unknown as { default?: typeof opentypeNs }).def
  */
 
 export const TEMPLATE_FEATURE = "video_templates";
-export type DesignId = "just_listed" | "luxury" | "market_update" | "neighborhood" | "agent_intro";
+export type DesignId = "just_listed" | "open_house" | "luxury" | "market_update" | "neighborhood" | "agent_intro";
 export type Shape = "vertical" | "horizontal";
 export const SIZE: Record<Shape, { w: number; h: number }> = { horizontal: { w: 1280, h: 720 }, vertical: { w: 720, h: 1280 } };
 
@@ -40,6 +40,10 @@ const CONTACT: Field[] = [
 export const DESIGNS: Design[] = [
   { id: "just_listed", name: "Just Listed", blurb: "Agent in a circle, gold label, address and price over the photos.", photos: "listing",
     fields: [{ key: "headline", label: "Headline" }, { key: "address", label: "Address" }, { key: "price", label: "Price" }, { key: "details", label: "Details", placeholder: "3 beds · 2.5 baths · 2,140 sq ft" }, ...CONTACT] },
+  // Open House (2026-11-06, the owner's approved mockup): the day and time in a gold bar.
+  { id: "open_house", name: "Open House", blurb: "Gold label, address, and the day and time in a gold bar.", photos: "listing",
+    fields: [{ key: "headline", label: "Label" }, { key: "address", label: "Address" }, { key: "date", label: "Date", placeholder: "Saturday, Nov 8" }, { key: "time", label: "Time", placeholder: "1–4 PM" },
+      { key: "price", label: "Price" }, { key: "details", label: "Details", placeholder: "3 beds · 2.5 baths · 2,140 sq ft" }, ...CONTACT] },
   { id: "luxury", name: "Luxury Listing", blurb: "Cinema bars, elegant type, gold accents.", photos: "listing",
     fields: [{ key: "headline", label: "Headline" }, { key: "address", label: "Address" }, { key: "price", label: "Price line" }, { key: "details", label: "Details" }, ...CONTACT] },
   { id: "market_update", name: "Market Update", blurb: "Three numbers on screen while the agent explains them.", photos: "place",
@@ -189,6 +193,96 @@ export function layout(id: DesignId, shape: Shape, f: Record<string, string>, ac
       put("details", line(g("details"), x0, H * 0.955, fit(g("details"), maxW * 0.56, 26, 16, "text"), "#f1ece2", "text"));
       contact(W * 0.96, H * 0.918, "end", maxW * 0.42, 20);
     }
+  } else if (id === "open_house") {
+    // Gold label top-left, as on Just Listed.
+    const ks = v ? 40 : 46;
+    const kt = (g("headline") || "OPEN HOUSE").toUpperCase();
+    const kw = width(kt, ks, "display", 2) + ks * 1.1;
+    const ky = H * (v ? 0.05 : 0.07);
+    if (!v) {
+      // A soft dark top for the name and phones (top right), under the label.
+      defs.push(`<linearGradient id="top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sh("#000")}" stop-opacity="0.6"/><stop offset="1" stop-color="${sh("#000")}" stop-opacity="0"/></linearGradient>`);
+      put("top", `<rect x="0" y="0" width="${W}" height="${H * 0.24}" fill="url(#top)"/>`);
+    }
+    put("label", `<rect x="${W * 0.05}" y="${ky}" width="${kw}" height="${ks * 1.6}" rx="${ks * 0.18}" fill="${accent}"/>`);
+    put("label", line(kt, W * 0.05 + ks * 0.55, ky + ks * 1.17, ks, ink(accent), "display", "start", 2));
+    defs.push(`<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sh("#000")}" stop-opacity="0"/><stop offset="0.45" stop-color="${sh("#000")}" stop-opacity="0.72"/><stop offset="1" stop-color="${sh("#000")}" stop-opacity="0.88"/></linearGradient>`);
+    // The words stacked up from the bottom, so a long address or a two-line
+    // day and time pushes the rest up instead of off the picture.
+    const x = v ? W * 0.06 : W * 0.27;
+    const maxW = v ? W * 0.88 : W - x - W * 0.04;
+    const stack: { h: number; at: (top: number) => void }[] = [];
+    const gap = (h: number) => stack.push({ h, at: () => {} });
+    // Wide: one line when it fits at a good size, else two.
+    const oneLine = !v ? fit(g("address"), maxW, 52, 38, "display") : 0;
+    const a = !v && width(g("address"), oneLine, "display") <= maxW
+      ? { size: oneLine, lines: g("address") ? [g("address")] : [] }
+      : wrap(g("address"), maxW, v ? 46 : 52, 28, 2, "display");
+    a.lines.forEach((l) => stack.push({ h: a.size * 1.12, at: (t) => put("addr", line(l, x, t + a.size * 0.9, a.size, "#fff", "display")) }));
+    // The day and time in a gold bar: one line when it fits, else day over time.
+    const date = g("date").toUpperCase(), time = g("time").toUpperCase();
+    const one = [date, time].filter(Boolean).join(" · ");
+    if (one) {
+      const pad = v ? 22 : 18;
+      const oneSize = fit(one, maxW - pad * 2, v ? 40 : 38, 22, "display");
+      const twoLines = v && date && time && oneSize < 34;
+      const wl = twoLines ? [date, time] : [one];
+      const ws = twoLines ? Math.min(...wl.map((l) => fit(l, maxW - pad * 2, 44, 22, "display"))) : oneSize;
+      const lh = ws * 1.2, py = ws * 0.36;
+      const bh = wl.length * lh + py * 2;
+      const bw = Math.max(...wl.map((l) => width(l, ws, "display"))) + pad * 2;
+      gap(v ? 22 : 16);
+      stack.push({ h: bh, at: (t) => {
+        put("when", `<rect x="${x}" y="${t}" width="${bw}" height="${bh}" rx="${ws * 0.22}" fill="${accent}"/>`);
+        wl.forEach((l, i) => put("when", line(l, x + pad, t + py + i * lh + ws * 0.95, ws, ink(accent), "display")));
+      } });
+    }
+    const price = g("price"), det = g("details");
+    if (v) {
+      // Price, then the details under it, then the name and phones.
+      if (price) {
+        const ps = fit(price, maxW, 52, 30, "display");
+        gap(18);
+        stack.push({ h: ps * 1.1, at: (t) => put("price", line(price, x, t + ps * 0.92, ps, accent, "display")) });
+      }
+      if (det) {
+        const ds = fit(det, maxW, 26, 15, "text");
+        gap(price ? 6 : 18);
+        stack.push({ h: ds * 1.3, at: (t) => put("details", line(det, x, t + ds, ds, "#f1ece2", "text")) });
+      }
+      if (g("agent") || g("phones")) {
+        gap(16);
+        stack.push({ h: 22 * 1.4 + 20, at: (t) => contact(x, t + 19, "start", maxW, 22) });
+      }
+    } else if (price || det) {
+      // Price and details on one line.
+      const ps = price ? fit(price, maxW * 0.5, 40, 24, "display") : 0;
+      const pw = price ? width(price, ps, "display") + 18 : 0;
+      const ds = det ? fit(det, maxW - pw, 24, 14, "text") : 0;
+      const rowH = Math.max(ps, ds) * 1.15;
+      gap(16);
+      stack.push({ h: rowH, at: (t) => {
+        const base = t + Math.max(ps, ds) * 0.92;
+        if (price) put("price", line(price, x, base, ps, accent, "display"));
+        if (det) put("details", line(det, x + pw, base, ds, "#f1ece2", "text"));
+      } });
+    }
+    const total = stack.reduce((n, s) => n + s.h, 0);
+    let top = H * (v ? 0.965 : 0.95) - total;
+    // The circle: tall, bottom right just above the words (never in the
+    // middle); wide, bottom left as on Just Listed.
+    const cd = v ? W * 0.36 : W * 0.19;
+    const oc: Circle = v
+      ? { cx: W - W * 0.05 - cd / 2, cy: Math.min(H * 0.58, top - 24 - cd / 2), d: cd }
+      : { cx: W * 0.135, cy: H - W * 0.03 - W * 0.095, d: cd };
+    const c = at ?? oc;
+    circle = oc;
+    // The dark fade under the words, with the face's circle cut out so it isn't dimmed.
+    const fadeTop = Math.max(0, Math.min(top - (v ? 120 : 80), H * (v ? 0.56 : 0.48)));
+    defs.push(`<mask id="ohface" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect x="0" y="0" width="${W}" height="${H}" fill="#fff"/><circle cx="${c.cx}" cy="${c.cy}" r="${c.d / 2}" fill="#000"/></mask>`);
+    put("fade", `<rect x="0" y="${fadeTop}" width="${W}" height="${H - fadeTop}" fill="url(#fade)" mask="url(#ohface)"/>`);
+    for (const s of stack) { s.at(top); top += s.h; }
+    if (!v) contact(W * 0.96, ky + 30, "end", W * 0.42, 20);
   } else if (id === "luxury") {
     const bar = v ? H * 0.1 : H * 0.16;
     // A soft dark band behind the address, so it reads over a bright room.
@@ -383,6 +477,7 @@ export function defaultFields(id: DesignId, p: {
   const month = new Date().toLocaleString("en-US", { month: "long" });
   switch (id) {
     case "just_listed": return { headline: "JUST LISTED", address: listing?.address ?? "", price, details, ...contact };
+    case "open_house": return { headline: "OPEN HOUSE", address: listing?.address ?? "", date: "", time: "", price, details, ...contact };
     case "luxury": return { headline: "Luxury Listing", address: listing?.address ?? "", price: price ? `Offered at ${price}` : "", details, ...contact };
     case "market_update": return { headline: `Market Update · ${month}`, title: `${town} Housing Market`, s1: "", s1l: "Median price", s1c: "", s2: "", s2l: "Days on market", s2c: "", s3: "", s3l: "Homes sold", s3c: "", source: "", ...contact };
     case "neighborhood": return { headline: "Neighborhood Spotlight", name: town, highlights: "", ...contact };

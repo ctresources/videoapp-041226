@@ -9,6 +9,7 @@ import type { DesignId } from "@/lib/templates/designs";
  */
 export const OPEN_PLACE: Record<DesignId, OpenerPlace> = {
   just_listed: "home",
+  open_house: "home",
   luxury: "elegant",
   market_update: "area",
   neighborhood: "area",
@@ -20,6 +21,7 @@ export function templateLine(design: DesignId, f: Record<string, string>, compan
   const t = (k: string) => (f[k] ?? "").trim();
   switch (design) {
     case "just_listed":
+    case "open_house":
     case "luxury":
       return welcomeLine(t("address"));
     case "market_update": {

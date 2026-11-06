@@ -42,6 +42,7 @@ type Admin = ReturnType<typeof createAdminClient>;
 /** Music under the voice (2026-11-03, the owner's ask): a library track to suit each design. */
 const MUSIC: Record<DesignId, string> = {
   just_listed: "upbeat inspiring corporate",
+  open_house: "upbeat bright acoustic",
   luxury: "elegant cinematic piano",
   market_update: "modern corporate news",
   neighborhood: "warm acoustic upbeat",
@@ -132,6 +133,8 @@ export const facesOf = (p: TemplateProfile | null) => ({
 });
 /** A Market Update needs at least one of its three numbers. */
 export const hasNumbers = (f: Record<string, string>) => ["s1", "s2", "s3"].some((k) => (f[k] ?? "").trim());
+/** An Open House needs its day and its time. */
+export const hasWhen = (f: Record<string, string>) => !!(f.date ?? "").trim() && !!(f.time ?? "").trim();
 export const phoneOf = (p: TemplateProfile | null) => p?.mobile_phone || p?.phone || p?.company_phone || null;
 
 const tmp = (prefix: string) => fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -146,7 +149,11 @@ async function download(url: string, file: string) {
 export async function writeTemplateScript(o: { design: DesignId; shape: Shape; fields: Record<string, string>; name: string | null; city: string | null }): Promise<string> {
   const d = designById(o.design)!;
   const words = o.shape === "vertical" ? 75 : 105;
-  const system = `You write short spoken scripts for a real estate agent's ${d.name} video. First person, warm and confident, plain spoken English, short sentences, no stage directions, no emojis, no hashtags. About ${words} words (never more than ${words + 15}). Use only the facts given; never invent numbers, features or promises. End with one short line inviting viewers to call or message the agent. Return ONLY JSON: {"script":"..."}`;
+  // Open House (2026-11-06): the day and time said plainly, and an invitation to stop by.
+  const ask = o.design === "open_house"
+    ? "Say the open house day and time clearly, and end with one short line inviting viewers to stop by, or to call or message the agent with questions."
+    : "End with one short line inviting viewers to call or message the agent.";
+  const system = `You write short spoken scripts for a real estate agent's ${d.name} video. First person, warm and confident, plain spoken English, short sentences, no stage directions, no emojis, no hashtags. About ${words} words (never more than ${words + 15}). Use only the facts given; never invent numbers, features or promises. ${ask} Return ONLY JSON: {"script":"..."}`;
   const facts = Object.entries(o.fields).filter(([k, v]) => k !== "bg" && v?.trim()).map(([k, v]) => `${k}: ${v}`).join("\n");
   const user = `Agent: ${o.name ?? "the agent"}${o.city ? `, ${o.city}` : ""}\nWords on screen:\n${facts}`;
   const out = await openaiChatJson(system, [{ role: "user", content: user }], { label: "template-script", maxTokens: 600, timeoutMs: 30_000 });
@@ -170,6 +177,7 @@ export async function makeTemplateVideo(admin: Admin, user: { id: string }, o: {
   const d = designById(o.design);
   if (!d) return { error: "Pick a design.", status: 400 };
   if (o.design === "market_update" && !hasNumbers(o.fields)) return { error: "Add at least one number first.", status: 400 };
+  if (o.design === "open_house" && !hasWhen(o.fields)) return { error: "Add the open house date and time first.", status: 400 };
   const script = o.script.trim();
   if (!script) return { error: "Write the script first.", status: 400 };
   if (script.split(/\s+/).length > 260) return { error: "Keep the script under about 2 minutes (260 words).", status: 400 };

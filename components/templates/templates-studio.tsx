@@ -15,7 +15,7 @@ import { LookPicker } from "@/components/halo/halo-sites-card";
  * photos, see a live preview, then the script, then make. The words stay
  * editable after it's made (My Sparks → Edit the words).
  */
-type DesignId = "just_listed" | "luxury" | "market_update" | "neighborhood" | "agent_intro";
+type DesignId = "just_listed" | "open_house" | "luxury" | "market_update" | "neighborhood" | "agent_intro";
 interface Field { key: string; label: string; placeholder?: string }
 interface Design { id: DesignId; name: string; blurb: string; photos: "listing" | "place" | "none"; fields: Field[]; defaults: Record<string, string> }
 interface Listing { id: string; address: string; price: string | number; beds: string | number; baths: string | number; sqft: string | number; photos: string[] }
@@ -191,14 +191,15 @@ export function TemplatesStudio() {
   if (!setup || !d) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-spark-amber" /></div>;
   const needsPhotos = d.photos === "listing" && photos.length === 0;
   const needsNumbers = d.id === "market_update" && !["s1", "s2", "s3"].some((k) => (fields[k] ?? "").trim());
-  const blocked = needsPhotos ? "Add a photo of the home first." : needsNumbers ? "Add at least one number first." : null;
+  const needsWhen = d.id === "open_house" && !((fields.date ?? "").trim() && (fields.time ?? "").trim());
+  const blocked = needsPhotos ? "Add a photo of the home first." : needsNumbers ? "Add at least one number first." : needsWhen ? "Add the date and time first." : null;
 
   return (
     <div className="w-full">
       <h1 className="mb-4 text-[26px] font-bold text-spark-ink">Quick Reels Templates</h1>
 
-      {/* The five designs */}
-      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-5">
+      {/* The six designs: one row on a wide screen, two rows of three below it. */}
+      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
         {setup.designs.map((x) => (
           <button key={x.id} type="button" onClick={() => pickDesign(x.id)}
             className={`rounded-xl border-2 px-3 py-3 text-left ${design === x.id ? "border-spark-amber bg-white shadow-[0_0_0_3px_#fbeacc]" : "border-spark-rule bg-white hover:border-spark-amber"}`}>
@@ -241,7 +242,7 @@ export function TemplatesStudio() {
                     )}
                   </div>
                 )}
-                <label className={`block ${d.id === "market_update" && /^s\d/.test(f.key) ? "" : "sm:col-span-2"}`}>
+                <label className={`block ${(d.id === "market_update" && /^s\d/.test(f.key)) || (d.id === "open_house" && (f.key === "date" || f.key === "time")) ? "" : "sm:col-span-2"}`}>
                   <span className="mb-1 mt-2 block text-[14px] font-semibold text-spark-ink-soft">{f.label}</span>
                   <input className={input} value={fields[f.key] ?? ""} placeholder={f.placeholder} onChange={(e) => setFields({ ...fields, [f.key]: e.target.value })} />
                 </label>

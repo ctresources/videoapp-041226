@@ -53,7 +53,9 @@ interface SeoOutput {
   email_blurb: string;
 }
 
-export async function perplexityChat(messages: { role: string; content: string }[], model = "sonar-pro") {
+export async function perplexityChat(messages: { role: string; content: string }[], model = "sonar-pro",
+  /** More request options, e.g. search_domain_filter to search only some sites. */
+  extra?: Record<string, unknown>) {
   if (!process.env.PERPLEXITY_API_KEY) {
     throw new Error("PERPLEXITY_API_KEY is not set. Add it to .env.local and restart the server.");
   }
@@ -72,6 +74,7 @@ export async function perplexityChat(messages: { role: string; content: string }
       messages,
       temperature: 0.7,
       max_tokens: 4000,
+      ...extra,
     }),
     signal: controller.signal,
   }).finally(() => clearTimeout(timeout));

@@ -1209,12 +1209,15 @@ function FullGuide() {
               <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="quick-reels-templates">Quick Reels Templates<SectionVideo id="quick-reels-templates" /></span>
               <span className="block mt-1.5">
                 <strong>Quick Reels Templates</strong>, the button on Spark Studio&apos;s first screen,
-                makes a short designed reel. Pick <strong>Just Listed</strong>, <strong>Luxury
-                Listing</strong>, <strong>Market Update</strong>, <strong>Neighborhood Spotlight</strong>{" "}
-                or <strong>Agent Introduction</strong>. Your name, brokerage, phones and a saved listing
-                fill in the words on screen, and you can change any of them. On Market Update,{" "}
+                makes a short designed reel. Pick <strong>Just Listed</strong>, <strong>Open
+                House</strong>, <strong>Luxury Listing</strong>, <strong>Market Update</strong>,{" "}
+                <strong>Neighborhood Spotlight</strong> or <strong>Agent Introduction</strong>. Your name,
+                brokerage, phones and a saved listing fill in the words on screen, and you can change any
+                of them. On Open House, add the <strong>Date</strong> and <strong>Time</strong>; they go
+                on the video in a gold bar, and the script invites people to stop by. On Market Update,{" "}
                 <strong>AI search</strong> finds the area&apos;s latest median price, days on market and
-                homes sold, and shows where they came from so you can check them first. The source
+                homes sold from Redfin, Zillow, Realtor.com, Homes.com or NARRPR only, and shows where
+                they came from so you can check them first. The source
                 and month go on the video under the numbers, as <strong>Source:</strong>; edit or clear
                 it in the <strong>Source</strong> box. On Agent Introduction, <strong>Your photo</strong>{" "}
                 picks which of your looks is in the big circle.
