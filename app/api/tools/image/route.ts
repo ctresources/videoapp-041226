@@ -81,10 +81,14 @@ export async function POST(req: NextRequest) {
 
   const { data: profileRow } = await admin
     .from("profiles")
-    .select("role, first_video_generated_at")
+    .select("role, subscription_tier, first_video_generated_at")
     .eq("id", user.id)
     .single();
-  const profile = profileRow as { role?: string; first_video_generated_at?: string | null } | null;
+  const profile = profileRow as { role?: string; subscription_tier?: string | null; first_video_generated_at?: string | null } | null;
+  // A paid plan has the monthly hundred whatever the free-video mark says
+  // (2026-11-06): the mark is only set on free accounts, so Daniel Okiro,
+  // paid with three videos, was held to the two before a free video.
+  const paid = !!profile?.subscription_tier && profile.subscription_tier !== "free";
   const unlimited = hasAdminPerks(profile?.role);
   /**
    * Two before the free video, a hundred after it.
@@ -93,7 +97,7 @@ export async function POST(req: NextRequest) {
    * is let through to. Counted the same way as the monthly hundred, from rows
    * in generated_images, so there is one definition of "an AI image used".
    */
-  const imageLimit = profile?.first_video_generated_at
+  const imageLimit = profile?.first_video_generated_at || paid
     ? IMAGE_MONTHLY_LIMIT
     : FREE_IMAGES_BEFORE_VIDEO;
 

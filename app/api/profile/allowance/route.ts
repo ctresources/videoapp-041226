@@ -111,7 +111,8 @@ export async function GET() {
     // the server can never disagree.
     images: {
       used: imagesUsed,
-      limit: profile.first_video_generated_at || isAdmin
+      // Any paid plan has the hundred too (2026-11-06), as the image route does.
+      limit: profile.first_video_generated_at || isAdmin || (!!profile.subscription_tier && profile.subscription_tier !== "free")
         ? IMAGE_MONTHLY_LIMIT
         : FREE_IMAGES_BEFORE_VIDEO,
     },
