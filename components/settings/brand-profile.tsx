@@ -721,9 +721,10 @@ function DigitalTwinCreator({
         <div className="rounded-xl border border-spark-rule bg-white p-4">
           <TwinOutfits slot={slot} groupId={groupId} />
         </div>
-        {/* Backgrounds for wide videos (2026-10-24, the owner's mockup): an
-            upright twin's, so only on the first slot. */}
-        {slot === 1 && shape === "vertical" && (
+        {/* Backgrounds for wide videos (2026-10-24, the owner's mockup), on
+            the first slot. For a sideways twin too since 2026-11-06 (Daniel
+            Okiro's): wide videos already use the choice for any twin. */}
+        {slot === 1 && (
           <div className="rounded-xl border border-spark-rule bg-white p-4">
             <TwinBackgrounds mode="manage" orientation="landscape" />
           </div>

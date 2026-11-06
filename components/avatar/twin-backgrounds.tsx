@@ -192,7 +192,8 @@ export function TwinBackgrounds({
 
       <div>
         <p className="mb-1.5 text-[13px] font-semibold text-spark-ink-muted">{mode === "manage" ? "Your backgrounds" : "Background"}</p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {/* Two across in Settings, so each can be seen (2026-11-06, the owner's ask). */}
+        <div className={`grid grid-cols-2 gap-2 ${mode === "pick" ? "sm:grid-cols-4" : ""}`}>
           {mode === "pick" && allowFootage && (
             <button type="button"
               onClick={() => void choose({ type: "footage", layout: current?.type === "footage" ? current.layout : footageLayout })}
