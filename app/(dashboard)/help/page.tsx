@@ -1310,6 +1310,18 @@ function FullGuide() {
                 SparkReels doesn&apos;t post to other websites for you. No website yet? It offers{" "}
                 <strong>Get Halo</strong>, which you can skip.
               </span>
+              {/* Post to socials for a blog (2026-11-04; header made for it 2026-11-06). */}
+              <span id="post-blog-to-socials" className="block mt-1.5 scroll-mt-24">
+                <strong>Post to socials.</strong> Next to <strong>Send to Website</strong> in the
+                article&apos;s buttons, and on each article and video in My Sparks,{" "}
+                <strong>Post to socials</strong> posts your blog as a picture post to Facebook, Instagram,
+                LinkedIn, Threads or X. It uses the article&apos;s header picture with a caption of the
+                headline and a short summary. No header picture yet? It makes one from the article first
+                (about 20 seconds, 1 of your AI images) and saves it as the header. Add the blog&apos;s link in{" "}
+                <strong>Blog link</strong> (filled in when it&apos;s known) so the caption ends with{" "}
+                <strong>Read it:</strong> and the link. Pick the accounts and press <strong>Post</strong>; it
+                goes out right away. YouTube takes videos only.
+              </span>
               <span className="block mt-1.5">
                 Coming from a camera recording or a pasted script, the article starts writing itself as
                 soon as the Share Kit opens — there is nothing to press. A take recorded with no script
@@ -1625,7 +1637,9 @@ function FullGuide() {
                 allowance of 100. <strong>Update text</strong> redraws your words on the same picture
                 and costs nothing, and using <strong>My photo</strong> or one of your listing photos is
                 free. <strong>New background</strong> makes another photo, and counts as one.{" "}
-                <strong>Use as blog header</strong> sends it straight to the article it belongs to.{" "}
+                <strong>Use as blog header</strong> sends it straight to the article it belongs to. For a{" "}
+                <strong>Blog header</strong> opened from an article, you can leave everything empty: the
+                article chooses the picture.{" "}
                 <strong>Post it</strong> sends the finished graphic to your connected accounts as a
                 photo post, with a caption you write, instead of downloading it first.
               </span>
