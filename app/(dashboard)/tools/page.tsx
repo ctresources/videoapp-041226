@@ -2840,7 +2840,10 @@ function ImageGenerator({ projects, initialProjectId }: { projects: Project[]; i
       toast.error("Add at least one figure — press Read the article, or type one in.");
       return;
     }
-    if (bgSource === "ai" && !scene.trim() && !headline.trim() && !kicker.trim() && !subline.trim()) {
+    // A header for a picked article needs nothing typed: the article chooses
+    // the picture (2026-11-06, the owner's ask).
+    if (bgSource === "ai" && !scene.trim() && !headline.trim() && !kicker.trim() && !subline.trim()
+      && !(template === "blog_header" && projectId)) {
       toast.error("Describe the image or type a headline first.");
       return;
     }

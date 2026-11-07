@@ -24,17 +24,47 @@ function summary(text: string) {
   return end > 80 ? cut.slice(0, end + 1) : `${cut.slice(0, cut.lastIndexOf(" "))}…`;
 }
 
+/**
+ * No header picture yet (2026-11-06, the owner's ask): make one the way the
+ * Image Generator does for this article (one AI image), save it as the
+ * article's header, and use it. Null if it can't be made.
+ */
+async function makeHeader(projectId: string, headline: string, city: string, state: string): Promise<string | string[] | null> {
+  const t = toast.loading("Making a header picture…");
+  try {
+    const post = async (body: Record<string, unknown>) => {
+      const r = await fetch("/api/tools/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const out = await r.json().catch(() => ({})) as Record<string, unknown>;
+      return { ok: r.ok, out };
+    };
+    const made = await post({ action: "generate", projectId, template: "blog_header", shape: "wide_16x9", headline, city, state });
+    const url = (made.out.images as { url?: string }[] | undefined)?.[0]?.url;
+    if (!made.ok || !url) return [String(made.out.error ?? "Couldn't make a header picture. Try again.")];
+    await post({ action: "attach", projectId, imageUrl: url, target: "blog_header" });
+    return url;
+  } catch {
+    return null;
+  } finally {
+    toast.dismiss(t);
+  }
+}
+
 async function loadPost(projectId: string): Promise<Post | string> {
   const sb = createClient();
-  const { data } = await sb.from("projects").select("title, thumbnail_url, ai_script, seo_data").eq("id", projectId).single();
-  const p = data as { title: string | null; thumbnail_url: string | null; ai_script: Record<string, unknown> | null; seo_data: Record<string, unknown> | null } | null;
+  const { data } = await sb.from("projects").select("title, thumbnail_url, ai_script, seo_data, location_city, location_state").eq("id", projectId).single();
+  const p = data as { title: string | null; thumbnail_url: string | null; ai_script: Record<string, unknown> | null; seo_data: Record<string, unknown> | null; location_city: string | null; location_state: string | null } | null;
   if (!p) return "Couldn't open this article.";
   const ai = p.ai_script ?? {};
   const seo = p.seo_data ?? {};
   const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
-  const photo = str(ai.blog_header_url) || str(p.thumbnail_url);
-  if (!photo) return "Add a header picture to the article first.";
   const headline = str(ai.blog_headline) || str(ai.title) || str(p.title);
+  let photo = str(ai.blog_header_url) || str(p.thumbnail_url);
+  if (!photo) {
+    const made = await makeHeader(projectId, str(ai.blog_headline) || str(ai.title), str(p.location_city), str(p.location_state));
+    if (Array.isArray(made)) return made[0];
+    if (!made) return "Couldn't make a header picture. Try again.";
+    photo = made;
+  }
   const about = str(seo.meta_description) || summary(str(ai.blog_intro) || str(ai.blog_body) || str(seo.youtube_description));
   // Where the blog is: pasted in Send to Website, texted to Halo, or the Halo
   // post it came from.

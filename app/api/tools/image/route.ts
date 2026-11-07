@@ -9,6 +9,7 @@ import {
 } from "@/lib/utils/image-render";
 import { IMAGE_MONTHLY_LIMIT, aiImagesUsedThisMonth } from "@/lib/utils/image-allowance";
 import { photoBriefFor } from "@/lib/api/photo-brief";
+import { articleHeadline } from "@/lib/utils/article-headline";
 import { marketStatsFrom } from "@/lib/api/market-stats";
 import { logActivity } from "@/lib/staff/staff";
 
@@ -55,6 +56,7 @@ interface ProjectRow {
   user_id: string;
   ai_script: Record<string, unknown> | null;
   seo_data: Record<string, unknown> | null;
+  title: string | null;
 }
 
 const isHttp = (u: unknown): u is string => typeof u === "string" && /^https?:\/\//.test(u);
@@ -105,7 +107,7 @@ export async function POST(req: NextRequest) {
   if (body.projectId) {
     const { data } = await admin
       .from("projects")
-      .select("id, user_id, ai_script, seo_data")
+      .select("id, user_id, ai_script, seo_data, title")
       .eq("id", body.projectId)
       .single();
     project = data as ProjectRow | null;
@@ -208,7 +210,13 @@ export async function POST(req: NextRequest) {
   if (!scene.trim() && template === "blog_header" && project) {
     const ai = (project.ai_script ?? {}) as Record<string, unknown>;
     const str = (v: unknown) => (typeof v === "string" ? v : "");
-    const headline = str(ai.blog_headline) || str(ai.title) || (body.headline || "");
+    // An article saved without a headline still has words (2026-11-06, the
+    // owner's articles): its titles, else its first sentence.
+    const titled = articleHeadline(ai as { blog_headline?: string; title?: string }, project.seo_data as { youtube_title?: string; meta_title?: string } | null, project.title);
+    const firstLine = [str(ai.blog_intro), str(ai.blog_body)].join(" ").replace(/^H[23]:\s*/gm, "").replace(/\s+/g, " ").trim()
+      .split(/(?<=[.?!])\s/)[0]?.slice(0, 160) ?? "";
+    const headline = str(ai.blog_headline) || str(ai.title) || (body.headline || "")
+      || (titled !== "Untitled post" ? titled : "") || firstLine;
     const brief = headline
       ? await photoBriefFor({
           headline,
