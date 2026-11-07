@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyAffiliateCommission, notifyCommissionEarned } from "@/lib/email";
 import { affiliateIsActive } from "@/lib/affiliate";
+import { acceptedAffiliateTerms } from "@/lib/affiliate-terms";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -31,12 +32,12 @@ export async function createCommissionIfEligible(
 
   const { data: affRow } = await admin
     .from("affiliates")
-    .select("id, user_id, email, full_name, status, commission_rate, commission_duration_months")
+    .select("id, user_id, email, full_name, status, commission_rate, commission_duration_months, terms_version")
     .eq("id", profile.referred_by_affiliate_id)
     .single();
   const affiliate = affRow as {
     id: string; user_id: string | null; email: string | null; full_name: string | null; status: string;
-    commission_rate: number; commission_duration_months: number;
+    commission_rate: number; commission_duration_months: number; terms_version: string | null;
   } | null;
   if (!affiliate || affiliate.status !== "approved") return;
   // Paused (no longer a paid subscriber, 2026-10-28, the owner's call): no
@@ -52,6 +53,14 @@ export async function createCommissionIfEligible(
   if (!customerId) return;
   const subField = (invoice as unknown as { subscription?: string | { id: string } | null }).subscription;
   const subscriptionId = !subField ? null : typeof subField === "string" ? subField : subField.id;
+
+  // Current Affiliate Program Terms not accepted yet (2026-11-07, the owner's
+  // call): referrals already converted keep earning, but no new one starts.
+  if (!acceptedAffiliateTerms(affiliate)) {
+    const { data: existing } = await admin.from("affiliate_conversions").select("id")
+      .eq("user_id", userId).eq("affiliate_id", affiliate.id).maybeSingle();
+    if (!existing) return;
+  }
 
   // Upsert the conversion — the FIRST payment anchors the commission window.
   const eligibleUntil = new Date();

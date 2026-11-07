@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveAffiliateForUser, userAffiliateEligible } from "@/lib/affiliate";
 import { NextResponse } from "next/server";
+import { AFFILIATE_TERMS_VERSION, acceptedAffiliateTerms } from "@/lib/affiliate-terms";
 
 /**
  * GET /api/affiliate/me — the signed-in user's affiliate status, referral
@@ -69,6 +70,13 @@ export async function GET() {
       commissionDurationMonths: affiliate.commission_duration_months,
       // Their own Halo link, for referred agents' Get Halo button (2026-10-24).
       haloLink: (affiliate as { halo_link?: string | null }).halo_link ?? null,
+      // The Affiliate Program Terms (2026-11-07): accepted only when it's the
+      // current version.
+      termsVersion: AFFILIATE_TERMS_VERSION,
+      termsAccepted: acceptedAffiliateTerms(affiliate as { terms_version?: string | null }),
+      termsAcceptedAt: acceptedAffiliateTerms(affiliate as { terms_version?: string | null })
+        ? (affiliate as { terms_accepted_at?: string | null }).terms_accepted_at ?? null
+        : null,
     },
     stats: {
       clicks: clicksRes.count ?? 0,

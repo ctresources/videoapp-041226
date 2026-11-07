@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { HaloLinkCard } from "@/components/affiliate/halo-link-card";
+import { AffiliateTermsCard } from "@/components/affiliate/terms-card";
 import { AFFILIATE_ELIGIBILITY_TEXT } from "@/lib/access";
 import {
   DollarSign, Copy, Check, MousePointerClick, UserCheck, Clock, Wallet, CircleCheck, Loader2,
@@ -20,6 +21,8 @@ interface Me {
     commissionRate: number;
     commissionDurationMonths: number;
     haloLink?: string | null;
+    termsAccepted?: boolean;
+    termsAcceptedAt?: string | null;
   } | null;
   stats?: { clicks: number; conversions: number; pendingCents: number; availableCents: number; paidCents: number; deductionCents?: number };
   appUrl?: string;
@@ -84,7 +87,7 @@ export default function AffiliatePage() {
       </div>
       <div>
         <h2 className="text-2xl font-bold text-brand-text">Affiliate Program</h2>
-        <p className="text-sm text-slate-500">Earn 20% recurring commission for a referral&apos;s first 12 months.</p>
+        <p className="text-sm text-slate-500">You earn 20% of what each referral pays SparkReels.ai, for 12 months.</p>
         {/* The owner's wording (2026-10-28). */}
         <p className="text-sm text-slate-500">{AFFILIATE_ELIGIBILITY_TEXT}</p>
       </div>
@@ -103,7 +106,7 @@ export default function AffiliatePage() {
       <div className="w-full">
         {header}
         <Card className="text-center py-10">
-          <h3 className="text-lg font-bold text-brand-text mb-2">Join the SparkReels affiliate program</h3>
+          <h3 className="text-lg font-bold text-brand-text mb-2">Join the SparkReels.ai affiliate program</h3>
           <p className="text-sm text-slate-500 max-w-md mx-auto mb-5">
             Refer new customers and earn 20% commission on their subscription — recurring for their first 12 months,
             paid monthly to your bank.
@@ -160,6 +163,12 @@ export default function AffiliatePage() {
   return (
     <div className="w-full">
       {header}
+
+      {/* The SparkReels.ai Affiliate Program Terms (2026-11-07). */}
+      <AffiliateTermsCard
+        acceptedAt={aff.termsAccepted ? (aff.termsAcceptedAt ?? new Date().toISOString()) : null}
+        onAccepted={(at) => setData((d) => d?.affiliate ? { ...d, affiliate: { ...d.affiliate, termsAccepted: true, termsAcceptedAt: at } } : d)}
+      />
 
       {/* Referral link */}
       <Card className="mb-5">

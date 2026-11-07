@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe";
 import { affiliateIsActive } from "@/lib/affiliate";
+import { acceptedAffiliateTerms } from "@/lib/affiliate-terms";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -181,11 +182,12 @@ export async function GET(req: NextRequest) {
 
     const { data: affRow } = await admin
       .from("affiliates")
-      .select("stripe_connect_account_id, connect_onboarding_status, status, user_id")
+      .select("stripe_connect_account_id, connect_onboarding_status, status, user_id, terms_version")
       .eq("id", affiliateId)
       .single();
     const affiliate = affRow as {
       stripe_connect_account_id: string | null; connect_onboarding_status: string; status: string; user_id: string | null;
+      terms_version: string | null;
     } | null;
     if (!affiliate?.stripe_connect_account_id || affiliate.connect_onboarding_status !== "complete") {
       skipped++;
@@ -194,6 +196,12 @@ export async function GET(req: NextRequest) {
     // Paused (no longer a paid subscriber, 2026-10-28): held, not lost. The
     // balance is paid on the first 1st after they subscribe again.
     if (!(await affiliateIsActive(admin, affiliate))) {
+      skipped++;
+      continue;
+    }
+    // Current Affiliate Program Terms not accepted yet (2026-11-07): held,
+    // not lost, and paid on the first 1st after they accept.
+    if (!acceptedAffiliateTerms(affiliate)) {
       skipped++;
       continue;
     }
