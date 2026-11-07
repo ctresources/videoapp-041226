@@ -290,27 +290,31 @@ function FullGuide() {
               </span>
               {/* Digital Twin backgrounds (2026-10-24, the owner's mockup; Photos & footage 2026-10-31). */}
               <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="digital-twin-backgrounds">Backgrounds for your twin<SectionVideo id="digital-twin-backgrounds" /></span>
+              {/* Rewritten 2026-11-06 (the owner's approved wording). */}
               <span className="block mt-1">
-                Your twin is filmed upright, so in a horizontal video your own background can be taken away.
-                In video setup for a horizontal <strong>Avatar video</strong>, under <strong>Background</strong>,
-                press <strong>On my background</strong>, then pick:
+                In a horizontal video, your twin&apos;s own background can be taken away. In{" "}
+                <strong>Settings → 4 · Digital Twin</strong>, <strong>Wide videos</strong> sets what new wide
+                videos start with:
               </span>
               <span className="block mt-1">
-                <strong>Photos &amp; footage</strong>: you stand in front of the video&apos;s own photos and
-                clips as they play. Under <strong>Where you stand</strong>, choose <strong>Side</strong> (full
-                height) or <strong>Corner</strong> (smaller). Short videos only.
+                <strong>Me on my background</strong>: you stand in front of a picture from{" "}
+                <strong>Your backgrounds</strong>, or a color. Press <strong>+ Describe</strong>, type or say a
+                place and press <strong>Make it</strong> to add one (about 20 seconds). Tap one to make it your
+                default. Up to 20 new backgrounds a month.
               </span>
               <span className="block mt-1">
-                <strong>A saved background or a color</strong>: you stand full size in front of one picture.
-                Your <strong>Agent Intro</strong> always uses one of these.
+                <strong>Me on my footage</strong>: you&apos;re cut out and placed over the video&apos;s own
+                photos and clips, at the <strong>Side</strong> (full height) or in the <strong>Corner</strong>{" "}
+                (smaller). Short videos only.
               </span>
               <span className="block mt-1">
-                In <strong>Settings → 4 · Digital Twin</strong>, <strong>Wide videos</strong> sets what new
-                videos start on: <strong>Me on my footage</strong>, <strong>Me on my background</strong>, or{" "}
-                <strong>Avatar in circle</strong>. <strong>Your backgrounds</strong> keeps your pictures: a
-                color, a town photo, or press <strong>+ Describe</strong>, type or say a place and press{" "}
-                <strong>Make it</strong> (about 20 seconds). Tap one to make it your default. Up to 20 new
-                backgrounds a month.
+                <strong>Avatar in circle</strong>: your twin sits in a circle over the photos and clips.
+              </span>
+              <span className="block mt-1">
+                To change it for one video, use <strong>Background</strong> in video setup. Tall videos keep
+                the background your twin was filmed in. Outfits can&apos;t be cut out, so Background shows
+                only when your twin itself is picked. Your <strong>Agent Intro</strong> always uses a
+                background.
               </span>
               {/* Twin outfits (2026-10-28, the owner's ask). */}
               {/* Paid plans only (2026-10-28): data-paid-only keeps it out of a free account's Sparklee. */}
@@ -319,8 +323,8 @@ function FullGuide() {
                 Want your twin in something else? In <strong>Settings → 4 · Digital Twin</strong>, under{" "}
                 <strong>Outfits</strong>, describe it (like <em>navy blazer over a white shirt</em>) and press{" "}
                 <strong>New outfit</strong>. It takes a minute or two, and it moves like your twin. Each outfit
-                then shows up as a look in video setup and works everywhere your twin does, approval and
-                backgrounds included. Your first new look each month is free; after that each one uses one
+                then shows up as a look in video setup and works everywhere your twin does, approval
+                included. Your first new look each month is free; after that each one uses one
                 short video. Tap the bin on an outfit to remove it. The <strong>New look</strong> under your
                 photo avatar changes only the photo avatar, not your twin.
               </span>

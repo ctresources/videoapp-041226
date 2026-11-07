@@ -1992,7 +1992,7 @@ export default function ProjectEditorPage() {
           ...(uploadedPhotos.length > 0 && { extraPhotoUrls: uploadedPhotos.map((p) => p.url) }),
           // The Digital Twin's background (2026-10-24); the server uses it
           // only for a twin in a horizontal video.
-          ...(twinBgOffered && twinOnBg && twinBg && { twinBackground: twinBg }),
+          ...(twinBgOffered && twinOnBgNow && twinBg && { twinBackground: twinBg }),
           // The agent in front of the home, first (2026-10-24).
           ...(openerOffered && openerChoice !== "off" && { opener: openerChoice }),
           // Experiment, off unless ?pip=1 is on the URL — see the note by the flag.
@@ -3307,10 +3307,16 @@ export default function ProjectEditorPage() {
    * an upright Digital Twin. Avatar video: in the corner over b-roll, or full
    * height on a background. Longform: in the circle, or on a background.
    */
-  const pickedTwin = looks.find((l) => l.id === selectedLookId);
+  // Any twin, upright or sideways, and shown with Avatar in circle too
+  // (2026-11-06, the owner's ask): "On my background" then switches the
+  // video to the twin full size. Not on tall videos (it can't be cut out
+  // there) or outfits (only the twin itself can), nor when full size is
+  // locked (plan or length).
   const twinBgOffered = renderMode === "avatar_voice" && !selfRecord
-    && !!selectedLookId && baseTwinIds.includes(selectedLookId) && pickedTwin?.shape !== "landscape"
-    && (selectedVideoType === "youtube_long" || (selectedVideoType === "youtube_16x9" && !circleStyle));
+    && !!selectedLookId && baseTwinIds.includes(selectedLookId)
+    && (selectedVideoType === "youtube_long" || (selectedVideoType === "youtube_16x9" && !fullBlocked));
+  /** On a background right now: a wide Avatar video in the circle can't be. */
+  const twinOnBgNow = twinOnBg && (selectedVideoType === "youtube_long" || !circleStyle);
   // The opener is offered on a listing video in the circle (2026-10-24).
   const openerOffered = circleStyle && renderMode === "avatar_voice" && !selfRecord
     && selectedVideoType !== "youtube_long" && selectedVideoType !== "short_1x1"
@@ -3974,22 +3980,35 @@ export default function ProjectEditorPage() {
               </>
             )}
 
-            {/* Background, for a wide video with an upright twin (2026-10-29). */}
+            {/* Background, for a wide video with the twin (2026-10-29; any twin, and with the circle, 2026-11-06). */}
             {twinBgOffered && (
               <div className="mb-5">
                 <p className="text-xs font-medium text-slate-500 mb-1">Background</p>
                 <div className="mb-3 flex flex-wrap gap-2">
                   {([
-                    [false, selectedVideoType === "youtube_long" ? "In the circle" : "In the corner, b-roll behind"],
+                    [false, selectedVideoType === "youtube_long" || circleStyle ? "In the circle" : "In the corner, b-roll behind"],
                     [true, "On my background"],
                   ] as const).map(([on, label]) => (
-                    <button key={label} type="button" onClick={() => setTwinOnBg(on)}
-                      className={`rounded-xl border px-3 py-1.5 text-[13.5px] font-semibold ${twinOnBg === on ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]" : "border-spark-rule bg-white text-spark-ink-soft"}`}>
+                    <button key={label} type="button" onClick={() => {
+                      setTwinOnBg(on);
+                      // On a background is the twin full size: out of the circle.
+                      if (on && selectedVideoType === "youtube_16x9" && avatarStyle === "circle") {
+                        setAvatarStyle("full");
+                        if (project) {
+                          fetch("/api/project/save-draft", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ projectId: project.id, avatarStyle: "full" }),
+                          }).catch(() => { /* the render still carries it */ });
+                        }
+                      }
+                    }}
+                      className={`rounded-xl border px-3 py-1.5 text-[13.5px] font-semibold ${twinOnBgNow === on ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]" : "border-spark-rule bg-white text-spark-ink-soft"}`}>
                       {label}
                     </button>
                   ))}
                 </div>
-                {twinOnBg && (
+                {twinOnBgNow && (
                   <TwinBackgrounds
                     mode="pick"
                     value={twinBg}
