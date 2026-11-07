@@ -1317,7 +1317,8 @@ function FullGuide() {
                 <strong>Post to socials</strong> posts your blog as a picture post to Facebook, Instagram,
                 LinkedIn, Threads or X. It uses the article&apos;s header picture with a caption of the
                 headline and a short summary. No header picture yet? It makes one from the article first
-                (about 20 seconds, 1 of your AI images) and saves it as the header. Add the blog&apos;s link in{" "}
+                (about 20 seconds, 1 of your AI images) and saves it as the header; refresh the page to see
+                it on the article. Add the blog&apos;s link in{" "}
                 <strong>Blog link</strong> (filled in when it&apos;s known) so the caption ends with{" "}
                 <strong>Read it:</strong> and the link. Pick the accounts and press <strong>Post</strong>; it
                 goes out right away. YouTube takes videos only.
