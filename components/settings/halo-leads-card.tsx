@@ -57,6 +57,7 @@ export function HaloLeadsCard() {
     const out = await res.json().catch(() => ({}));
     if (!res.ok) { toast.error(out.error ?? "Couldn't save that."); return; }
     setData((d) => (d ? { ...d, settings: out.settings } : d));
+    toast.success("Saved.");
   }
 
   const select = "rounded-lg border border-spark-rule bg-white px-2 py-1 text-[14px] font-semibold text-spark-ink";
