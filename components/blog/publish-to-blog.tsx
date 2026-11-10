@@ -38,6 +38,13 @@ export function PublishToBlog({ projectId, headline, defaultAuthor }: { projectI
       .catch(() => {});
   }, [projectId]);
 
+  // Not published yet: follow the Headline box if it is edited.
+  useEffect(() => {
+    if (status) return;
+    setTitle(headline);
+    setSlug(slugOf(headline));
+  }, [headline, status]);
+
   async function publish() {
     setBusy(true);
     try {

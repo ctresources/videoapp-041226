@@ -5026,7 +5026,11 @@ export default function ProjectEditorPage() {
                       {allowance?.isRealAdmin && (
                         <PublishToBlog
                           projectId={project.id}
-                          headline={script.blog_headline || project.title || ""}
+                          headline={(() => {
+                            // The same headline the Share Kit's Headline box shows (2026-11-10).
+                            const h = articleHeadline(script as { blog_headline?: string; title?: string }, project.seo_data as { youtube_title?: string; meta_title?: string } | null, project.title);
+                            return h === "Untitled post" ? "" : h;
+                          })()}
                           defaultAuthor={contactInfo?.full_name}
                         />
                       )}

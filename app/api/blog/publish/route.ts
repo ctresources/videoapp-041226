@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { articleFaqs, blogAsHtml } from "@/lib/utils/blog-html";
 import { slugify } from "@/lib/blog/posts";
+import { articleHeadline } from "@/lib/utils/article-headline";
 
 export const dynamic = "force-dynamic";
 
@@ -55,10 +56,10 @@ export async function POST(req: NextRequest) {
 
   const { data: project } = await admin
     .from("projects")
-    .select("id, user_id, title, ai_script")
+    .select("id, user_id, title, ai_script, seo_data")
     .eq("id", body.projectId)
     .single();
-  const proj = project as { id: string; user_id: string; title: string | null; ai_script: Record<string, string | undefined> | null } | null;
+  const proj = project as { id: string; user_id: string; title: string | null; ai_script: Record<string, string | undefined> | null; seo_data: { youtube_title?: string; meta_title?: string } | null } | null;
   if (!proj || proj.user_id !== user.id) return NextResponse.json({ error: "Post not found" }, { status: 404 });
 
   const s = proj.ai_script ?? {};
@@ -69,7 +70,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "There's no article to publish yet." }, { status: 400 });
   }
 
-  const title = (body.title?.trim() || s.blog_headline?.trim() || proj.title?.trim() || "").slice(0, 200);
+  // The Share Kit's Headline, never the long project name (2026-11-10).
+  const headline = articleHeadline(s, proj.seo_data, proj.title);
+  const title = (body.title?.trim() || (headline === "Untitled post" ? "" : headline)).slice(0, 200);
   if (!title) return NextResponse.json({ error: "Give the post a title." }, { status: 400 });
   const slug = slugify(body.slug?.trim() || title);
 
