@@ -30,11 +30,11 @@ const PAID_NAV: NavItem[] = [
   // Weekly Autopilot's review screen (2026-10-21).
   { href: "/autosparks", label: "AutoSparks", from: "lg" },
   { href: "/tools", label: "Spark Tools", from: "md" },
+  // Right after Spark Tools (2026-11-10, the owner's ask; was before How It Works).
+  { href: "/whats-new", label: "What's New", from: "xl" },
   { href: "/calendar", label: "Spark Calendar", from: "lg" },
   { href: "/analytics", label: "Spark Insights", from: "lg" },
   { href: "/settings", label: "Settings", from: "xl" },
-  // Just before How It Works (2026-10-28, the owner's brief).
-  { href: "/whats-new", label: "What's New", from: "xl" },
   { href: "/help", label: "How It Works", from: "xl" },
   // After How It Works, then Meet (2026-10-29, the owner's ask), in both bars.
   { href: "/affiliate", label: "Affiliate", from: "xl" },

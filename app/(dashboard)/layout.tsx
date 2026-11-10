@@ -75,7 +75,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Mobile sidebar */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-40 transition-transform duration-300 md:hidden",
+          // Scrolls on short phone screens (2026-11-10, the owner's ask).
+          "nav-scroll fixed inset-y-0 left-0 z-40 overflow-y-auto overscroll-contain transition-transform duration-300 md:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -85,7 +86,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* The side menu on computers again (2026-10-29, the owner's ask), with
           the page names still across the top bar too (top-nav.tsx). Pinned
           while the page scrolls. It was off from 2026-10-14 to 10-29. */}
-      <div className="sticky top-0 hidden h-screen shrink-0 self-start overflow-y-auto md:block">
+      <div className="nav-scroll sticky top-0 hidden h-screen shrink-0 self-start overflow-y-auto overscroll-contain md:block">
         <Sidebar />
       </div>
 

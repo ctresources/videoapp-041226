@@ -224,3 +224,9 @@
 .blog-prose h2 { color: #0f172a; font-size: 1.75rem; font-weight: 900; line-height: 1.25; margin: 2.5rem 0 1rem; }
 .blog-prose h3 { color: #0f172a; font-size: 1.3rem; font-weight: 700; line-height: 1.35; margin: 1.75rem 0 0.6rem; }
 .blog-prose img, .blog-prose video { width: 100%; height: auto; border-radius: 0.75rem; margin: 0 0 1.5rem; }
+
+/* The side menu's scroll bar (2026-11-10): thin, and only there when the menu is taller than the screen. */
+.nav-scroll { scrollbar-width: thin; scrollbar-color: #d9d3c4 transparent; }
+.nav-scroll::-webkit-scrollbar { width: 6px; }
+.nav-scroll::-webkit-scrollbar-thumb { background: #d9d3c4; border-radius: 9999px; }
+.nav-scroll::-webkit-scrollbar-track { background: transparent; }
