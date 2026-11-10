@@ -10,14 +10,13 @@ const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const YOUTUBE_API = "https://www.googleapis.com/youtube/v3";
 const YOUTUBE_UPLOAD_API = "https://www.googleapis.com/upload/youtube/v3";
 
-// youtube.force-ssl (2026-10-25, the owner's ask) lets the app read the spoken
-// words from captions of the owner's own videos, for the blog. Existing
-// connections keep their current permissions and keep publishing; the new one
-// applies when a channel is connected (or reconnected). Google reviews it.
+// Only the two scopes Google verified on 2026-08-17. youtube.force-ssl (added
+// 2026-10-25 for reading captions, never used) was removed 2026-11-09: it was
+// never verified, so every connect showed "Google hasn't verified this app".
+// Add a scope back only after Google has approved it in the Cloud Console.
 const SCOPES = [
   "https://www.googleapis.com/auth/youtube.upload",
   "https://www.googleapis.com/auth/youtube.readonly",
-  "https://www.googleapis.com/auth/youtube.force-ssl",
 ].join(" ");
 
 export function getRedirectUri(): string {
