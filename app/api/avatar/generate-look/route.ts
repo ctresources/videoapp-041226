@@ -32,10 +32,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   /** A new outfit for the Digital Twin (2026-10-28) rather than the photo avatar. */
-  const forTwin = body.twin === true;
+  let forTwin = body.twin === true;
   const prompt = body.prompt as string | undefined;
-  const name = (body.name as string | undefined)
-    || `${forTwin ? "Twin outfit" : "New Look"} ${new Date().toLocaleDateString()}`;
 
   if (!prompt || prompt.trim().length < 10) {
     return NextResponse.json({ error: "prompt must be at least 10 characters" }, { status: 400 });
@@ -49,6 +47,20 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+
+  /**
+   * The Create page's Generate new look sends whatever look is selected
+   * (2026-11-10). When that is one of the twins, or an outfit made from one,
+   * it becomes a twin outfit, as in Settings, instead of "not on your account".
+   */
+  if (!forTwin && typeof body.avatarId === "string") {
+    const t = profile as unknown as { heygen_digital_twin_look_id: string | null; heygen_twin2_look_id: string | null; twin_outfit_look_ids: string[] | null };
+    const asked = body.avatarId as string;
+    if (asked === t.heygen_twin2_look_id) { forTwin = true; body.slot = 2; }
+    else if (asked === t.heygen_digital_twin_look_id || (t.twin_outfit_look_ids ?? []).includes(asked)) { forTwin = true; body.slot = 1; }
+  }
+  const name = (body.name as string | undefined)
+    || `${forTwin ? "Twin outfit" : "New Look"} ${new Date().toLocaleDateString()}`;
 
   /**
    * Which look the new one starts from, decided here and not trusted from the
