@@ -1029,6 +1029,15 @@ function FullGuide() {
                 <strong>Open in Halo</strong> on each card. An avatar video uses 1 short video; Email only and Me
                 on camera use none. Your own notes on a lead in Halo never come to SparkReels.
               </span>
+              {/* Two accounts, two webhooks (2026-11-10, the owner's ask; Halo confirmed it). */}
+              <span className="block mt-1.5">
+                <strong>Two SparkReels accounts?</strong> Halo can send to more than one webhook, and every lead
+                goes to each one. In Halo, press <strong>Add another</strong> → <strong>Custom webhook</strong>{" "}
+                (not Replace URL) and paste the second account&apos;s Link and Secret. Then, in each
+                account&apos;s Halo leads box, turn on only the kind it should get. For example,{" "}
+                <strong>Buyer &amp; seller leads</strong> On in your real estate account, and{" "}
+                <strong>Business forms</strong> On in the other. Each lead then shows up in one account only.
+              </span>
               <span className="block mt-3 font-semibold text-brand-text scroll-mt-20" id="halo-promo">Promo video for your Halo referral page<SectionVideo id="halo-promo" /></span>
               <span className="block mt-1">
                 Add your Halo referral page too. It is marked <strong>Affiliate</strong> and has a{" "}
