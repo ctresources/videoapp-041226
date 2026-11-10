@@ -5093,10 +5093,10 @@ export default function ProjectEditorPage() {
                               onClick={() => setVideoMenuOpen((o) => !o)}
                               aria-haspopup="menu"
                               aria-expanded={videoMenuOpen}
-                              className="flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-3 py-1.5 text-xs font-medium text-spark-amber transition-colors hover:border-spark-amber"
+                              className="flex items-center gap-2 rounded-lg border border-spark-amber bg-spark-amber px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#A3660F]"
                             >
-                              <Video size={12} /> Video
-                              <ChevronDown size={12} className={`transition-transform ${videoMenuOpen ? "rotate-180" : ""}`} />
+                              <Video size={16} /> Video
+                              <ChevronDown size={14} className={`transition-transform ${videoMenuOpen ? "rotate-180" : ""}`} />
                             </button>
                             {videoMenuOpen && (
                               <div role="menu" className="absolute left-0 sm:left-auto sm:right-0 top-full z-20 mt-1 w-64 max-w-[80vw] rounded-xl border border-spark-rule bg-white p-1 shadow-lg">
