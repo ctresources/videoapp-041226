@@ -40,6 +40,7 @@ const PAID_API_WRITES = [
   "/api/halo/promo",             // Halo referral promo video
   "/api/autopilot",              // AutoSparks: Ask for ideas
   "/api/seller-auto",            // seller updates on AutoSparks
+  "/api/halo-leads",             // Halo leads: settings and cards (2026-11-09); Halo's own POST is /api/halo/leads/<token>
   "/api/video-email/send",       // Email it
   "/api/seller-listings",        // Seller Update (Spark Tools)
   "/api/review-request",         // Ask for Google Review Video Email

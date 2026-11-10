@@ -471,6 +471,11 @@ function FullGuide() {
                 <strong>Your Halo website</strong> is on the same tab, under CRM Integration. Step 16 explains
                 what it does.
               </span>
+              {/* Halo leads (2026-11-09). */}
+              <span className="block mt-1.5">
+                <strong>Halo leads</strong> is on the same tab too: it sends your Halo leads to SparkReels so each
+                one gets a video reply. Step 16 explains how to connect it.
+              </span>
             </Step>
             <Step n={11} title="Your Plan And Buying More Videos" icon={DollarSign}>
               <Link href="/settings/billing" className="text-primary-600 font-medium hover:underline">Settings → 11 · Billing &amp; Plan</Link>{" "}
@@ -992,6 +997,37 @@ function FullGuide() {
                 AutoSparks; if it hasn&apos;t noticed yet, press <strong>It&apos;s on my post</strong> (and{" "}
                 <strong>Not yet</strong> undoes it). Finished cards (posted, and on your Halo post) fold into a{" "}
                 <strong>Done</strong> line once newer cards arrive; <strong>Show</strong> opens them again.
+              </span>
+              {/* Halo leads (2026-11-09, the owner's approved mockup). */}
+              <span className="block mt-3 font-semibold text-brand-text scroll-mt-20" id="halo-leads">Halo leads</span>
+              <span className="block mt-1">
+                Send each new lead from your Halo website to SparkReels, so it gets a video reply. In{" "}
+                <Link href="/settings/crm#halo-leads" className="text-primary-600 font-medium hover:underline">Settings → 10 · CRM → Halo leads</Link>,
+                copy the <strong>Link</strong> and the <strong>Secret</strong>. In Halo, open your leads, press{" "}
+                <strong>Send to my CRM</strong>, choose <strong>Custom webhook</strong>, paste the link in the first
+                box and the secret in the second, then press <strong>Connect and send a test</strong>. The box in
+                Settings then says <strong>✓ Connected</strong>. Turn <strong>Buyer &amp; seller leads</strong>{" "}
+                and <strong>Business forms</strong> (someone asking to be featured on your site){" "}
+                <strong>On</strong> or <strong>Off</strong>. Add <strong>Your Halo link or code</strong> and a{" "}
+                <strong>Booking link</strong> for the business email.
+              </span>
+              <span className="block mt-1.5">
+                Each lead gets a card under <strong>Halo leads</strong> on AutoSparks. Nothing is written or made
+                until you press <strong>Write it</strong>: it writes the email and the video script (a welcome
+                for a buyer or seller, a spotlight for a business). Change the script by typing, or tap the mic
+                and say it. Then pick who says it: <strong>Avatar video</strong> (about 5 to 10 minutes),{" "}
+                <strong>Me on camera · unlimited</strong> (the camera opens with the script in the teleprompter;
+                come back to AutoSparks and your recording is on the card) or <strong>Email only</strong>. The
+                business email introduces Halo and SparkReels as two separate tools, with a button to each, and
+                says why someone might use one or both. <strong>Watch</strong> the video,{" "}
+                <strong>Edit email</strong> to change the subject and words, <strong>Preview email</strong> to
+                see it as it will look, then press <strong>Approve to send</strong> (or{" "}
+                <strong>Change video</strong> to choose again). It sends right away: a buyer or seller through BoldTrail when it&apos;s
+                connected (added there as a contact), otherwise from you via SparkReels with replies coming to
+                you. An approved avatar spotlight also goes in your Halo drafts to post. Two forms from the same person
+                within an hour become one card. Calling, texting and the lead&apos;s status stay in Halo:{" "}
+                <strong>Open in Halo</strong> on each card. An avatar video uses 1 short video; Email only and Me
+                on camera use none. Your own notes on a lead in Halo never come to SparkReels.
               </span>
               <span className="block mt-3 font-semibold text-brand-text scroll-mt-20" id="halo-promo">Promo video for your Halo referral page<SectionVideo id="halo-promo" /></span>
               <span className="block mt-1">

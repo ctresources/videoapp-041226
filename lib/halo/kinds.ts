@@ -17,4 +17,5 @@ export const HALO_KINDS: { id: HaloKind; label: string }[] = [
   { id: "other", label: "Any new page" },
 ];
 
-export const kindLabel = (k: string) => HALO_KINDS.find((x) => x.id === k)?.label ?? "Page";
+// "spotlight": a business spotlight video from a Halo lead (2026-11-09).
+export const kindLabel = (k: string) => k === "spotlight" ? "Spotlight" : HALO_KINDS.find((x) => x.id === k)?.label ?? "Page";

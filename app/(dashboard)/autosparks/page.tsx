@@ -18,6 +18,7 @@ import { PAID_TIERS } from "@/lib/utils/plan-features";
 import { useHalo } from "@/components/halo/use-halo";
 import { HaloDrafts, SparkleeDrafts } from "@/components/halo/halo-drafts";
 import { SellerAutoSection } from "@/components/seller/seller-auto-section";
+import { HaloLeadsSection } from "@/components/halo/halo-leads-section";
 import { OutOfVideosModal } from "@/components/out-of-videos-modal";
 import { FeatureVideos } from "@/components/autosparks/feature-videos";
 import { useAccount } from "@/lib/hooks/use-account";
@@ -417,6 +418,8 @@ export default function AutopilotPage() {
       {/* SparkReels mode (2026-11-01): the demo account's feature list. */}
       {account?.sparkreelsMode && <FeatureVideos onMade={() => setTimeout(() => void halo.reloadDrafts(), 1500)} />}
 
+      {/* Halo leads (2026-11-09): replies to leads Halo sent, ready to approve. */}
+      <HaloLeadsSection />
       <SparkleeDrafts halo={halo} needsVideo={needsVideo} onOutOfVideos={() => setOutOfVideos(true)} />
       <HaloDrafts halo={halo} needsVideo={needsVideo} onOutOfVideos={() => setOutOfVideos(true)} />
       {/* Seller updates through BoldTrail (2026-10-26). */}

@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { CrmIntegrations } from "@/components/settings/crm-integrations";
 import { BoldTrailConnect } from "@/components/settings/boldtrail-connect";
 import { HaloSettingsCard } from "@/components/halo/halo-settings-card";
+import { HaloLeadsCard } from "@/components/settings/halo-leads-card";
 import { LockedFeature } from "@/components/access/locked-feature";
 import { useAccount } from "@/lib/hooks/use-account";
 
@@ -49,6 +50,9 @@ export default function CrmSettingsPage() {
       {account?.paid ? <HaloSettingsCard /> : account ? (
         <LockedFeature compact feature="Halo website" body="Turn your Halo website posts into videos with a paid plan." />
       ) : null}
+
+      {/* Halo leads (2026-11-09): Halo's Custom webhook posts each lead here. */}
+      {account?.paid && <HaloLeadsCard />}
     </div>
   );
 }

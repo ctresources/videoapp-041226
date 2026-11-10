@@ -30,6 +30,17 @@ export type WhatsNewItem = {
 
 const ITEMS: WhatsNewItem[] = [
   {
+    id: "halo-leads",
+    title: "Halo Leads",
+    description:
+      "Reply to every new lead from your Halo website with a video. SparkReels writes the email and script, a welcome for buyers and sellers or a spotlight for businesses. Your avatar says it, or you record it yourself, and you approve it to send.",
+    releaseDate: "2026-11-09",
+    featureKey: "autosparks",
+    howItWorksAnchor: "halo-leads",
+    badge: "NEW",
+    paidOnlyDetails: true,
+  },
+  {
     id: "quick-reels-templates",
     title: "Quick Reels Templates",
     description:
