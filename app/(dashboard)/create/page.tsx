@@ -1275,10 +1275,16 @@ function CreatePageInner() {
       // for on this route.
       // And the whole document when AI is writing from it, up to what the
       // writer reads. The default is the first 5,000 characters.
-      formData.append("maxChars", pasteSource === "blog" ? "20000" : String(SOURCE_CHAR_LIMIT));
+      formData.append("maxChars", pasteSource === "blog" || pasteSource === "own" ? "20000" : String(SOURCE_CHAR_LIMIT));
       const res = await fetch("/api/ai/extract-pdf", { method: "POST", body: formData });
       const body = await safeJson(res);
       if (!res.ok) throw new Error((body?.error as string) || "Failed to extract PDF");
+      // Word for word: the PDF's text is the script itself (2026-11-11).
+      if (pasteSource === "own") {
+        setPasteScript(body.text as string);
+        toast.success("PDF text is in Your Script.");
+        return;
+      }
       setPastePdfText(body.text as string);
       // In blog mode the PDF IS the source material, so it fills the box about
       // to be summarised — the same thing fetching a URL does. Without this the
@@ -1308,11 +1314,16 @@ function CreatePageInner() {
    * so unlike scraped photos they need no rehosting here.
    */
   function handlePasteEmailPick(article: PickedEmailArticle) {
-    setPastePdfText(article.text);
-    // Not a real URL — nothing fetches this. It is how the attachment slot
-    // knows something is attached, and it names what that something is.
-    setPastePdfUrl(`email:${article.id}`);
-    setPastePdfName(article.subject);
+    // Word for word: the email's article is the script itself (2026-11-11).
+    const ownWords = pasteSource === "own";
+    if (ownWords) setPasteScript(article.text);
+    else {
+      setPastePdfText(article.text);
+      // Not a real URL — nothing fetches this. It is how the attachment slot
+      // knows something is attached, and it names what that something is.
+      setPastePdfUrl(`email:${article.id}`);
+      setPastePdfName(article.subject);
+    }
     if (pasteSource === "blog") setPasteBlogText(article.text);
     if (article.imageUrls.length > 0) {
       setPastePhotos((prev) => {
@@ -1324,7 +1335,9 @@ function CreatePageInner() {
     const withPhotos = article.imageUrls.length > 0
       ? `, ${article.imageUrls.length} image${article.imageUrls.length === 1 ? "" : "s"} attached`
       : "";
-    toast.success(`Brought in "${article.subject}" — ${article.words.toLocaleString()} words${withPhotos}.`);
+    toast.success(ownWords
+      ? `"${article.subject}" is in Your Script${withPhotos}.`
+      : `Brought in "${article.subject}" — ${article.words.toLocaleString()} words${withPhotos}.`);
   }
 
   function handleCameraEmailPick(article: PickedEmailArticle) {
@@ -1602,11 +1615,18 @@ function CreatePageInner() {
         // the summariser ever sees the end of it.
         body: JSON.stringify({
           url: pastePdfUrlInput.trim(),
-          maxChars: pasteSource === "blog" ? 20000 : SOURCE_CHAR_LIMIT,
+          maxChars: pasteSource === "blog" || pasteSource === "own" ? 20000 : SOURCE_CHAR_LIMIT,
         }),
       });
       const body = await safeJson(res);
       if (!res.ok) throw new Error((body?.error as string) || "Failed to fetch URL");
+      // Word for word (2026-11-11, the owner's ask): the article IS the script,
+      // so it fills Your Script as written and is not attached as well.
+      const ownWords = pasteSource === "own";
+      if (ownWords) {
+        setPasteScript(body.text as string);
+        setPastePdfUrlInput("");
+      } else {
       setPastePdfText(body.text as string);
       // In blog mode the fetched page IS the source material, so it goes
       // straight into the box you are about to summarise rather than sitting
@@ -1614,6 +1634,7 @@ function CreatePageInner() {
       if (pasteSource === "blog") setPasteBlogText(body.text as string);
       setPastePdfUrl(body.url as string);
       try { setPastePdfName(new URL(body.url as string).hostname.replace("www.", "")); } catch { setPastePdfName("URL"); }
+      }
       const found = (Array.isArray(body.photoUrls) ? body.photoUrls as string[] : []);
       if (found.length > 0) {
         // Same reason as the camera tab: these come back on the listing site's
@@ -1627,7 +1648,8 @@ function CreatePageInner() {
           return [...prev, ...add];
         });
       }
-      toast.success(found.length > 0 ? `URL content extracted, ${found.length} photo${found.length > 1 ? "s" : ""} found!` : "URL content extracted!");
+      const photosFound = found.length > 0 ? `, ${found.length} photo${found.length > 1 ? "s" : ""} found` : "";
+      toast.success(ownWords ? `Article text is in Your Script${photosFound}.` : found.length > 0 ? `URL content extracted${photosFound}!` : "URL content extracted!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to fetch URL");
     } finally {
@@ -4365,8 +4387,10 @@ function CreatePageInner() {
                 to it. It used to live in the media card at the very bottom of
                 the page, below the empty script box it exists to fill and under
                 a heading about photos, which is the last place someone looking
-                for "I already wrote this" would think to look. */}
-            {pasteSource !== "own" && (
+                for "I already wrote this" would think to look.
+                Shown for word for word too (2026-11-11): there it fills Your
+                Script with the article exactly as written. */}
+            {(
               <ArticleSource
                 doc={{
                   mode: pastePdfMode,
