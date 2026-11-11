@@ -23,7 +23,10 @@ NARRATION STYLE (applies to HOOK, all content sections, KEY TAKEAWAY, and CALL T
 - Plain text ONLY: no markdown (**, #, backticks), no emoji, no citation markers like [2] — list sources only under SOURCES USED.
 - Every line must be a complete conversational sentence a person would actually say out loud.
 - Name the city on its own — do NOT follow it with the state. Say "in Blue Bell", not "in Blue Bell, Pennsylvania" or "in Blue Bell, PA". Nobody says the state aloud about somewhere in their own area, and repeating it turns the narration into an address label being read out. The state may appear in the TITLE and the HOOK; everywhere else the city stands alone.
-- This applies only to what is SPOKEN. Keep using the full "city, state" when searching for data — that is how you find the right place.`;
+- This applies only to what is SPOKEN. Keep using the full "city, state" when searching for data — that is how you find the right place.
+- NO REPEATS. The title, the HOOK and the first sentence of the script must all say different things:
+  - The HOOK must not restate any of the VIDEO TITLE OPTIONS or the topic as a question. Open with something new: a number, a fact, a surprise.
+  - The script that follows the HOOK must not repeat the HOOK or any title, at the start or anywhere else. Its first sentence picks up where the HOOK leaves off. Do not open it by asking the topic question.`;
 
 export type LocationVideoType =
   | "market_update"

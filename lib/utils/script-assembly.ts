@@ -44,7 +44,11 @@ export function dropDuplicateHook(hook: string, script: string): string {
   if (!h || !s) return s;
 
   const first = firstSentence(s);
-  if (normalise(first) === h) {
+  // Exact, or a near copy (2026-11-11): Abby's hook was "Is now a good time to
+  // buy a home in Blue Bell, PA?" and her script opened "Is now a good time to
+  // buy a home in Blue Bell?" — one word apart, so both were spoken. Repeats
+  // further in are dropped on the server (dropRepeatsOfOpening).
+  if (normalise(first) === h || nearlySame(hook, first)) {
     return s.slice(first.length).replace(/^[\s"'“‘]+/, "").trim();
   }
 
@@ -63,6 +67,81 @@ export function dropDuplicateHook(hook: string, script: string): string {
   }
 
   return s;
+}
+
+/** The words of a sentence, as a set, for comparing near copies. */
+function wordSet(text: string): Set<string> {
+  return new Set(normalise(text).split(" ").filter(Boolean));
+}
+
+/**
+ * Whether two sentences say the same thing in nearly the same words: at least
+ * 80% of the words shared, counted against the longer one. Catches ", PA"
+ * added, "So," in front, different punctuation. Sentences under four words
+ * must match exactly, so a short line like "Here's why." is never lost to a
+ * loose match.
+ */
+function nearlySame(a: string, b: string): boolean {
+  const wa = wordSet(a);
+  const wb = wordSet(b);
+  if (wa.size === 0 || wb.size === 0) return false;
+  if (wa.size < 4 || wb.size < 4) return normalise(a) === normalise(b);
+  // Different numbers mean different facts, however alike the wording.
+  const nums = (w: Set<string>) => Array.from(w).filter((x) => /^\d+$/.test(x)).sort().join(" ");
+  if (nums(wa) !== nums(wb)) return false;
+  let shared = 0;
+  wa.forEach((w) => { if (wb.has(w)) shared++; });
+  return shared / Math.max(wa.size, wb.size) >= 0.8;
+}
+
+/** Sentences, split after . ! ? (and any closing quote) that a space follows. */
+function splitSentences(text: string): string[] {
+  return text.trim().split(/(?<=[.!?]["'”’)\]]*)\s+/).filter((x) => x.trim());
+}
+
+/**
+ * The script with every sentence removed that repeats one of `alreadySaid`
+ * (the hook, the title) in the same or nearly the same words.
+ *
+ * Returns the script untouched when nothing repeats, so the usual case keeps
+ * its exact spacing and line breaks.
+ */
+export function dropRepeatedSentences(script: string, alreadySaid: string[]): string {
+  const s = (script ?? "").trim();
+  const said = alreadySaid.map((x) => x.trim()).filter(Boolean);
+  if (!s || said.length === 0) return s;
+  let changed = false;
+  const paragraphs: string[] = [];
+  for (const para of s.split(/\n\s*\n/)) {
+    const kept: string[] = [];
+    for (const sentence of splitSentences(para)) {
+      if (said.some((x) => nearlySame(x, sentence))) { changed = true; continue; }
+      kept.push(sentence);
+    }
+    if (kept.length) paragraphs.push(kept.join(" "));
+    else changed = true;
+  }
+  return changed ? paragraphs.join("\n\n") : s;
+}
+
+/**
+ * The spoken script with no repeat of its opening or of the title (2026-11-11).
+ *
+ * The render receives hook and script already joined, hook first with a blank
+ * line after it. That opening paragraph is kept as it is; any later sentence
+ * that says it again, or says the title, is dropped. Run on the server so
+ * every way into a render gets it, drafts written before the fix included.
+ */
+export function dropRepeatsOfOpening(script: string, title?: string): string {
+  const s = (script ?? "").trim();
+  const split = s.search(/\n\s*\n/);
+  if (split < 0) return s;
+  const opening = s.slice(0, split).trim();
+  const rest = s.slice(split).trim();
+  // A title that names the place with " — City, ST" is compared without it.
+  const cleanTitle = (title ?? "").replace(/\s+[—–-]\s+[^—–-]+,\s*[A-Z]{2}\s*$/, "").trim();
+  const body = dropRepeatedSentences(rest, [...splitSentences(opening), cleanTitle]);
+  return body ? `${opening}\n\n${body}` : opening;
 }
 
 /**

@@ -1170,8 +1170,11 @@ export default function ProjectEditorPage() {
         // The same answer resolveInitialCta gives, from the read just made.
         setCtaEdited(false);
         setEditedCta(p.project_type === "listing_video" ? aiS.cta ?? "" : fromSettings || aiS.cta || "");
+        // The title is the first title option; the spoken opening line is the
+        // written hook, so the two differ (2026-11-11, Abby's video said its
+        // title twice).
         freshDefaultHook = aiS.hooks?.length ? aiS.hooks[0] : aiS.hook || "";
-        setSelectedHook(freshDefaultHook);
+        setSelectedHook(aiS.hook || freshDefaultHook);
       }
     }
     initContentEdits(p, freshDefaultHook);
@@ -1481,7 +1484,7 @@ export default function ProjectEditorPage() {
         setEditedCta(await resolveInitialCta(p, (p.ai_script as AiScript).cta));
         const hooks = (p.ai_script as AiScript).hooks;
         freshDefaultHook = hooks?.length ? hooks[0] : (p.ai_script as AiScript).hook || "";
-        setSelectedHook(freshDefaultHook);
+        setSelectedHook((p.ai_script as AiScript).hook || freshDefaultHook);
       }
       initContentEdits(p, freshDefaultHook);
       // Update URL to the new project ID
@@ -1523,7 +1526,7 @@ export default function ProjectEditorPage() {
       setEditedScript(aiScript.script);
       setEditedCta(aiScript.cta || "");
       const freshDefaultHook = aiScript.hooks?.length ? aiScript.hooks[0] : aiScript.hook || "";
-      setSelectedHook(freshDefaultHook);
+      setSelectedHook(aiScript.hook || freshDefaultHook);
       setEditedTitle(freshDefaultHook || seoData?.youtube_title || aiScript.title || "");
       setEditedDescription(seoData?.youtube_description || aiScript.description || "");
       setEditedMeta(seoData?.meta_description || "");
@@ -1584,7 +1587,7 @@ export default function ProjectEditorPage() {
       setEditedScript(aiScript.script);
       setEditedCta(aiScript.cta || "");
       const freshDefaultHook = aiScript.hooks?.length ? aiScript.hooks[0] : aiScript.hook || "";
-      setSelectedHook(freshDefaultHook);
+      setSelectedHook(aiScript.hook || freshDefaultHook);
       setEditedTitle(freshDefaultHook || seoData?.youtube_title || aiScript.title || "");
       setEditedDescription(seoData?.youtube_description || aiScript.description || "");
       setEditedMeta(seoData?.meta_description || "");
@@ -3270,6 +3273,9 @@ export default function ProjectEditorPage() {
   if (!project) return null;
 
   const script = project.ai_script as AiScript | null;
+  // Location scripts list title options under "hooks"; other kinds list only
+  // the hook itself. Title options pick the title, never the opening line.
+  const titleOptions = !!script?.hooks?.some((h) => h && h !== script.hook);
 
   // Pasted scripts are rendered word for word via Direct Video. That rules out
   // three things the AI flow offers — alternative hooks, the voice-only /
@@ -3452,10 +3458,10 @@ export default function ProjectEditorPage() {
           <Card padding="sm">
             <div className="mb-3 flex items-center justify-between gap-3 px-2 py-1">
               <h3 className="spark-eyebrow text-[9.5px] tracking-[0.13em] text-spark-ink-muted">
-                HOOK · PICK ONE, THEN EDIT
+                {titleOptions ? "TITLE · PICK ONE" : "HOOK · PICK ONE, THEN EDIT"}
               </h3>
               <span className="flex items-center gap-2.5">
-                <span className="text-[10.5px] text-spark-ink-faint">Used to open the video</span>
+                {!titleOptions && <span className="text-[10.5px] text-spark-ink-faint">Used to open the video</span>}
                 {/* Change the script by voice: "make the opening punchier",
                     "cut the part about taxes". It was a box of its own above
                     this card; the owner asked for only the mic, here. This
@@ -3481,16 +3487,20 @@ export default function ProjectEditorPage() {
             </div>
             <div className="flex flex-col gap-1.5">
               {(script.hooks?.length ? script.hooks : [script.hook]).map((hook, i) => {
-                const active = selectedHook === hook;
+                // Title options (location scripts) set the title only, so the
+                // spoken opening line stays different from it (2026-11-11).
+                // Where the only option IS the hook (listing, paste, intro) it
+                // works as before.
+                const active = titleOptions ? editedTitle === hook : selectedHook === hook;
                 return (
                   <button
                     key={i}
                     type="button"
-                    // Picking a hook option is choosing a title too — they came
-                    // from the same "VIDEO TITLE OPTIONS" list the model wrote,
-                    // and showing one as the title while a different one sat
-                    // selected as the hook was the actual inconsistency.
-                    onClick={() => { setSelectedHook(hook); setEditedTitle(hook); }}
+                    onClick={() => {
+                      if (titleOptions) { setEditedTitle(hook); return; }
+                      setSelectedHook(hook);
+                      setEditedTitle(hook);
+                    }}
                     aria-pressed={active}
                     className={`group flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left transition-colors ${
                       active

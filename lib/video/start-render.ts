@@ -29,7 +29,7 @@ import { parseScriptLocation } from "@/lib/utils/parse-address";
 import { formatPhone, formatPhones } from "@/lib/utils/format-phone";
 import { notifyRenderBalanceLow } from "@/lib/email";
 import { registerFormatLooks } from "@/lib/utils/avatar-crops";
-import { dropDuplicateCta } from "@/lib/utils/script-assembly";
+import { dropDuplicateCta, dropRepeatsOfOpening } from "@/lib/utils/script-assembly";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { NextResponse } from "next/server";
 import { joinLineIfBusy, joinLine } from "@/lib/video/render-queue";
@@ -806,12 +806,15 @@ export async function startRender(
     (u) => typeof u === "string" && u.startsWith("http") && !sentByEditor.has(u),
   );
 
-  const rawScript = script || (aiScript?.script as string) || project.title;
-
   const title =
     videoType === "youtube_16x9"
       ? ((seoData?.youtube_title as string) || (aiScript?.title as string) || project.title)
       : ((aiScript?.title as string) || project.title);
+
+  // The opening line and the title are said once, never again further in
+  // (2026-11-11). Not for a pasted script, which is read word for word.
+  const scriptIn = script || (aiScript?.script as string) || project.title;
+  const rawScript = isVerbatimProject ? scriptIn : dropRepeatsOfOpening(scriptIn, title);
 
   const { data: profileData } = await admin
     .from("profiles")
