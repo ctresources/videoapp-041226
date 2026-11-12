@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { staffLimits, STAFF_NO_EMAIL } from "@/lib/staff/staff";
-import { LEAD_COLS, buildLeadEmail, chooseLead, sendLead, writeLead, type LeadEmail, type LeadRow } from "@/lib/halo/leads";
+import { LEAD_COLS, buildLeadEmail, chooseLead, savedVideos, sendLead, chooseSavedVideo, writeLead, type LeadEmail, type LeadRow } from "@/lib/halo/leads";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -16,6 +16,8 @@ export const maxDuration = 120;
  *   "video" | "camera" | "email" { script? } — who says it: Avatar video
  *       (uses 1 short video), Me on camera (the take comes back to the card),
  *       or Email only.
+ *   "saved-list" — the agent's finished videos, the one used last on top.
+ *   "saved" { videoId } — sends that video instead of making one (no credit).
  *   "back" — back to the script, to choose again.
  *   "edit" { subject, note, videoLine, toolsIntro, after } — the email's words.
  *   "preview" — the email exactly as it will go.
@@ -54,6 +56,16 @@ export async function POST(req: NextRequest) {
     case "email": {
       if (busy) return NextResponse.json({ error: "This one is already on its way." }, { status: 409 });
       const r = await chooseLead(admin, me, l, body.action, text("script", 2500));
+      return NextResponse.json(r.out, { status: r.status });
+    }
+    // Saved video (2026-11-11): the picker's list, then the one chosen.
+    case "saved-list":
+      return NextResponse.json({ videos: await savedVideos(admin, user.id) });
+    case "saved": {
+      if (busy) return NextResponse.json({ error: "This one is already on its way." }, { status: 409 });
+      const videoId = text("videoId", 64);
+      if (!videoId) return NextResponse.json({ error: "Pick a video." }, { status: 400 });
+      const r = await chooseSavedVideo(admin, user.id, l, videoId);
       return NextResponse.json(r.out, { status: r.status });
     }
     case "back": {

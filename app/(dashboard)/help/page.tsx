@@ -1017,7 +1017,9 @@ function FullGuide() {
                 for a buyer or seller, a spotlight for a business). Change the script by typing, or tap the mic
                 and say it. Then pick who says it: <strong>Avatar video</strong> (about 5 to 10 minutes),{" "}
                 <strong>Me on camera · unlimited</strong> (the camera opens with the script in the teleprompter;
-                come back to AutoSparks and your recording is on the card) or <strong>Email only</strong>. The
+                come back to AutoSparks and your recording is on the card), <strong>Saved video</strong> (pick
+                one of your finished videos, so one video can answer every lead it fits; the one you used last is
+                on top) or <strong>Email only</strong>. The
                 business email introduces Halo and SparkReels as two separate tools, with a button to each, and
                 says why someone might use one or both. <strong>Watch</strong> the video,{" "}
                 <strong>Edit email</strong> to change the subject and words, <strong>Preview email</strong> to
@@ -1026,8 +1028,8 @@ function FullGuide() {
                 connected (added there as a contact), otherwise from you via SparkReels with replies coming to
                 you. An approved avatar spotlight also goes in your Halo drafts to post. Two forms from the same person
                 within an hour become one card. Calling, texting and the lead&apos;s status stay in Halo:{" "}
-                <strong>Open in Halo</strong> on each card. An avatar video uses 1 short video; Email only and Me
-                on camera use none. Your own notes on a lead in Halo never come to SparkReels.
+                <strong>Open in Halo</strong> on each card. An avatar video uses 1 short video; Saved video, Email only
+                and Me on camera use none. A saved video isn&apos;t added to your Halo drafts. Your own notes on a lead in Halo never come to SparkReels.
               </span>
               {/* Two accounts, two webhooks (2026-11-10, the owner's ask; Halo confirmed it). */}
               <span className="block mt-1.5">

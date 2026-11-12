@@ -213,7 +213,7 @@ export interface LeadRow {
   summary: string | null; business_name: string | null; town: string | null;
   website: string | null; category: string | null; message: string | null; lead_link: string | null;
   status: "new" | "writing" | "written" | "making" | "camera" | "ready" | "sending" | "sent" | "skipped" | "failed";
-  mode: "video" | "camera" | "email" | null; script: string | null;
+  mode: "video" | "camera" | "email" | "saved" | null; script: string | null;
   email_draft: LeadEmail | null; project_id: string | null; video_id: string | null;
   camera_since: string | null; halo_draft_id: string | null; error: string | null;
   sent_at: string | null; sent_via: string | null; received_at: string;
@@ -473,6 +473,44 @@ export async function writeLead(admin: Admin, userId: string, l: LeadRow): Promi
  * Who says it: Avatar video (uses 1 short video), Me on camera (the script in
  * the teleprompter; the take comes back to the card), or Email only.
  */
+/**
+ * The subject and video line for the choice made, unless the agent changed
+ * them. Each choice has its own wording; only a line still on one of those
+ * is swapped, so anything typed in Edit email stays.
+ */
+function emailForChoice(l: LeadRow, email: LeadEmail, mode: "video" | "camera" | "email" | "saved"): LeadEmail {
+  const biz = l.business_name || l.name || "your business";
+  const re = isRealEstate(l);
+  if (l.kind === "business") {
+    const subjects = {
+      video: `A spotlight video for ${biz}`,
+      plain: `An idea for ${biz}`,
+      // A saved video for another agent is about the tools, not a spotlight (2026-11-11).
+      saved: re ? `SparkReels and Halo for ${biz}` : `An idea for ${biz}`,
+    };
+    const lines = {
+      video: `I made you a short spotlight video about ${biz}. Take a look below.`,
+      camera: `I recorded a short spotlight video about ${biz}. Take a look below.`,
+      saved: re
+        ? "Here's a short video on how SparkReels and Halo work for agents."
+        : "Here's a short video I think you'll like. Take a look below.",
+    };
+    const subject = mode === "email" ? subjects.plain : mode === "saved" ? subjects.saved : subjects.video;
+    const line = mode === "email" ? null : lines[mode];
+    return {
+      ...email,
+      ...(Object.values(subjects).includes(email.subject) && { subject }),
+      ...(line && Object.values(lines).includes(email.videoLine) && { videoLine: line }),
+    };
+  }
+  const lines = {
+    made: "I made you a quick video too. Take a look below.",
+    saved: "Here's a short video I think you'll find helpful. Take a look below.",
+  };
+  if (mode === "email" || !Object.values(lines).includes(email.videoLine)) return email;
+  return { ...email, videoLine: mode === "saved" ? lines.saved : lines.made };
+}
+
 export async function chooseLead(
   admin: Admin,
   user: { id: string; email: string | null },
@@ -484,17 +522,7 @@ export async function chooseLead(
   const words2 = (script ?? l.script ?? "").replace(/\s+/g, " ").trim().slice(0, 2500);
   const now = new Date().toISOString();
   const biz = l.business_name || l.name || "your business";
-  let email = l.email_draft;
-  // The subject and video line follow the choice, unless the agent changed them.
-  if (l.kind === "business") {
-    const videoSubject = `A spotlight video for ${biz}`, plainSubject = `An idea for ${biz}`;
-    if (mode === "email" && email.subject === videoSubject) email = { ...email, subject: plainSubject };
-    if (mode !== "email" && email.subject === plainSubject) email = { ...email, subject: videoSubject };
-    const made = `I made you a short spotlight video about ${biz}. Take a look below.`;
-    const recorded = `I recorded a short spotlight video about ${biz}. Take a look below.`;
-    if (mode === "camera" && email.videoLine === made) email = { ...email, videoLine: recorded };
-    if (mode === "video" && email.videoLine === recorded) email = { ...email, videoLine: made };
-  }
+  const email = emailForChoice(l, l.email_draft, mode);
 
   if (mode === "email") {
     await admin.from("halo_leads").update({ status: "ready", mode, email_draft: email, script: words2 || l.script, project_id: null, video_id: null, error: null, updated_at: now }).eq("id", l.id);
@@ -539,6 +567,56 @@ export async function chooseLead(
   return { status: 200, out: { ok: true, status: "making" } };
 }
 
+/**
+ * Saved video (2026-11-11, the owner's approved mockup): one of the agent's
+ * finished videos goes with the email instead of a new one, so the same
+ * video can answer every lead it fits. Uses no video from the plan, and is
+ * never added to the Halo drafts (that is only for a spotlight made for them).
+ */
+export async function chooseSavedVideo(
+  admin: Admin,
+  userId: string,
+  l: LeadRow,
+  videoId: string,
+): Promise<{ status: number; out: Record<string, unknown> }> {
+  if (!l.email_draft) return { status: 400, out: { error: "Press Write it first." } };
+  const { data } = await admin.from("generated_videos").select("id")
+    .eq("id", videoId).eq("user_id", userId).eq("render_status", "completed").not("video_url", "is", null).maybeSingle();
+  if (!data) return { status: 404, out: { error: "That video isn't available. Pick another." } };
+  const email = emailForChoice(l, l.email_draft, "saved");
+  await admin.from("halo_leads").update({
+    status: "ready", mode: "saved", email_draft: email, video_id: videoId,
+    project_id: null, camera_since: null, error: null, updated_at: new Date().toISOString(),
+  }).eq("id", l.id);
+  return { status: 200, out: { ok: true, status: "ready" } };
+}
+
+export interface SavedVideo { id: string; title: string; seconds: number | null; createdAt: string; thumbnail: string | null; lastUsed: boolean }
+
+/** The agent's finished videos for the picker, the one used last on top. */
+export async function savedVideos(admin: Admin, userId: string): Promise<SavedVideo[]> {
+  const [{ data: vids }, { data: last }] = await Promise.all([
+    admin.from("generated_videos")
+      .select("id, duration_seconds, created_at, metadata, projects(title, thumbnail_url)")
+      .eq("user_id", userId).eq("render_status", "completed").not("video_url", "is", null)
+      .order("created_at", { ascending: false }).limit(60),
+    admin.from("halo_leads").select("video_id")
+      .eq("user_id", userId).eq("mode", "saved").not("video_id", "is", null)
+      .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  const lastId = (last as { video_id: string | null } | null)?.video_id ?? null;
+  type Row = { id: string; duration_seconds: number | null; created_at: string; metadata: Record<string, unknown> | null; projects: { title: string | null; thumbnail_url: string | null } | { title: string | null; thumbnail_url: string | null }[] | null };
+  const list = ((vids ?? []) as unknown as Row[]).map((v): SavedVideo => {
+    const p = Array.isArray(v.projects) ? v.projects[0] : v.projects;
+    const metaTitle = typeof v.metadata?.title === "string" ? (v.metadata.title as string) : null;
+    return {
+      id: v.id, title: (p?.title || metaTitle || "Untitled video").slice(0, 120),
+      seconds: v.duration_seconds, createdAt: v.created_at, thumbnail: p?.thumbnail_url ?? null, lastUsed: v.id === lastId,
+    };
+  });
+  return [...list.filter((v) => v.lastUsed), ...list.filter((v) => !v.lastUsed)];
+}
+
 /** A video being made or recorded: finished yet? Updates the lead when it is. */
 export async function refreshLead(admin: Admin, l: LeadRow): Promise<LeadRow> {
   if (l.status === "making" && l.project_id) {
@@ -570,15 +648,15 @@ export async function refreshLead(admin: Admin, l: LeadRow): Promise<LeadRow> {
 }
 
 /** The lead's video for the card and the email. */
-export async function leadVideo(admin: Admin, l: LeadRow): Promise<{ id: string; url: string; seconds: number | null; email_poster_url: string | null; project_id: string | null; thumbnail: string | null } | null> {
+export async function leadVideo(admin: Admin, l: LeadRow): Promise<{ id: string; url: string; seconds: number | null; email_poster_url: string | null; project_id: string | null; thumbnail: string | null; title: string | null } | null> {
   if (!l.video_id) return null;
   const { data } = await admin.from("generated_videos")
-    .select("id, video_url, duration_seconds, email_poster_url, project_id, projects(thumbnail_url)")
+    .select("id, video_url, duration_seconds, email_poster_url, project_id, projects(thumbnail_url, title)")
     .eq("id", l.video_id).maybeSingle();
-  const v = data as unknown as { id: string; video_url: string | null; duration_seconds: number | null; email_poster_url: string | null; project_id: string | null; projects: { thumbnail_url: string | null } | { thumbnail_url: string | null }[] | null } | null;
+  const v = data as unknown as { id: string; video_url: string | null; duration_seconds: number | null; email_poster_url: string | null; project_id: string | null; projects: { thumbnail_url: string | null; title: string | null } | { thumbnail_url: string | null; title: string | null }[] | null } | null;
   if (!v?.video_url) return null;
   const proj = Array.isArray(v.projects) ? v.projects[0] : v.projects;
-  return { id: v.id, url: v.video_url, seconds: v.duration_seconds, email_poster_url: v.email_poster_url, project_id: v.project_id, thumbnail: proj?.thumbnail_url ?? null };
+  return { id: v.id, url: v.video_url, seconds: v.duration_seconds, email_poster_url: v.email_poster_url, project_id: v.project_id, thumbnail: proj?.thumbnail_url ?? null, title: proj?.title ?? null };
 }
 
 /** Builds the email exactly as it will go, for the card's preview and the send. */

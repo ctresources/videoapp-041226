@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Camera, ExternalLink, Loader2, Play, UserRound } from "lucide-react";
+import { Camera, ExternalLink, Film, Loader2, Play, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FieldMic } from "@/components/ui/field-mic";
 
@@ -20,9 +20,73 @@ interface Lead {
   id: string; kind: "buyer" | "business"; name: string | null; email: string | null; site: string | null; forms: string[];
   summary: string | null; businessName: string | null; town: string | null; message: string | null; leadLink: string | null;
   status: "new" | "writing" | "written" | "making" | "camera" | "ready" | "sending" | "sent" | "skipped" | "failed";
-  mode: "video" | "camera" | "email" | null; script: string | null; draft: LeadEmail | null; error: string | null;
+  mode: "video" | "camera" | "email" | "saved" | null; script: string | null; draft: LeadEmail | null; error: string | null;
   sentAt: string | null; sentVia: string | null; receivedAt: string; haloDraft: boolean;
-  video: { id: string; url: string } | null;
+  video: { id: string; url: string; title: string | null; seconds: number | null; thumbnail: string | null } | null;
+}
+interface SavedVideo { id: string; title: string; seconds: number | null; createdAt: string; thumbnail: string | null; lastUsed: boolean }
+
+const clock = (s: number | null) => (s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "");
+const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+function Thumb({ src }: { src: string | null }) {
+  return (
+    <span className="relative flex h-[54px] w-24 flex-none items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-[#3a3a36] to-[#6b5a3a]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {src && <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+      <Play size={14} className="relative text-white" />
+    </span>
+  );
+}
+
+/**
+ * Saved video (2026-11-11, the owner's approved mockup): one of the agent's
+ * finished videos instead of a new one. The one used last is on top, so the
+ * next lead it fits is one tap.
+ */
+function SavedPicker({ leadId, onUse, onCancel, busy }: { leadId: string; onUse: (id: string) => void; onCancel: () => void; busy: boolean }) {
+  const [videos, setVideos] = useState<SavedVideo[] | null>(null);
+  const [q, setQ] = useState("");
+  const [pick, setPick] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    void post({ leadId, action: "saved-list" }).then(({ ok, out }) => {
+      if (!live) return;
+      const list = ok && Array.isArray(out.videos) ? (out.videos as SavedVideo[]) : [];
+      setVideos(list);
+      setPick(list[0]?.id ?? null);
+    });
+    return () => { live = false; };
+  }, [leadId]);
+  const shown = (videos ?? []).filter((v) => !q.trim() || v.title.toLowerCase().includes(q.trim().toLowerCase()));
+  return (
+    <div className="mt-3 rounded-2xl border border-[#f1d9b0] bg-spark-amber-tint p-3">
+      <p className="mb-2 text-[14px] font-semibold text-spark-ink">Saved video</p>
+      <input value={q} onChange={(ev) => setQ(ev.target.value)} placeholder="Search your videos" className={`${field} mb-2 bg-white`} />
+      {videos === null && <p className="flex items-center gap-1.5 text-[13px] text-spark-ink-muted"><Loader2 size={13} className="animate-spin" /> Loading…</p>}
+      {videos !== null && shown.length === 0 && <p className="text-[13px] text-spark-ink-muted">{videos.length ? "No video matches that." : "No finished videos yet."}</p>}
+      <div className="flex max-h-[320px] flex-col gap-1.5 overflow-y-auto">
+        {shown.map((v) => (
+          <button key={v.id} type="button" onClick={() => setPick(v.id)} aria-pressed={pick === v.id}
+            className={`flex items-center gap-3 rounded-xl bg-white p-2 text-left ${pick === v.id ? "border-2 border-spark-amber" : "border border-spark-rule"}`}>
+            <span className={`h-[18px] w-[18px] flex-none rounded-full ${pick === v.id ? "border-[5px] border-spark-amber" : "border-2 border-spark-rule"}`} />
+            <Thumb src={v.thumbnail} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[14px] font-semibold leading-snug text-spark-ink">
+                {v.title}
+                {v.lastUsed && <span className="ml-1.5 rounded-full border border-[#bfe3cf] bg-[#e8f5ee] px-1.5 text-[11px] font-bold text-[#0f7a52]">Last used</span>}
+              </span>
+              <span className="text-[12px] text-spark-ink-muted">{[clock(v.seconds), day(v.createdAt)].filter(Boolean).join(" · ")}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <Button size="sm" disabled={!pick} loading={busy} onClick={() => pick && onUse(pick)}>Use this video</Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
+  );
 }
 interface Data { paidOnly?: boolean; boldtrail: boolean; leads: Lead[] }
 
@@ -73,7 +137,8 @@ function LeadCard({ l, boldtrail, reload }: { l: Lead; boldtrail: boolean; reloa
   const [e, setE] = useState<LeadEmail>(l.draft ?? { subject: "", note: "", videoLine: "", tools: false, toolsIntro: "", after: "" });
   const business = l.kind === "business";
   const forms = l.forms.length;
-  const hasVideo = l.mode === "video" || l.mode === "camera";
+  const hasVideo = l.mode === "video" || l.mode === "camera" || l.mode === "saved";
+  const [picking, setPicking] = useState(false);
 
   async function act(action: string, extra: Record<string, unknown> = {}) {
     setBusy(action);
@@ -154,11 +219,16 @@ function LeadCard({ l, boldtrail, reload }: { l: Lead; boldtrail: boolean; reloa
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <Button size="sm" className="gap-1.5" loading={busy === "video"} onClick={() => then(act("video", { script }))}><UserRound size={13} /> Avatar video</Button>
             <Button size="sm" variant="outline" className="gap-1.5" loading={busy === "camera"} onClick={() => void onCamera()}><Camera size={13} /> Me on camera · unlimited</Button>
+            <Button size="sm" variant="outline" className="gap-1.5" aria-pressed={picking} onClick={() => setPicking((x) => !x)}><Film size={13} /> Saved video</Button>
             <Button size="sm" variant="outline" loading={busy === "email"} onClick={() => then(act("email", { script }))}>Email only</Button>
             <Button size="sm" variant="ghost" loading={busy === "skip"} onClick={() => then(act("skip"))}>Skip</Button>
           </div>
+          {picking && (
+            <SavedPicker leadId={l.id} busy={busy === "saved"} onCancel={() => setPicking(false)}
+              onUse={(videoId) => then(act("saved", { videoId }).then((o) => { if (o) setPicking(false); return o; }))} />
+          )}
           <p className="mt-2 text-[12.5px] text-spark-ink-faint">
-            Avatar video uses 1 short video.{business ? " An approved avatar spotlight also goes in your Halo drafts to post." : ""}
+            Avatar video uses 1 short video. Saved video uses none.{business ? " An approved avatar spotlight also goes in your Halo drafts to post." : ""}
           </p>
         </div>
       )}
@@ -180,6 +250,15 @@ function LeadCard({ l, boldtrail, reload }: { l: Lead; boldtrail: boolean; reloa
       {l.status === "ready" && (
         <div className="mt-3">
           {l.error && <p className="mb-2 text-[13px] text-red-600">{l.error}</p>}
+          {l.mode === "saved" && l.video && (
+            <div className="mb-2.5 flex items-center gap-2.5">
+              <Thumb src={l.video.thumbnail} />
+              <span className="min-w-0">
+                <span className="block text-[14px] font-semibold leading-snug text-spark-ink">{l.video.title || "Saved video"}</span>
+                <span className="text-[12px] text-spark-ink-muted">{["Saved video", clock(l.video.seconds)].filter(Boolean).join(" · ")}</span>
+              </span>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             {l.video && hasVideo && <a href={l.video.url} target="_blank" rel="noreferrer"><Button size="sm" variant="outline" className="gap-1.5"><Play size={13} /> Watch</Button></a>}
             <Button size="sm" variant="outline" onClick={() => setEditing((x) => !x)}>{editing ? "Close" : "Edit email"}</Button>

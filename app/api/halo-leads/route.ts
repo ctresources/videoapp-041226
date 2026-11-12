@@ -47,7 +47,7 @@ export async function GET() {
       summary: l.summary, businessName: l.business_name, town: l.town, message: l.message, leadLink: l.lead_link,
       status: l.status, mode: l.mode, script: l.script, draft: l.email_draft, error: l.error,
       sentAt: l.sent_at, sentVia: l.sent_via, receivedAt: l.received_at, haloDraft: !!l.halo_draft_id,
-      video: v ? { id: v.id, url: v.url } : null,
+      video: v ? { id: v.id, url: v.url, title: v.title, seconds: v.seconds, thumbnail: v.thumbnail } : null,
     };
   }));
 
