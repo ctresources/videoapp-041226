@@ -1423,3 +1423,21 @@ export async function sendAccountCleanupWarning({ email, name, daysLeft, dueAt, 
   }).catch(() => null);
   return !!res?.ok;
 }
+
+/**
+ * The weekly watch email to support@ (2026-11-12, the owner's security ask):
+ * asks for the AI's instructions, unusually heavy use, and several new
+ * accounts from one place. Built in app/api/cron/security-watch.
+ */
+export async function sendSecurityWatchEmail({ subject, html, text }: {
+  subject: string; html: string; text: string;
+}): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+  const res = await resendPost({
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: FROM_EMAIL, to: NOTIFY_EMAIL, subject, html, text }),
+  }).catch(() => null);
+  if (!res?.ok) console.error(`[security-watch] email failed: ${res ? res.status : "network error"}`);
+  return !!res?.ok;
+}

@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isPlaceholderTitle } from "@/lib/utils/article-headline";
 import { closingLineWords, shortScriptBudget } from "@/lib/utils/script-budget";
 import { isSparkreelsMode, sparkreelsFacts } from "@/lib/sparkreels-mode";
+import { noteProbe } from "@/lib/security/probe";
 
 /**
  * The heaviest route in the app and, until now, the only script route that
@@ -129,6 +130,12 @@ export async function POST(req: NextRequest) {
      *  free blog before the free video can be spent on. */
     blogOnly?: boolean;
   };
+
+  // Typed asks for the AI's instructions go on the weekly watch email
+  // (2026-11-12). Not AutoSparks' own topics, and not pasted articles.
+  if (!asUser) {
+    noteProbe({ text: [customTopic, audience, purpose, tone].filter(Boolean).join(" · "), source: "create-topic", userId: user.id, req });
+  }
 
   // Basic validation. A custom topic may come without a place for an admin
   // (checked below, once the profile is read): the owner's own videos are

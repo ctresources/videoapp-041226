@@ -5,6 +5,7 @@ import { sparkleeSetup, startSparkleeDraft } from "@/lib/halo/sparklee";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
 import { hasAdminPerks } from "@/lib/utils/roles";
 import { isSparkreelsMode } from "@/lib/sparkreels-mode";
+import { noteProbe } from "@/lib/security/probe";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 800;
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as { words?: unknown; slots?: Slots; preview?: unknown };
   const words = typeof body.words === "string" ? body.words.slice(0, 2000) : "";
   const slots = body.slots ?? {};
+  noteProbe({ text: words, source: "sparklee", userId: s.user.id, req });
 
   if (slots.output === "blog" || (slots.onScreen && slots.onScreen !== "avatar")) {
     return NextResponse.json({ fill: true, reason: "kind" });

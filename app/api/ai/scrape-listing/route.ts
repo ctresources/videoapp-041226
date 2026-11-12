@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { guardMessages } from "@/lib/api/ai-guard";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 import { expandNumberedGallery, extractImageUrls } from "@/lib/utils/listing-photos";
@@ -519,14 +520,14 @@ Return ONLY the JSON object. No markdown, no explanation.`;
     },
     body: JSON.stringify({
       model: "sonar",
-      messages: [
+      messages: guardMessages([
         {
           role: "system",
           content:
             "You are a strict data-extraction tool. You only copy values that literally appear in the user-provided page content. You never search the web, never use outside knowledge, and never guess. Missing data is returned as null. Output raw JSON only.",
         },
         { role: "user", content: prompt },
-      ],
+      ]),
       // Deterministic extraction — no creative gap-filling.
       temperature: 0,
       // 1500, up from 800. A 1,200-character description and twelve features

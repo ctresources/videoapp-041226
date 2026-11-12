@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { guardMessages } from "@/lib/api/ai-guard";
 import { NextRequest, NextResponse } from "next/server";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 
@@ -44,10 +45,10 @@ ${FAIR_HOUSING_GUARDRAIL}`;
       },
       body: JSON.stringify({
         model: "sonar",
-        messages: [
+        messages: guardMessages([
           { role: "system", content: "You are a real estate content strategist. Return only valid JSON." },
           { role: "user", content: prompt },
-        ],
+        ]),
         search_recency_filter: "week",
         temperature: 0.5,
         max_tokens: 500,

@@ -1,4 +1,5 @@
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
+import { guardMessages } from "@/lib/api/ai-guard";
 import { faqInstruction } from "@/lib/api/article-faq";
 import { PLAIN_COPY_RULES } from "@/lib/utils/copy-style";
 import { expandShortArticle } from "@/lib/api/blog-length";
@@ -153,7 +154,7 @@ Return ONLY a JSON object:
         },
         body: JSON.stringify({
           model: "sonar",
-          messages: [{ role: "user", content: prompt }],
+          messages: guardMessages([{ role: "user", content: prompt }]),
           temperature: 0.7,
           max_tokens: 3800,
         }),

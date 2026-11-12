@@ -1,4 +1,5 @@
 import { hasAdminPerks } from "@/lib/utils/roles";
+import { guardMessages } from "@/lib/api/ai-guard";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSparkFor } from "@/lib/utils/ensure-spark";
@@ -118,7 +119,7 @@ Return ONLY a JSON object:
         },
         body: JSON.stringify({
           model: "sonar",
-          messages: [{ role: "user", content: prompt }],
+          messages: guardMessages([{ role: "user", content: prompt }]),
           temperature: 0.7,
           // Up to 1,200 words of prose across three JSON strings, with the
           // escaped newlines between paragraphs counting too.
@@ -248,7 +249,7 @@ Return ONLY a JSON object:
     },
     body: JSON.stringify({
       model: "sonar",
-      messages: [{ role: "user", content: prompt }],
+      messages: guardMessages([{ role: "user", content: prompt }]),
       temperature: 0.7,
       // Has to hold the script itself plus title, hook, CTA, description,
       // 10 hashtags and 6 keywords. 1000 was sized for a 200-word script; a

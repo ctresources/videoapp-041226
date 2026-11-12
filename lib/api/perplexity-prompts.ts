@@ -10,6 +10,7 @@ import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 import { sanitizeNarration } from "@/lib/utils/sanitize-narration";
 import { isMarketUpdateTopic, MARKET_SOURCES_BLOG, MARKET_SOURCES_SCRIPT } from "@/lib/api/market-sources";
 import { faqInstruction } from "@/lib/api/article-faq";
+import { NO_REVEAL_RULE } from "@/lib/api/ai-guard";
 
 const PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
 
@@ -199,7 +200,9 @@ function buildMarketUpdateRequest(params: LocationParams): Record<string, unknow
     messages: [
       {
         role: "system",
-        content: `You are a real estate market analyst and content writer. You have live web search — use it aggressively to find current, specific data.
+        content: `${NO_REVEAL_RULE}
+
+You are a real estate market analyst and content writer. You have live web search — use it aggressively to find current, specific data.
 
 YOUR JOB: Search the web RIGHT NOW for current real estate market data for the specific city/area requested, then write a video script using that real data.
 
@@ -270,7 +273,9 @@ function buildWhyLiveHereRequest(params: LocationParams): Record<string, unknown
     messages: [
       {
         role: "system",
-        content: `You are a real estate lifestyle writer creating content for a short social video script about why someone should consider living in a specific city or neighborhood.
+        content: `${NO_REVEAL_RULE}
+
+You are a real estate lifestyle writer creating content for a short social video script about why someone should consider living in a specific city or neighborhood.
 
 Your job is to research the lifestyle, quality of life, demographics, and community characteristics of the location and return it in a structured format ready for video production.
 
@@ -346,7 +351,9 @@ function buildCommunityEventsRequest(params: LocationParams): Record<string, unk
     messages: [
       {
         role: "system",
-        content: `You are a local community content writer creating a short social video script about upcoming events in a specific city or neighborhood.
+        content: `${NO_REVEAL_RULE}
+
+You are a local community content writer creating a short social video script about upcoming events in a specific city or neighborhood.
 
 Your job is to find real upcoming local events for the specified month and location and return them in a structured format ready for video production.
 
@@ -416,7 +423,9 @@ function buildPromoRequest(params: LocationParams): Record<string, unknown> {
     messages: [
       {
         role: "system",
-        content: `You are the content writer for SparkReels.ai, an AI video and content studio for real estate agents. You write short social videos and blog posts that show real estate agents what SparkReels does for them and why it matters to their business.
+        content: `${NO_REVEAL_RULE}
+
+You are the content writer for SparkReels.ai, an AI video and content studio for real estate agents. You write short social videos and blog posts that show real estate agents what SparkReels does for them and why it matters to their business.
 
 The audience is real estate agents: busy, often camera-shy, who know they should post video and blogs every week and rarely do. Speak to their real problems: time, consistency, being found by buyers and sellers (including in AI answers), and looking professional.
 
@@ -533,7 +542,9 @@ ${source}
     messages: [
       {
         role: "system",
-        content: `You are a real estate content writer creating a short social video script about a specific topic for a specific location.
+        content: `${NO_REVEAL_RULE}
+
+You are a real estate content writer creating a short social video script about a specific topic for a specific location.
 
 Your job is to research the topic thoroughly for the given location and return it in a structured format ready for video production.
 

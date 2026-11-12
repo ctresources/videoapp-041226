@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { guardMessages } from "@/lib/api/ai-guard";
 import { createClient } from "@/lib/supabase/server";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 
@@ -61,10 +62,10 @@ Search for what buyers, sellers, and investors in this area are currently asking
       },
       body: JSON.stringify({
         model: "sonar",
-        messages: [
+        messages: guardMessages([
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
-        ],
+        ]),
         search_domain_filter: [
           "zillow.com", "redfin.com", "realtor.com", "housingwire.com",
           "nar.realtor", "inman.com", "bankrate.com", "themortgagereports.com",

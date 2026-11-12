@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { runEditorTurn } from "@/lib/api/editor-session";
+import { noteProbe } from "@/lib/security/probe";
 import type { ChatTurn } from "@/lib/api/perplexity-chat";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -53,6 +54,8 @@ export async function POST(req: NextRequest) {
   if (turns.length === 0) {
     return NextResponse.json({ error: "No usable turns" }, { status: 400 });
   }
+  // The newest thing said, checked for asks about the AI's instructions (2026-11-12).
+  noteProbe({ text: turns.filter((t) => t.role === "user").at(-1)?.content, source: "editor-mic", userId: user.id, req });
 
   const rawScript = (body as { script?: unknown })?.script;
   const script = typeof rawScript === "string" ? rawScript.slice(0, MAX_SCRIPT_CHARS) : "";

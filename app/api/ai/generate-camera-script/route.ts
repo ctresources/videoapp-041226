@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { guardMessages } from "@/lib/api/ai-guard";
+import { noteProbe } from "@/lib/security/probe";
 import { NextRequest, NextResponse } from "next/server";
 import { FAIR_HOUSING_SHORT } from "@/lib/utils/fair-housing";
 import { scriptBriefGuidance } from "@/lib/api/perplexity-prompts";
@@ -25,6 +27,7 @@ export async function POST(req: NextRequest) {
   // Who it is for, how it sounds, what it is for: the same brief, and the same
   // guidance text, a market script is written under. Absent means as before.
   const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  noteProbe({ text: [str(topic), str(audience), str(purpose)].filter(Boolean).join(" · "), source: "camera-topic", userId: user.id, req });
   const briefGuidance = scriptBriefGuidance({ audience: str(audience), tone: str(tone), purpose: str(purpose) });
   const hasTopic = !!(topic?.trim());
   const hasDocs = !!(pdfText?.trim());
@@ -161,10 +164,10 @@ Rules:
       },
       body: JSON.stringify({
         model: "sonar-pro",
-        messages: [
+        messages: guardMessages([
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
-        ],
+        ]),
         temperature: 0.7,
         max_tokens: maxTokens,
       }),

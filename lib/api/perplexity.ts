@@ -1,4 +1,5 @@
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
+import { guardMessages } from "@/lib/api/ai-guard";
 
 const PERPLEXITY_API = "https://api.perplexity.ai";
 
@@ -78,7 +79,7 @@ export async function perplexityChat(messages: { role: string; content: string }
       },
       body: JSON.stringify({
         model,
-        messages,
+        messages: guardMessages(messages),
         temperature: 0.7,
         max_tokens: 4000,
         ...extra,

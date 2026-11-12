@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { runBriefTurn, type BriefEmail, type BriefTurn } from "@/lib/api/brief-session";
+import { noteProbe } from "@/lib/security/probe";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 30;
@@ -49,6 +50,8 @@ export async function POST(req: NextRequest) {
   if (turns.length === 0) {
     return NextResponse.json({ error: "No usable turns" }, { status: 400 });
   }
+  // The newest thing said, checked for asks about the AI's instructions (2026-11-12).
+  noteProbe({ text: turns.filter((t) => t.role === "user").at(-1)?.content, source: "mic", userId: user.id, req });
 
   // Narrowed to the two literals rather than passed through. It reaches a
   // model prompt, so it gets the same distrust the transcript above does.

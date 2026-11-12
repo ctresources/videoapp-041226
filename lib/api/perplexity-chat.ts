@@ -7,6 +7,8 @@
  * conversation that gap is a reply versus a pause.
  */
 
+import { withNoReveal } from "@/lib/api/ai-guard";
+
 const PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
 
 /**
@@ -32,7 +34,7 @@ function requestBody(
     ...(search
       ? { search_recency_filter: "month", web_search_options: { search_context_size: "high" } }
       : { disable_search: true }),
-    messages: [{ role: "system", content: system }, ...turns],
+    messages: [{ role: "system", content: withNoReveal(system) }, ...turns],
   };
 }
 export interface ChatTurn {

@@ -1,4 +1,5 @@
 import type { ChatTurn } from "@/lib/api/perplexity-chat";
+import { withNoReveal } from "@/lib/api/ai-guard";
 
 /**
  * One JSON-returning chat turn on OpenAI (2026-10-24), first used to choose
@@ -37,7 +38,7 @@ export async function openaiChatJson(
         max_completion_tokens: maxTokens,
         ...(effort && { reasoning_effort: "low" }),
         response_format: { type: "json_object" },
-        messages: [{ role: "system", content: system }, ...turns],
+        messages: [{ role: "system", content: withNoReveal(system) }, ...turns],
       }),
       signal: AbortSignal.timeout(timeoutMs),
     });

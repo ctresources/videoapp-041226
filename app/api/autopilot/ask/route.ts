@@ -11,6 +11,7 @@ import {
   zoneOf,
   type AutopilotProfile,
 } from "@/lib/autopilot";
+import { noteProbe } from "@/lib/security/probe";
 
 export const dynamic = "force-dynamic";
 // The drafts are written one after another now (2026-11-12), about a minute
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
   const { request } = (await req.json().catch(() => ({}))) as { request?: string };
   const ask = (request ?? "").trim().slice(0, 300);
   if (!ask) return NextResponse.json({ error: "Say or type what you'd like ideas about." }, { status: 400 });
+  noteProbe({ text: ask, source: "autosparks-ask", userId: user.id, req });
 
   const admin = createAdminClient();
   const { data } = await admin.from("profiles").select(AUTOPILOT_PROFILE_SELECT).eq("id", user.id).single();

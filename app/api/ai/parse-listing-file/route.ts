@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { guardMessages } from "@/lib/api/ai-guard";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 import type { ListingData } from "@/app/api/ai/scrape-listing/route";
@@ -115,7 +116,7 @@ Return ONLY the JSON object. No markdown, no explanation.`;
     },
     body: JSON.stringify({
       model: "sonar",
-      messages: [{ role: "user", content: prompt }],
+      messages: guardMessages([{ role: "user", content: prompt }]),
       temperature: 0.1,
       max_tokens: 800,
     }),

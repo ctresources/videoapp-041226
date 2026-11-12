@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 import OpenAI from "openai";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { websiteKnowledge } from "@/lib/marketing/sparklee-knowledge";
+import { withNoReveal } from "@/lib/api/ai-guard";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
     const openai = new OpenAI({ apiKey: key });
     const res = await openai.responses.create({
       model: MODEL,
-      instructions: INSTRUCTIONS + websiteKnowledge(),
+      instructions: withNoReveal(INSTRUCTIONS + websiteKnowledge()),
       input: question,
       max_output_tokens: 260,
     });
