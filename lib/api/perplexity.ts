@@ -60,24 +60,39 @@ export async function perplexityChat(messages: { role: string; content: string }
     throw new Error("PERPLEXITY_API_KEY is not set. Add it to .env.local and restart the server.");
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 50000); // 50s — leaves buffer before Vercel's 60s limit
-
-  const res = await fetch(`${PERPLEXITY_API}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.7,
-      max_tokens: 4000,
-      ...extra,
-    }),
-    signal: controller.signal,
-  }).finally(() => clearTimeout(timeout));
+  /**
+   * "Too many requests" is waited out and tried again, up to 3 tries
+   * (2026-11-12). AutoSparks sent a week's topics and drafts for several
+   * accounts at once, Perplexity refused most of them, and agents got no
+   * drafts at all.
+   */
+  let res: Response | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 50000); // 50s — leaves buffer before Vercel's 60s limit
+    res = await fetch(`${PERPLEXITY_API}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.7,
+        max_tokens: 4000,
+        ...extra,
+      }),
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeout));
+    if (res.status !== 429 || attempt === 2) break;
+    const after = Number(res.headers.get("retry-after"));
+    const waitMs = Number.isFinite(after) && after > 0 ? Math.min(after * 1000, 20000) : attempt === 0 ? 4000 : 12000;
+    console.warn(`Perplexity 429, trying again in ${Math.round(waitMs / 1000)}s`);
+    await res.text().catch(() => "");
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
+  if (!res) throw new Error("Perplexity request was not sent");
 
   if (!res.ok) {
     const errText = await res.text().catch(() => "unknown");

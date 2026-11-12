@@ -251,8 +251,26 @@ export async function startDrafts(
   if (error || !rows) throw new Error(error?.message || "Couldn't save the drafts.");
   const ids = (rows as { id: string }[]).map((r) => r.id);
 
-  const written = Promise.allSettled(
-    ideas.map((idea, i) => writeDraft(admin, ids[i], profile.id, idea, city, state, now)),
-  ).then(() => undefined);
+  // One after another, not all at once (2026-11-12): written together they
+  // tripped Perplexity's rate limit and most drafts failed.
+  const written = (async () => {
+    for (let i = 0; i < ideas.length; i++) {
+      await writeDraft(admin, ids[i], profile.id, ideas[i], city, state, now);
+    }
+  })();
   return { ids, written };
+}
+
+/** Try again on a draft that couldn't be written: the same topic, written again. */
+export async function rewriteDraft(
+  admin: Admin,
+  profile: AutopilotProfile,
+  draft: { id: string; kind: string; topic: string; reason: string | null },
+): Promise<void> {
+  await admin.from("autopilot_drafts").update({ status: "writing" }).eq("id", draft.id);
+  await writeDraft(admin, draft.id, profile.id, {
+    topic: draft.topic,
+    reason: draft.reason ?? "",
+    kind: draft.kind === "video" ? "video" : "blog",
+  }, profile.location_city?.trim() ?? "", profile.location_state?.trim() ?? "", new Date());
 }

@@ -169,6 +169,21 @@ export default function AutopilotPage() {
     return true;
   }
 
+  /** Try again on a draft that couldn't be written (2026-11-12). */
+  async function retry(d: Draft) {
+    setDrafts((prev) => prev.map((x) => (x.id === d.id ? { ...x, status: "writing" } : x)));
+    const res = await fetch("/api/autopilot/retry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: d.id }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      const body = await res?.json().catch(() => ({}));
+      toast.error((body as { error?: string } | undefined)?.error || "Couldn't try again just now.");
+    }
+    void load();
+  }
+
   function open(d: Draft) {
     if (!d.project_id) return;
     router.push(d.kind === "blog" ? `/create/${d.project_id}?step=5` : `/create/${d.project_id}`);
@@ -242,7 +257,7 @@ export default function AutopilotPage() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Couldn't get ideas. Try again.");
       setAsk("");
-      toast.success("Writing your ideas. They'll appear here in about a minute.");
+      toast.success("Writing your ideas. They'll appear here over the next few minutes.");
       void load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't get ideas. Try again.");
@@ -461,7 +476,8 @@ export default function AutopilotPage() {
                   )}
                   {d.status === "failed" && (
                     <>
-                      <span className="text-xs text-red-600">This one couldn&apos;t be written.</span>
+                      <span className="self-center text-xs text-red-600">This one couldn&apos;t be written.</span>
+                      <Button size="sm" onClick={() => void retry(d)}>Try again</Button>
                       <button onClick={() => void setStatus(d, "skipped")} className="text-xs font-medium text-spark-ink-muted underline">Remove</button>
                     </>
                   )}

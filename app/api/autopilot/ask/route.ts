@@ -13,7 +13,9 @@ import {
 } from "@/lib/autopilot";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+// The drafts are written one after another now (2026-11-12), about a minute
+// each, in the background after the reply.
+export const maxDuration = 800;
 
 /**
  * POST /api/autopilot/ask — "Ask for ideas" on the Autopilot page (2026-10-21,

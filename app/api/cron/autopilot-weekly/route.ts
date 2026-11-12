@@ -55,6 +55,8 @@ export async function GET(req: NextRequest) {
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(4, profiles.length) }, worker));
+  // Two accounts at a time (was four, 2026-11-12): more tripped Perplexity's
+  // rate limit and most accounts got no drafts.
+  await Promise.all(Array.from({ length: Math.min(2, profiles.length) }, worker));
   return NextResponse.json({ accounts: profiles.length, results });
 }
