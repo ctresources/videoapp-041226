@@ -61,7 +61,8 @@ export const HALO_DEFAULTS: HaloSettings = {
   time: "09:00",
   look: "circle",
   lookId: null,
-  size: "vertical",
+  // Horizontal unless the agent picks Vertical (2026-11-12, was vertical).
+  size: "horizontal",
   platforms: ["facebook", "instagram", "youtube", "google_business"],
   captions: true,
   music: "bright",
@@ -88,7 +89,7 @@ export function sanitizeSettings(raw: unknown): HaloSettings {
     time: typeof r.time === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(r.time) ? r.time : d.time,
     look: r.look === "full" || r.look === "circle" || r.look === "mix" ? r.look : d.look,
     lookId: typeof r.lookId === "string" && r.lookId.length < 200 ? r.lookId : null,
-    size: r.size === "horizontal" ? "horizontal" : "vertical",
+    size: r.size === "vertical" ? "vertical" : "horizontal",
     platforms: Array.from(new Set(platforms)),
     captions: typeof r.captions === "boolean" ? r.captions : d.captions,
     music: typeof r.music === "string" && MUSIC_IDS.includes(r.music) ? r.music : d.music,

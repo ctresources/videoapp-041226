@@ -30,7 +30,8 @@ export async function makeDraftVideo(
   if (!script.trim()) return { status: 400, out: { error: "This draft has no script. Open it to write one." } };
 
   const setup = d.setup;
-  const vertical = setup.size !== "horizontal";
+  // A draft with no size saved is horizontal (2026-11-12, was vertical).
+  const vertical = setup.size === "vertical";
   const voiceOnly = setup.voiceOnly === true;
   const circle = !voiceOnly && setup.look === "circle";
 

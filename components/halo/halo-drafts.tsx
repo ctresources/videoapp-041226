@@ -63,7 +63,7 @@ function localInput(iso: string) {
 
 function Thumb({ d, big = false, onOpen }: { d: HaloDraft; big?: boolean; onOpen?: () => void }) {
   const url = d.projects?.thumbnail_url;
-  const vertical = d.setup.size !== "horizontal";
+  const vertical = d.setup.size === "vertical";
   const size = big
     ? vertical ? "h-[267px] w-[150px]" : "h-[113px] w-[200px]"
     : vertical ? "h-[139px] w-[78px]" : "h-[62px] w-[110px]";
@@ -90,7 +90,7 @@ function Thumb({ d, big = false, onOpen }: { d: HaloDraft; big?: boolean; onOpen
 /** The thumbnail full size, wide and (for a vertical video) tall. */
 function ThumbView({ d, onClose }: { d: HaloDraft; onClose: () => void }) {
   const wide = d.projects?.thumbnail_url;
-  const tall = d.setup.size !== "horizontal" ? d.projects?.seo_data?.thumbnail_tall_url : null;
+  const tall = d.setup.size === "vertical" ?d.projects?.seo_data?.thumbnail_tall_url : null;
   if (!wide) return null;
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
@@ -117,7 +117,7 @@ function Chips({ d }: { d: HaloDraft }) {
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">
       <span className={`${chip} font-semibold text-spark-ink`}>{d.setup.voiceOnly ? "No avatar" : d.setup.look === "full" ? "Avatar video" : "Avatar in circle"}</span>
-      <span className={chip}>{d.setup.size === "horizontal" ? "Horizontal 16:9" : "Vertical 9:16"}</span>
+      <span className={chip}>{d.setup.size === "vertical" ? "Vertical 9:16" : "Horizontal 16:9"}</span>
       {town && d.source !== "halo_promo" && <span className={chip}>📍 {town}</span>}
       {len && <span className={chip}>{len}</span>}
       {d.setup.captions !== false && <span className={chip}>Captions</span>}
@@ -156,11 +156,11 @@ function Setup({ d, halo, onClose }: { d: HaloDraft; halo: Halo; onClose: () => 
           <button type="button" className={tile(!!d.setup.voiceOnly)} onClick={() => void halo.patchSetup(d, { voiceOnly: true })}>No avatar</button>
         </Row>
         {!d.setup.voiceOnly && <Row label="Avatar">
-          <LookPicker looks={halo.looks} twinLookId={halo.twinLookId} twinLookIds={halo.twinLookIds} fitShape={d.setup.size === "horizontal" ? "landscape" : "portrait"} value={d.setup.lookId} onChange={(id) => void halo.patchSetup(d, { lookId: id })} />
+          <LookPicker looks={halo.looks} twinLookId={halo.twinLookId} twinLookIds={halo.twinLookIds} fitShape={d.setup.size === "vertical" ? "portrait" : "landscape"} value={d.setup.lookId} onChange={(id) => void halo.patchSetup(d, { lookId: id })} />
         </Row>}
         <Row label="Size">
-          <button type="button" className={tile(d.setup.size !== "horizontal")} onClick={() => void halo.patchSetup(d, { size: "vertical" })}>Vertical 9:16</button>
-          <button type="button" className={tile(d.setup.size === "horizontal")} onClick={() => void halo.patchSetup(d, { size: "horizontal" })}>Horizontal 16:9</button>
+          <button type="button" className={tile(d.setup.size === "vertical")} onClick={() => void halo.patchSetup(d, { size: "vertical" })}>Vertical 9:16</button>
+          <button type="button" className={tile(d.setup.size !== "vertical")} onClick={() => void halo.patchSetup(d, { size: "horizontal" })}>Horizontal 16:9</button>
         </Row>
         <Row label="On screen">
           <button type="button" className={tile(d.setup.onScreen !== "post")} onClick={() => void halo.patchSetup(d, { onScreen: "stock" })}>Stock clips of the area</button>
