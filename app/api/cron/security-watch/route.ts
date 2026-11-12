@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSecurityWatchEmail } from "@/lib/email";
 import { findProbe } from "@/lib/security/probe";
 import { hasAdminPerks } from "@/lib/utils/roles";
+import { CLARITY_DASHBOARD, summarizeWeek } from "@/lib/security/clarity";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -20,7 +21,8 @@ const DAY = 86_400_000;
  *      spoken or asked of Sparklee (security_events, and the website chat).
  *   2. Accounts making far more than usual.
  *   3. Three or more new accounts signing in from the same address.
- * A quiet week is one line saying so.
+ * A quiet week is one line saying so. Then Clarity's week: rage clicks,
+ * dead clicks, quick backs and errors by page (lib/security/clarity.ts).
  */
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -32,7 +34,7 @@ export async function GET(req: NextRequest) {
   const since = new Date(now - 7 * DAY).toISOString();
   const baselineFrom = new Date(now - 35 * DAY).toISOString();
 
-  const [events, publicQs, recentProjects, olderProjects, shared] = await Promise.all([
+  const [events, publicQs, recentProjects, olderProjects, shared, clarityRows] = await Promise.all([
     admin.from("security_events").select("user_id, source, detail, created_at")
       .eq("kind", "prompt_probe").gte("created_at", since).order("created_at", { ascending: false }).limit(200),
     admin.from("public_sparklee_questions").select("question, page, ip_hash, created_at")
@@ -40,6 +42,8 @@ export async function GET(req: NextRequest) {
     admin.from("projects").select("user_id").gte("created_at", since).limit(10000),
     admin.from("projects").select("user_id").gte("created_at", baselineFrom).lt("created_at", since).limit(20000),
     admin.rpc("security_shared_signups", { since }),
+    // Clarity, saved each morning by /api/cron/clarity-daily (2026-11-12).
+    admin.from("clarity_snapshots").select("data").gte("day", since.slice(0, 10)).order("day"),
   ]);
 
   // ── 1. Asks for the instructions ──────────────────────────────────────────
@@ -111,10 +115,37 @@ export async function GET(req: NextRequest) {
     ? "These came up in the last 7 days. Nothing has been done about them; look before acting."
     : "Nothing unusual in the last 7 days.";
 
+  // ── Clarity: where people got stuck (not counted in the subject) ─────────
+  const snaps = ((clarityRows.data ?? []) as { data: unknown }[]).map((r) => r.data);
+  const cw = summarizeWeek(snaps);
+  const clarityLines: string[] = [];
+  if (!snaps.length) {
+    clarityLines.push(process.env.CLARITY_API_TOKEN
+      ? "No Clarity days saved yet. They start the morning after the token was added."
+      : "Not connected yet: add CLARITY_API_TOKEN in Vercel to see this.");
+  } else {
+    clarityLines.push(`${cw.sessions.toLocaleString("en-US")} visits over ${cw.days} day${cw.days === 1 ? "" : "s"}` +
+      (cw.botSessions ? ` (${cw.botSessions.toLocaleString("en-US")} were bots)` : ""));
+    const pages = (rows: { path: string; count: number }[]) => rows.map((r) => `${r.path} ${r.count}`).join(", ");
+    const add = (label: string, k: keyof typeof cw.top) => {
+      if (cw.totals[k]) clarityLines.push(`${label}: ${cw.totals[k]} · most on ${pages(cw.top[k])}`);
+    };
+    add("Rage clicks (tapping the same spot in frustration)", "rage");
+    add("Dead clicks (tapping something that does nothing)", "dead");
+    add("Quick backs (left a page right away)", "quickback");
+    add("Clicks that hit an error", "errorClick");
+    add("Page errors", "scriptError");
+    if (clarityLines.length === 1) clarityLines.push("No rage clicks, dead clicks, quick backs or errors.");
+  }
+  const clarityTitle = "Where people got stuck (Clarity)";
+
   const text = [
     intro, "",
     ...sections.flatMap((s) => [s.title.toUpperCase(), ...s.lines.map((l) => `- ${l}`), ""]),
     count ? `Look people up in Admin: ${ADMIN_URL}` : "",
+    "",
+    clarityTitle.toUpperCase(), ...clarityLines.map((l) => `- ${l}`),
+    snaps.length ? `Watch the recordings: ${CLARITY_DASHBOARD}` : "",
   ].join("\n").trim();
   const html =
     `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#1f1f1f">` +
@@ -124,8 +155,11 @@ export async function GET(req: NextRequest) {
       `<ul style="margin:0;padding-left:20px">${s.lines.map((l) => `<li style="margin:0 0 6px">${esc(l)}</li>`).join("")}</ul>`,
     ).join("") +
     (count ? `<p style="margin-top:18px"><a href="${ADMIN_URL}">Look people up in Admin</a></p>` : "") +
+    `<p style="margin:24px 0 6px;font-weight:bold">${esc(clarityTitle)}</p>` +
+    `<ul style="margin:0;padding-left:20px">${clarityLines.map((l) => `<li style="margin:0 0 6px">${esc(l)}</li>`).join("")}</ul>` +
+    (snaps.length ? `<p style="margin-top:12px"><a href="${CLARITY_DASHBOARD}">Watch the recordings in Clarity</a></p>` : "") +
     `</div>`;
 
   const sent = await sendSecurityWatchEmail({ subject, html, text });
-  return NextResponse.json({ sent, probes: asks.length, heavy: heavy.length, shared: sharedRows.length });
+  return NextResponse.json({ sent, probes: asks.length, heavy: heavy.length, shared: sharedRows.length, clarityDays: snaps.length });
 }
