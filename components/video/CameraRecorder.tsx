@@ -309,12 +309,13 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
    * Nothing used to choose this: the canvas copied whatever the camera gave
    * it, so a phone held upright produced 9:16 and a laptop 16:9, and the
    * format was a by-product of how you happened to be holding the device.
-   * Vertical by default because that is where a property reel goes — unless
-   * the screen that sent us here already chose. A take set up as Shorts 16:9
+   * Horizontal by default (2026-11-12, was vertical): people making YouTube
+   * videos missed the picker and had to redo the take — unless the screen
+   * that sent us here already chose. A take set up as Shorts 16:9
    * in the editor and then recorded 9:16 here is only discovered after it has
    * been filmed, because both formats are called Shorts.
    */
-  const [shape, setShape] = useState<"vertical" | "horizontal">(initialShape ?? "vertical");
+  const [shape, setShape] = useState<"vertical" | "horizontal">(initialShape ?? "horizontal");
   /**
    * And again if it arrives late.
    *

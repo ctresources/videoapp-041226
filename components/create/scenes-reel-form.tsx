@@ -55,7 +55,7 @@ const SHAPES = [
  * Topic box at the top of that page, the same box the mic writes into. With
  * no `topic` passed it keeps a topic field of its own.
  */
-export function ScenesReelForm({ city: initialCity, state: initialState, topic: topicFromPage, writeSignal, onWriting, vertical = true, footer }: {
+export function ScenesReelForm({ city: initialCity, state: initialState, topic: topicFromPage, writeSignal, onWriting, vertical = false, footer }: {
   /**
    * The bottom bar, with Back and this form's next button, at the owner's
    * ask (2026-10-15): every Create page has one. Given by Spark Studio.

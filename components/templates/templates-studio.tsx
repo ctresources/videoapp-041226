@@ -34,7 +34,9 @@ const money = (v: string | number) => {
 export function TemplatesStudio() {
   const [setup, setSetup] = useState<Setup | null>(null);
   const [design, setDesign] = useState<DesignId>("just_listed");
-  const [shape, setShape] = useState<"vertical" | "horizontal">("vertical");
+  // Horizontal first (2026-11-12): people making YouTube videos missed the
+  // picker, got vertical, and spent a second video redoing it.
+  const [shape, setShape] = useState<"vertical" | "horizontal">("horizontal");
   const [fields, setFields] = useState<Record<string, string>>({});
   const [photos, setPhotos] = useState<string[]>([]);
   const [listingId, setListingId] = useState("");

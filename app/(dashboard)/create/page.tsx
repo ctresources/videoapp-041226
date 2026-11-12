@@ -4904,7 +4904,9 @@ function CreatePageInner() {
                   writeSignal={scenesWrite}
                   onWriting={setScenesWriting}
                   footer={{ onBack: backToStart }}
-                  vertical={!formatTouched || locPlatform === "reel"}
+                  // Follows the page's format, which starts on Horizontal
+                  // (2026-11-12, was vertical until a format was picked).
+                  vertical={locPlatform === "reel"}
                 />
               </div>
             )}

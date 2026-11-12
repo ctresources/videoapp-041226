@@ -15,7 +15,8 @@ import { WPM } from "@/lib/utils/video-length";
 const MAX_PHOTOS = 12;
 
 /**
- * 9:16 first, because that is where a property reel goes.
+ * Starts on 16:9 (2026-11-12, was 9:16): people making YouTube videos missed
+ * the picker and had to make the reel again.
  *
  * The three are offered rather than inferred: there is no source clip here to
  * take a shape from, so something has to choose, and it should be the person
@@ -107,7 +108,7 @@ export function PhotoReelForm({
   const [city, setCity] = useState(initialCity ?? "");
   const [state, setState] = useState(initialState ?? "");
   const [title, setTitle] = useState("");
-  const [format, setFormat] = useState<string>("reel_9x16");
+  const [format, setFormat] = useState<string>("youtube_16x9");
   const [seconds, setSeconds] = useState<number>(30);
   const [voice, setVoice] = useState<Voice>("music");
   /**
