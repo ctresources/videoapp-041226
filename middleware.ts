@@ -1,6 +1,7 @@
 import { hasAdminPerks } from "@/lib/utils/roles";
 import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
+import { aiCrawlerName } from "@/lib/security/ai-crawlers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPublicMarketingPath } from "@/lib/seo/public-pages";
 import { getAccessLevel, isPaidLevel } from "@/lib/access";
@@ -72,8 +73,24 @@ async function refusePaidApiForFree(request: NextRequest): Promise<NextResponse 
   );
 }
 
-export async function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
+
+  /**
+   * AI crawler visits, counted for the Monday watch email (2026-11-12):
+   * Clarity's Bot Activity can't connect to Vercel. Pages only, after the
+   * reply has gone out, and never in the way of the request.
+   */
+  if (!pathname.startsWith("/api/")) {
+    const bot = aiCrawlerName(request.headers.get("user-agent"));
+    if (bot) {
+      event.waitUntil((async () => {
+        try {
+          await createAdminClient().rpc("bump_ai_crawler", { p_bot: bot, p_path: pathname });
+        } catch { /* a missed count is fine */ }
+      })());
+    }
+  }
 
   // API routes handle their own auth — skip session check to avoid redirect loops
   // and ensure they return proper JSON error responses instead of redirect HTML.

@@ -23,6 +23,7 @@ const DAY = 86_400_000;
  *   3. Three or more new accounts signing in from the same address.
  * A quiet week is one line saying so. Then Clarity's week: rage clicks,
  * dead clicks, quick backs and errors by page (lib/security/clarity.ts).
+ * Then the AI crawlers that read the site, counted in middleware.ts.
  */
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
   const since = new Date(now - 7 * DAY).toISOString();
   const baselineFrom = new Date(now - 35 * DAY).toISOString();
 
-  const [events, publicQs, recentProjects, olderProjects, shared, clarityRows] = await Promise.all([
+  const [events, publicQs, recentProjects, olderProjects, shared, clarityRows, crawlerRows] = await Promise.all([
     admin.from("security_events").select("user_id, source, detail, created_at")
       .eq("kind", "prompt_probe").gte("created_at", since).order("created_at", { ascending: false }).limit(200),
     admin.from("public_sparklee_questions").select("question, page, ip_hash, created_at")
@@ -44,6 +45,8 @@ export async function GET(req: NextRequest) {
     admin.rpc("security_shared_signups", { since }),
     // Clarity, saved each morning by /api/cron/clarity-daily (2026-11-12).
     admin.from("clarity_snapshots").select("data").gte("day", since.slice(0, 10)).order("day"),
+    // AI crawler visits, counted in middleware.ts (2026-11-12).
+    admin.from("ai_crawler_daily").select("bot, path, hits").gte("day", since.slice(0, 10)).limit(20000),
   ]);
 
   // ── 1. Asks for the instructions ──────────────────────────────────────────
@@ -139,6 +142,23 @@ export async function GET(req: NextRequest) {
   }
   const clarityTitle = "Where people got stuck (Clarity)";
 
+  // ── AI crawlers: which AIs read the site, and which pages ────────────────
+  const bots = new Map<string, { hits: number; pages: Map<string, number> }>();
+  ((crawlerRows.data ?? []) as { bot: string; path: string; hits: number }[]).forEach((r) => {
+    const b = bots.get(r.bot) ?? { hits: 0, pages: new Map<string, number>() };
+    b.hits += r.hits;
+    b.pages.set(r.path, (b.pages.get(r.path) ?? 0) + r.hits);
+    bots.set(r.bot, b);
+  });
+  const crawlerTitle = "AI crawlers that read your site";
+  const crawlerLines = bots.size
+    ? Array.from(bots.entries()).sort((a, b) => b[1].hits - a[1].hits).map(([name, b]) => {
+        const top = Array.from(b.pages.entries()).sort((x, y) => y[1] - x[1]).slice(0, 3)
+          .map(([p, n]) => `${p} ${n}`).join(", ");
+        return `${name}: ${b.hits.toLocaleString("en-US")} page${b.hits === 1 ? "" : "s"} · most read ${top}`;
+      })
+    : ["No AI crawlers this week."];
+
   const text = [
     intro, "",
     ...sections.flatMap((s) => [s.title.toUpperCase(), ...s.lines.map((l) => `- ${l}`), ""]),
@@ -146,6 +166,8 @@ export async function GET(req: NextRequest) {
     "",
     clarityTitle.toUpperCase(), ...clarityLines.map((l) => `- ${l}`),
     snaps.length ? `Watch the recordings: ${CLARITY_DASHBOARD}` : "",
+    "",
+    crawlerTitle.toUpperCase(), ...crawlerLines.map((l) => `- ${l}`),
   ].join("\n").trim();
   const html =
     `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#1f1f1f">` +
@@ -158,6 +180,8 @@ export async function GET(req: NextRequest) {
     `<p style="margin:24px 0 6px;font-weight:bold">${esc(clarityTitle)}</p>` +
     `<ul style="margin:0;padding-left:20px">${clarityLines.map((l) => `<li style="margin:0 0 6px">${esc(l)}</li>`).join("")}</ul>` +
     (snaps.length ? `<p style="margin-top:12px"><a href="${CLARITY_DASHBOARD}">Watch the recordings in Clarity</a></p>` : "") +
+    `<p style="margin:24px 0 6px;font-weight:bold">${esc(crawlerTitle)}</p>` +
+    `<ul style="margin:0;padding-left:20px">${crawlerLines.map((l) => `<li style="margin:0 0 6px">${esc(l)}</li>`).join("")}</ul>` +
     `</div>`;
 
   const sent = await sendSecurityWatchEmail({ subject, html, text });
