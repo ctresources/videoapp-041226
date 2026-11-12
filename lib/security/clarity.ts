@@ -14,9 +14,14 @@ export const CLARITY_PROJECT = "z0tfc6nfor";
 export const CLARITY_DASHBOARD = `https://clarity.microsoft.com/projects/view/${CLARITY_PROJECT}/dashboard`;
 const EXPORT_URL = "https://www.clarity.ms/export-data/api/v1/project-live-insights";
 
+/** The token, under either name: the owner saved it in Vercel as Clarity_API. */
+export function clarityToken(): string | undefined {
+  return process.env.CLARITY_API_TOKEN || process.env.Clarity_API || undefined;
+}
+
 /** Yesterday's numbers by page, or why not. */
 export async function fetchClarityDay(): Promise<{ ok: true; data: unknown } | { ok: false; reason: string }> {
-  const token = process.env.CLARITY_API_TOKEN;
+  const token = clarityToken();
   if (!token) return { ok: false, reason: "CLARITY_API_TOKEN is not set" };
   const res = await fetch(`${EXPORT_URL}?numOfDays=1&dimension1=URL`, {
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },

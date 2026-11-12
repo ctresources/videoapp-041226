@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSecurityWatchEmail } from "@/lib/email";
 import { findProbe } from "@/lib/security/probe";
 import { hasAdminPerks } from "@/lib/utils/roles";
-import { CLARITY_DASHBOARD, summarizeWeek } from "@/lib/security/clarity";
+import { CLARITY_DASHBOARD, clarityToken, summarizeWeek } from "@/lib/security/clarity";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -120,7 +120,7 @@ export async function GET(req: NextRequest) {
   const cw = summarizeWeek(snaps);
   const clarityLines: string[] = [];
   if (!snaps.length) {
-    clarityLines.push(process.env.CLARITY_API_TOKEN
+    clarityLines.push(clarityToken()
       ? "No Clarity days saved yet. They start the morning after the token was added."
       : "Not connected yet: add CLARITY_API_TOKEN in Vercel to see this.");
   } else {
