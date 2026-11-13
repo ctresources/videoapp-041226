@@ -305,7 +305,7 @@ function FullGuide() {
               <span className="block mt-1">
                 <strong>Me on my footage</strong>: you&apos;re cut out and placed over the video&apos;s own
                 photos and clips, at the <strong>Side</strong> (full height) or in the <strong>Corner</strong>{" "}
-                (smaller). Short videos only.
+                (smaller).
               </span>
               <span className="block mt-1">
                 <strong>Avatar in circle</strong>: your twin sits in a circle over the photos and clips.
@@ -325,7 +325,7 @@ function FullGuide() {
                 <strong>New outfit</strong>. It takes a minute or two, and it moves like your twin. Each outfit
                 then shows up as a look in video setup and works everywhere your twin does, approval
                 included. Your first new look each month is free; after that each one uses one
-                short video. Tap the bin on an outfit to remove it. The <strong>New look</strong> under your
+                video. Tap the bin on an outfit to remove it. The <strong>New look</strong> under your
                 photo avatar changes only the photo avatar, not your twin.
               </span>
             </Step>
@@ -481,11 +481,11 @@ function FullGuide() {
               <Link href="/settings/billing" className="text-primary-600 font-medium hover:underline">Settings → 11 · Billing &amp; Plan</Link>{" "}
               shows your plan, when it renews, and what you have left this month.
               <span className="block mt-1.5">
-                Every plan includes <strong>4 short videos</strong> a month; Producer adds 2 long videos and
-                Influencer 4. They reset each billing month. Blog posts, camera recordings and AutoSparks
-                drafts don&apos;t use any. Need more? <strong>Buy More Videos</strong> adds one short video
-                for $25 or one long video for $29, and bought videos never expire; your plan&apos;s videos
-                are used first. The AutoSparks page shows <strong>Videos left this month</strong>, and a
+                Creator includes <strong>4 videos</strong> a month, Producer <strong>7</strong> and
+                Influencer <strong>10</strong>, each up to 2 minutes. They reset each billing month. Blog
+                posts, camera recordings and AutoSparks drafts don&apos;t use any. Need more?{" "}
+                <strong>Buy More Videos</strong> adds one video for $25, and bought videos never expire;
+                your plan&apos;s videos are used first. The AutoSparks page shows <strong>Videos left this month</strong>, and a
                 draft you have no video left for says <strong>Needs 1 more video</strong>: pressing Approve
                 on it offers to upgrade or buy one.
               </span>
@@ -528,17 +528,17 @@ function FullGuide() {
                 <tr className="border-t border-slate-100">
                   <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Avatar video</td>
                   <td className="py-2 pr-3">You on screen, with b-roll and graphics made for you. Up to 2 minutes</td>
-                  <td className="py-2 whitespace-nowrap">1 short video</td>
+                  <td className="py-2 whitespace-nowrap">1 video</td>
                 </tr>
                 <tr className="border-t border-slate-100">
                   <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Avatar in circle</td>
                   <td className="py-2 pr-3">You in a corner circle, over AI scenes that follow each sentence, with your photos among them</td>
-                  <td className="py-2 whitespace-nowrap">1 short video</td>
+                  <td className="py-2 whitespace-nowrap">1 video</td>
                 </tr>
                 <tr className="border-t border-slate-100">
                   <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Voice over only</td>
                   <td className="py-2 pr-3">A Scenes Reel: no face, no photos, no camera. Your voice over AI scenes, up to 3 minutes</td>
-                  <td className="py-2 whitespace-nowrap">1 short video</td>
+                  <td className="py-2 whitespace-nowrap">1 video</td>
                 </tr>
                 {/* One row where there were three (Paste my script, Shorten my
                     article, Something you already have), because the app now
@@ -552,13 +552,13 @@ function FullGuide() {
                   <td className="py-2 whitespace-nowrap">
                     <span className="font-semibold text-green-600">FREE as a blog*</span>
                     <br />
-                    1 short video as a video
+                    1 video as a video
                   </td>
                 </tr>
                 <tr className="border-t border-slate-100">
                   <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Listing video</td>
                   <td className="py-2 pr-3">A scripted tour, written from the listing</td>
-                  <td className="py-2 whitespace-nowrap">1 short video</td>
+                  <td className="py-2 whitespace-nowrap">1 video</td>
                 </tr>
                 <tr className="border-t border-slate-100">
                   <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Photos only reel · Classic</td>
@@ -568,7 +568,7 @@ function FullGuide() {
                 <tr className="border-t border-slate-100">
                   <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Photos only reel · Cinematic</td>
                   <td className="py-2 pr-3">Each photo becomes a few seconds of real camera movement</td>
-                  <td className="py-2 whitespace-nowrap">1 short video</td>
+                  <td className="py-2 whitespace-nowrap">1 video</td>
                 </tr>
               </tbody>
             </table>
@@ -619,7 +619,7 @@ function FullGuide() {
                 <strong> Avatar video</strong> puts you on screen with b-roll
                 and graphics made for you. <strong>Avatar in circle</strong> puts you in a corner
                 circle over scenes that follow what you&apos;re saying. <strong>Voice over only</strong>{" "}
-                has nobody on screen: it is a Scenes Reel (step 17). Each uses one short video. If
+                has nobody on screen: it is a Scenes Reel (step 17). Each uses one video. If
                 your sentence already said which, such as &ldquo;with my avatar&rdquo; or
                 &ldquo;voice over only&rdquo;, it isn&apos;t asked.
               </span>
@@ -726,7 +726,7 @@ function FullGuide() {
                 of your plan until you choose to make it. The script&apos;s length follows the
                 format: up to <strong>90 seconds</strong> for Vertical, up to{" "}
                 <strong>2 minutes</strong> for Horizontal, and up to <strong>8 minutes</strong> for
-                Longform.
+                Longform, which you read yourself on camera.
               </span>
               <span className="block mt-1.5">
                 Say <em>&ldquo;make a reel about&hellip;&rdquo;</em> and it makes a Voice over only
@@ -770,7 +770,7 @@ function FullGuide() {
                 <strong>30 seconds</strong>. You get the intro script plus a short and a long bio
                 in the Share Kit. It&apos;s you, full screen, and with your Digital Twin it&apos;s made
                 on our most lifelike avatar. Producer and Influencer get <strong>one free every
-                month</strong>; otherwise it uses 1 short video (on the free plan, your free video).
+                month</strong>; otherwise it uses 1 video (on the free plan, your free video).
                 Either way, AI researches live market data for your city and writes a
                 broadcast-quality script with real stats.
               </span>
@@ -795,9 +795,8 @@ function FullGuide() {
             <Step n={15} title="Choose Format And Who's On Screen — Then Generate" icon={Video}>
               Pick a <strong>format</strong>: <strong>Vertical 9:16</strong> for Reels, Shorts and TikTok, or{" "}
               <strong>Horizontal 16:9</strong> for YouTube and websites — both up to 2 minutes — or{" "}
-              <strong>Longform 16:9</strong> (up to 8 minutes. Add your own photos and you&apos;re in a
-              circle over them; add none and you&apos;re full screen the whole time. Long videos have their
-              own monthly allowance — 2 with Producer, 4 with Influencer — or $29 on its own.)
+              <strong>Longform 16:9</strong> (up to 8 minutes, read by you on camera with the
+              teleprompter; it doesn&apos;t use a video from your plan).
               {/* The same four for every script now, pasted or written. */}
               <span className="block mt-1.5">
                 Then <strong>who&apos;s on screen</strong>, four choices that are the same for every
@@ -805,7 +804,7 @@ function FullGuide() {
               </span>
               <span className="block mt-1.5">
                 <strong>Avatar video</strong> — you on screen, with b-roll and graphics made
-                for you. Up to 2 minutes, so it is not offered for Longform. It takes a script of up
+                for you. Up to 2 minutes, so a Longform script is for camera. It takes a script of up
                 to 290 words, counting your closing line. If yours is longer, Avatar video is greyed
                 out and a note under the choices says how many words you have. Press{" "}
                 <strong>Shorten to fit</strong> and the script is cut to fit, or{" "}
@@ -969,7 +968,7 @@ function FullGuide() {
                 is done (about 5 to 10 minutes), <strong>Watch</strong> it, <strong>Preview email</strong>,
                 and press <strong>Approve to send</strong>: it emails each seller through BoldTrail on its day,
                 video included. <strong>Don&apos;t send it yourself</strong> from Spark Tools, or they get it
-                twice. The Avatar in circle video uses 1 short video per listing each week; Email only uses
+                twice. The Avatar in circle video uses 1 video per listing each week; Email only uses
                 none, and recording it yourself on camera is unlimited.
               </span>
               <span className="block mt-1.5">
@@ -1028,7 +1027,7 @@ function FullGuide() {
                 connected (added there as a contact), otherwise from you via SparkReels with replies coming to
                 you. An approved avatar spotlight also goes in your Halo drafts to post. Two forms from the same person
                 within an hour become one card. Calling, texting and the lead&apos;s status stay in Halo:{" "}
-                <strong>Open in Halo</strong> on each card. An avatar video uses 1 short video; Saved video, Email only
+                <strong>Open in Halo</strong> on each card. An avatar video uses 1 video; Saved video, Email only
                 and Me on camera use none. A saved video isn&apos;t added to your Halo drafts. Your own notes on a lead in Halo never come to SparkReels.
               </span>
               {/* Two accounts, two webhooks (2026-11-10, the owner's ask; Halo confirmed it). */}
@@ -1097,7 +1096,7 @@ function FullGuide() {
                 close-ups, rooms, streets, different light. They are generic on purpose. People
                 appear only from behind or at a distance, there are no readable words, and it is
                 never your town or a real listing. For a real property use a Photos only reel with
-                its own photos (step 19). A Scenes Reel uses <strong>one short video</strong>, and{" "}
+                its own photos (step 19). A Scenes Reel uses <strong>one video</strong>, and{" "}
                 <strong>&ldquo;Scenes made with AI.&rdquo;</strong> is added to its description.
               </span>
             </Step>
@@ -1145,7 +1144,7 @@ function FullGuide() {
                 one for each part of what you&apos;re about to say, in order. People appear only from
                 behind or at a distance, and it is never your town or a real property. Scenes take
                 about three minutes to make and use{" "}
-                <strong>one short video</strong> from your plan; photos and your own footage stay
+                <strong>one video</strong> from your plan; photos and your own footage stay
                 free. Write the script first, because the scenes are made from it. Choosing a clip or
                 scenes turns on Branded Look, which draws the background.
               </span>
@@ -1203,7 +1202,7 @@ function FullGuide() {
               at the bottom, returns to Spark Studio.{" "}
               <strong>Listing video</strong> writes a tour from the listing —
               paste a Zillow or Redfin link (other sites coming soon), upload photos or enter the details — and renders it in your voice,
-              with your avatar on screen or the photos full-frame. It uses one short video. Once the
+              with your avatar on screen or the photos full-frame. It uses one video. Once the
               address and price are in, press <strong>Next · video setup</strong> on the bar at the
               bottom to have the tour written, or <strong>Write it — I&apos;ll read it on camera</strong>{" "}
               to go straight to the teleprompter with your photos behind you, free.
@@ -1226,7 +1225,7 @@ function FullGuide() {
               </span>
               <span className="block mt-1.5">
                 <strong>Cinematic</strong> turns each photo into a few seconds of gentle camera
-                movement, and uses <strong>one short video</strong>. It takes up to 8 photos and 60
+                movement, and uses <strong>one video</strong>. It takes up to 8 photos and 60
                 seconds, and works best on rooms and exteriors — avoid photos with people in them,
                 because they can come out looking different. Every clip is checked against its
                 photo; one that drifts away from it is dropped and that photo gets the classic pan
@@ -1244,7 +1243,7 @@ function FullGuide() {
                 <strong>Build the reel</strong> is on the bar at the bottom. When the reel is done
                 it becomes <strong>View your reel</strong>.{" "}
                 <strong>Make another reel</strong>, at the foot of the form, brings the build button
-                back — on Cinematic that is another short video.
+                back — on Cinematic that is another video.
               </span>
               {/* The other thing the same photos can be. Said beside the reel
                   because it is the same form and the same set of pictures. */}
@@ -1283,7 +1282,7 @@ function FullGuide() {
               </span>
               <span className="block mt-1.5">
                 <strong>Next · script</strong> writes a short script from the words on screen. Change it
-                if you like, then press <strong>Make video</strong>. It uses one short video. You talk in
+                if you like, then press <strong>Make video</strong>. It uses one video. You talk in
                 a circle in the corner while the words animate in, and the post&apos;s title, description
                 and hashtags are written for you.
               </span>
@@ -1588,7 +1587,7 @@ function FullGuide() {
                 first name and email. <strong>2 Your video</strong>: edit the words, then{" "}
                 <strong>Record it myself</strong> (free, unlimited: the camera opens with the words on the
                 teleprompter, and when it&apos;s saved, come back and it&apos;s picked for you),{" "}
-                <strong>Avatar in circle</strong> (up to 60 seconds, uses 1 short video),{" "}
+                <strong>Avatar in circle</strong> (up to 60 seconds, uses 1 video),{" "}
                 <strong>Photo reel</strong> (upload your photos; the words show as text cards or your cloned voice
                 reads them; free) or <strong>Use a video I made</strong>. Make one general video once, with no
                 client names, and press <strong>Save as my review video</strong>: from then on it&apos;s picked for
@@ -1847,8 +1846,8 @@ function FullGuide() {
             <li><strong>Weekly:</strong> hit the mic and say it, tap a topic chip, or forward a report → generate script → Spark Video — about 5 minutes of your time</li>
             <li><strong>Hands off:</strong> add your Halo site on AutoSparks, or forward an email, and approve the drafts that show up there — they make and post themselves</li>
             <li><strong>Publish:</strong> one window sends it to YouTube and the other accounts you connected, with title, description, and tags attached</li>
-            <li><strong>For a listing:</strong> a Classic photos only reel is free; Cinematic or a listing video uses one short video</li>
-            <li><strong>No photos and no camera:</strong> Voice over only makes a Scenes Reel from a topic, up to 3 minutes, for one short video</li>
+            <li><strong>For a listing:</strong> a Classic photos only reel is free; Cinematic or a listing video uses one video</li>
+            <li><strong>No photos and no camera:</strong> Voice over only makes a Scenes Reel from a topic, up to 3 minutes, for one video</li>
             <li><strong>Mix in</strong> free camera videos — YouTube&apos;s algorithm loves 8–15 minute authentic long-form</li>
             <li><strong>Every one</strong> also gives you a blog article for your own site, which costs nothing from your plan</li>
           </ol>

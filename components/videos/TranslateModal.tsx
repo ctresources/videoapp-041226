@@ -31,7 +31,9 @@ export function TranslateModal({
   const [balance, setBalance] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const kindLabel = videoKind === "long" ? "long" : "short";
+  // One kind of video since long videos were retired (2026-11-13); a
+  // translation of an old long video uses an ordinary one too.
+  void videoKind;
 
   useEffect(() => {
     fetch("/api/video/translate")
@@ -71,10 +73,10 @@ export function TranslateModal({
         role: string | null;
       };
       setIsAdmin(hasAdminPerks(p.role));
-      setBalance(availableFor(p, videoKind));
+      setBalance(availableFor(p, "short"));
     })();
     return () => { cancelled = true; };
-  }, [videoKind]);
+  }, []);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -149,10 +151,10 @@ export function TranslateModal({
               go and buy. */}
           <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
             <p className="text-sm font-semibold text-amber-900">
-              This uses 1 of your {kindLabel} videos
+              This uses 1 of your videos
             </p>
             <p className="text-xs text-amber-800 mt-0.5">
-              HeyGen renders the dub from scratch, so it costs the same as making a new video.
+              The dub is made from scratch, so it costs the same as making a new video.
               {isAdmin
                 ? " Admin accounts aren't charged."
                 : balance !== null && ` You have ${balance} left — and if it fails, you get it back.`}

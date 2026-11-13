@@ -13,19 +13,18 @@ import {
   AlertCircle, ArrowRight, ExternalLink, Sprout, Gift, Video, Infinity,
 } from "lucide-react";
 
-// Short and long videos are SEPARATE monthly allowances — using long videos
-// never eats into short ones. See lib/stripe.ts.
+// One monthly allowance of videos, up to 2 minutes each (long AI videos
+// retired 2026-11-13). Must match lib/stripe.ts.
 const PLANS = [
   {
     key: "starter",
     name: "Creator",
     price: 99,
     videos: 4,
-    longVideos: 0,
-    blurb: "4 short videos",
+    blurb: "4 videos",
     highlighted: false,
     features: [
-      "4 short AI videos/month — up to 2 minutes each",
+      "4 AI videos/month — up to 2 minutes each",
       "AutoSparks — 3 posts drafted for you every week, ready to approve",
       "Automatic b-roll, captions & titles on every video",
       "MLS listing videos — paste a listing link, get a finished property tour",
@@ -44,14 +43,12 @@ const PLANS = [
     key: "agent",
     name: "Producer",
     price: 149,
-    videos: 4,
-    longVideos: 2,
-    blurb: "4 short + 2 long videos",
+    videos: 7,
+    blurb: "7 videos",
     highlighted: true,
     features: [
-      "4 short AI videos/month — up to 2 minutes each, with automatic b-roll",
+      "7 AI videos/month — up to 2 minutes each, with automatic b-roll",
       "AutoSparks — 3 posts drafted for you every week, ready to approve",
-      "2 long AI videos/month — up to 8 minutes each, using your photos for visuals",
       "MLS listing videos — paste a listing link, get a finished property tour",
       "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
@@ -68,14 +65,12 @@ const PLANS = [
     key: "pro",
     name: "Influencer",
     price: 199,
-    videos: 4,
-    longVideos: 4,
-    blurb: "4 short + 4 long videos",
+    videos: 10,
+    blurb: "10 videos",
     highlighted: false,
     features: [
-      "4 short AI videos/month — up to 2 minutes each, with automatic b-roll",
+      "10 AI videos/month — up to 2 minutes each, with automatic b-roll",
       "AutoSparks — 3 posts drafted for you every week, ready to approve",
-      "4 long AI videos/month — up to 8 minutes each, using your photos for visuals",
       "MLS listing videos — paste a listing link, get a finished property tour",
       "Unlimited camera recordings (up to 15 mins each)",
       "Built-in teleprompter",
@@ -140,17 +135,15 @@ export default async function BillingPage({
 
   const currentPlan = PLANS.find((p) => p.key === currentTier);
 
-  // Two independent allowances — users never see the word "credit". Each is a
-  // monthly plan balance plus any purchased add-ons, which never expire.
+  // Users never see the word "credit". The monthly plan balance plus any
+  // purchased add-ons, which never expire. Long videos were retired on
+  // 2026-11-13, so their old columns are no longer shown.
   const shortPlan = profile?.credits_remaining ?? 0;
-  const longPlan = profile?.long_credits_remaining ?? 0;
   const shortBought = profile?.purchased_short_videos ?? 0;
-  const longBought = profile?.purchased_long_videos ?? 0;
   // Admins are uncapped, so the counters below describe a limit that
   // doesn't apply to them — say so rather than showing a plan quota.
   const isAdmin = hasAdminPerks(profile?.role);
   const shortLeft = shortPlan + shortBought;
-  const longLeft = longPlan + longBought;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -166,10 +159,8 @@ export default async function BillingPage({
           <div>
             <p className="font-semibold text-sm">Added to your account! 🎉</p>
             <p className="text-xs text-green-700 mt-0.5">
-              {searchParams.kind === "long"
-                ? "Your long video is ready to create — head to Create."
-                : searchParams.added
-                  ? `${searchParams.added} short video${Number(searchParams.added) !== 1 ? "s" : ""} added — head to Create.`
+              {searchParams.added
+                  ? `${searchParams.added} video${Number(searchParams.added) !== 1 ? "s" : ""} added — head to Create.`
                   : "Your purchase was added to your account."}
             </p>
           </div>
@@ -288,13 +279,13 @@ export default async function BillingPage({
             "Added to your account!" banner, and then no counter anywhere on
             the page confirming they owned it — the dashboard showed it, this
             page did not. */}
-        {(currentPlan || currentTier === "beta" || shortLeft > 0 || longLeft > 0) && (
+        {(currentPlan || currentTier === "beta" || shortLeft > 0) && (
           <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* AI videos — short and long are separate allowances */}
+            {/* AI videos */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                  <Zap size={11} className="text-primary-500" /> Short Videos Left
+                  <Zap size={11} className="text-primary-500" /> AI Videos Left
                 </p>
                 <p className="text-xs font-bold text-brand-text">
                   {shortPlan} of {currentPlan?.videos ?? 0}
@@ -308,30 +299,10 @@ export default async function BillingPage({
                 />
               </div>
 
-              {(currentPlan?.longVideos ?? 0) > 0 || longLeft > 0 ? (
-                <>
-                  <div className="flex items-center justify-between mt-3 mb-2">
-                    <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                      <Video size={11} className="text-spark-amber" /> Long Videos Left
-                    </p>
-                    <p className="text-xs font-bold text-brand-text">
-                      {longPlan} of {currentPlan?.longVideos ?? 0}
-                      {longBought > 0 && <span className="font-normal text-slate-400"> + {longBought} add-on</span>}
-                    </p>
-                  </div>
-                  <div className="w-full h-2 bg-slate-100 rounded-full">
-                    <div
-                      className="h-2 bg-spark-amber rounded-full transition-all"
-                      style={{ width: `${Math.min(100, (longPlan / (currentPlan?.longVideos || 1)) * 100)}%` }}
-                    />
-                  </div>
-                </>
-              ) : null}
-
               <p className="text-xs text-slate-400 mt-1.5">
                 {currentTier === "beta"
-                  ? "Included with beta access · short and long are tracked separately · add-on videos you purchase never expire"
-                  : "Plan videos reset each billing period · short and long are tracked separately · add-on videos you purchase never expire"}
+                  ? "Included with beta access · add-on videos you purchase never expire"
+                  : "Plan videos reset each billing period · add-on videos you purchase never expire"}
               </p>
             </div>
             {/* Camera recordings */}
@@ -461,6 +432,7 @@ export default async function BillingPage({
           affected by your monthly reset, and remain yours even if you cancel. Because of that,
           add-on purchases are non-refundable.
         </p>
+        {/* The $29 long video pack was retired with long videos (2026-11-13). */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* 1-video pack */}
           <div className="rounded-2xl p-5 border border-slate-200 bg-white flex flex-col gap-3">
@@ -468,35 +440,16 @@ export default async function BillingPage({
               <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
                 <Video size={15} className="text-slate-500" />
               </div>
-              <p className="font-bold text-brand-text">1 Short Video</p>
+              <p className="font-bold text-brand-text">1 Video</p>
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-3xl font-black text-brand-text">$25</span>
               <span className="text-slate-400 text-sm">one-time</span>
             </div>
-            <p className="text-xs text-slate-500">One short video, up to 2 minutes of finished video. Added to your account instantly.</p>
+            <p className="text-xs text-slate-500">One AI video, up to 2 minutes of finished video. Added to your account instantly.</p>
             <a href="/api/stripe/credits?pack=short1">
               <Button variant="outline" size="sm" className="w-full gap-1.5">
                 Buy 1 Video <ArrowRight size={12} />
-              </Button>
-            </a>
-          </div>
-          {/* Long video pack */}
-          <div className="rounded-2xl p-5 border border-slate-200 bg-white flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-spark-amber-tint flex items-center justify-center">
-                <Video size={15} className="text-spark-amber" />
-              </div>
-              <p className="font-bold text-brand-text">Long Video</p>
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-black text-brand-text">$29</span>
-              <span className="text-slate-400 text-sm">one-time</span>
-            </div>
-            <p className="text-xs text-slate-500">One long AI video, up to 8 minutes, using your photos for visuals. Works on any plan.</p>
-            <a href="/api/stripe/credits?pack=long1">
-              <Button variant="outline" size="sm" className="w-full gap-1.5">
-                Buy A Long Video <ArrowRight size={12} />
               </Button>
             </a>
           </div>

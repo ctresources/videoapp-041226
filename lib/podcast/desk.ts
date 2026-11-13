@@ -7,13 +7,12 @@ import ffmpegPath from "@ffmpeg-installer/ffmpeg";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { speakInVoice } from "@/lib/api/heygen";
 import { generatePodcastDesk } from "@/lib/api/openai-image";
-import { chargeOneVideo } from "@/lib/utils/video-allowance";
 import { refundVideoCredits } from "@/lib/utils/refund-credits";
 import { buildCallbackUrl } from "@/lib/utils/webhook-callback";
 import { ensureProjectThumbnail } from "@/lib/utils/thumbnail-render";
 import { announceVideoReady } from "@/lib/video/ready-notice";
 import { composeDesk, type DeskTurn } from "@/lib/podcast/desk-compose";
-import { studioSetUrl, type StudioSetId, type Turn, PODCAST_LONG_VIDEOS } from "@/lib/podcast/podcast";
+import { studioSetUrl, type StudioSetId, type Turn, PODCAST_VIDEOS, chargePodcastEpisode } from "@/lib/podcast/podcast";
 import { copyEpisodeToPartner } from "@/lib/podcast/partners";
 
 const run = promisify(execFile);
@@ -27,7 +26,7 @@ const key = () => process.env.HEYGEN_API_KEY ?? "";
  *
  *  1. startDeskEpisode (the make route, in the background): each line spoken
  *     in its speaker's voice, a full-length track per speaker, and two
- *     see-through renders, one per person. Charged one long video once HeyGen
+ *     see-through renders, one per person. Charged two videos (one long until 2026-11-13) once HeyGen
  *     has both.
  *  2. deskPartDone (the webhook): each render reports back on its own; when
  *     both are in, finishDeskEpisode puts the shots together and stores it.
@@ -173,16 +172,16 @@ export async function startDeskEpisode(admin: Admin, o: {
     await admin.rpc("podcast_desk_part", { row_id: o.rowId, part: "guest", info: { job: guestJob } });
 
     let source: string | null = null;
-    if (!o.isAdmin) source = (await chargeOneVideo(admin, o.userId, "long"))?.source ?? null;
+    if (!o.isAdmin) source = await chargePodcastEpisode(admin, o.userId);
     const { data: now } = await admin.from("generated_videos").select("metadata").eq("id", o.rowId).single();
     await admin.from("generated_videos").update({
       render_job_id: hostJob,
       metadata: {
         ...((now as { metadata: Record<string, unknown> | null } | null)?.metadata ?? {}),
-        credit_cost: o.isAdmin ? 0 : PODCAST_LONG_VIDEOS, credit_kind: "long", credit_source: source ?? "plan",
+        credit_cost: o.isAdmin ? 0 : PODCAST_VIDEOS, credit_kind: "short", credit_source: source ?? "plan",
       },
     }).eq("id", o.rowId);
-    await admin.from("api_usage_log").insert({ user_id: o.userId, api_provider: "heygen", endpoint: "podcast-desk", credits_used: PODCAST_LONG_VIDEOS, response_status: 202 });
+    await admin.from("api_usage_log").insert({ user_id: o.userId, api_provider: "heygen", endpoint: "podcast-desk", credits_used: PODCAST_VIDEOS, response_status: 202 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[podcast-desk] ${o.rowId} start failed:`, msg);

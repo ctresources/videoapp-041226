@@ -4036,7 +4036,8 @@ function CreatePageInner() {
                       // and dropped their titles out of line with it.
                       { p: "reel", l: "standard", title: "Vertical 9:16", sub: "Up to 90 sec · Reels, Shorts", w: "11px", h: "17px" },
                       { p: "youtube", l: "standard", title: "Horizontal 16:9", sub: "Up to 2 min · YouTube + websites", w: "20px", h: "12px" },
-                      { p: "youtube", l: "long", title: "Longform 16:9", sub: "Up to 8 min · YouTube + websites", w: "20px", h: "12px" },
+                      // Long AI videos retired 2026-11-13: Longform is read on camera.
+                      { p: "youtube", l: "long", title: "Longform 16:9", sub: "Up to 8 min · you on camera", w: "20px", h: "12px" },
                     ] as const).map(({ p, l, title, sub, w, h }) => {
                       const on = locPlatform === p && locLength === l;
                       return (
@@ -4074,8 +4075,8 @@ function CreatePageInner() {
                   </div>
                   {locLength === "long" && (
                     <p className="mt-2 text-[12.5px] leading-[1.4] text-spark-ink-faint">
-                      Longform runs up to 8 minutes, reads your full script start to finish, and
-                      uses your uploaded photos as the visuals. Horizontal only.
+                      Longform runs up to 8 minutes and you read it yourself on camera. It
+                      doesn&apos;t use a video from your plan. Horizontal only.
                     </p>
                   )}
                 </div>
@@ -4440,8 +4441,9 @@ function CreatePageInner() {
                    * Saying "none left" flat would turn a choice about who is
                    * on screen into a wall.
                    */
-                  const none = !!allowance && !allowance.unlimited
-                    && (isLong ? allowance.long === 0 : allowance.short === 0);
+                  // Long AI videos retired 2026-11-13: Longform is always read
+                  // on camera, so it never says "none left".
+                  const none = !isLong && !!allowance && !allowance.unlimited && allowance.short === 0;
                   return (
                     <button
                       key={l.key}
@@ -4456,7 +4458,7 @@ function CreatePageInner() {
                     >
                       <span className="block text-[11px] font-bold text-brand-text">{l.label}</span>
                       <span className="block text-[10px] text-spark-ink-muted">
-                        up to {ceilMinutesFor(l.words)} min
+                        up to {ceilMinutesFor(l.words)} min{isLong ? " · on camera" : ""}
                       </span>
                       {/* Said here rather than discovered at Generate — and
                           said as what it is, which is that the avatar render
@@ -4471,8 +4473,8 @@ function CreatePageInner() {
                 })}
               </div>
               <p className="mt-1 text-[10.5px] leading-[1.45] text-spark-ink-faint">
-                Either length can be read by your avatar, which uses one video of that
-                kind, or by you on camera, which is free. You choose next.
+                Shorts can be read by your avatar, which uses one video, or by you on
+                camera. Longform is read by you on camera. Camera is free.
               </p>
               {/* Said before the choice, not discovered after an eight-minute
                   render. Stock footage is composited inside a serverless
@@ -4480,17 +4482,8 @@ function CreatePageInner() {
                   is skipped rather than risking a timeout that would take the
                   whole job down — so on Longform the photos are the visuals,
                   and with none attached it is the presenter throughout. */}
-              {pasteIsLong && (
-                <p className="mt-1.5 flex items-start gap-1 text-[10.5px] leading-[1.45] text-amber-600">
-                  <AlertCircle size={11} className="mt-0.5 shrink-0" />
-                  <span>
-                    Longform uses your photos for visuals — automatic stock footage only
-                    applies to Shorts. {pastePhotos.length === 0
-                      ? "With none attached it will be you on screen the whole way through."
-                      : `Your ${pastePhotos.length} photo${pastePhotos.length === 1 ? "" : "s"} will loop across the full length.`}
-                  </span>
-                </p>
-              )}
+              {/* The Longform photo note went with long AI videos (2026-11-13):
+                  Longform is now read on camera. */}
             </div>
 
             {/* Market for THIS video, asked before either way of writing the
@@ -4699,7 +4692,7 @@ function CreatePageInner() {
               <textarea
                 value={pasteScript}
                 onChange={(e) => setPasteScript(e.target.value)}
-                placeholder={`Paste or type your script here. The AI avatar speaks it exactly as written. Up to ${SHORT_MAX_WORDS} words for a standard video, or ${LONG_MAX_WORDS.toLocaleString()} for a long one.`}
+                placeholder={`Paste or type your script here. Up to ${SHORT_MAX_WORDS} words for your avatar to read, or ${LONG_MAX_WORDS.toLocaleString()} to read yourself on camera.`}
                 rows={10}
                 className="w-full text-sm px-3 py-2.5 border border-spark-rule rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-spark-amber resize-none leading-relaxed"
               />
@@ -4714,13 +4707,13 @@ function CreatePageInner() {
 
               {pasteWordCount === 0 ? (
                 <p className="text-xs text-spark-ink-faint mt-1">
-                  Standard video: up to {SHORT_MAX_WORDS} words (~{minutesFor(SHORT_MAX_WORDS)} min) ·
-                  Long video: up to {LONG_MAX_WORDS.toLocaleString()} words (~{minutesFor(LONG_MAX_WORDS)} min)
+                  Avatar: up to {SHORT_MAX_WORDS} words (~{minutesFor(SHORT_MAX_WORDS)} min) ·
+                  On camera: up to {LONG_MAX_WORDS.toLocaleString()} words (~{minutesFor(LONG_MAX_WORDS)} min)
                 </p>
               ) : pasteWordCount <= pasteScriptBudget ? (
                 <p className="text-xs text-spark-ink-faint mt-1">
-                  Fits {pasteIsLong ? "a long" : "a standard"} video ({pasteWordCap.toLocaleString()} words
-                  max){pasteIsLong ? "." : `. Longform takes up to ${LONG_MAX_WORDS.toLocaleString()}.`}
+                  Fits {pasteIsLong ? "a Longform script for camera" : "a standard video"} ({pasteWordCap.toLocaleString()} words
+                  max){pasteIsLong ? "." : `. On camera, Longform takes up to ${LONG_MAX_WORDS.toLocaleString()}.`}
                 </p>
               ) : (
                 /* One rule instead of two.
@@ -4735,14 +4728,14 @@ function CreatePageInner() {
                     <span>
                       {pasteIsLong ? (
                         <>
-                          Over the {LONG_MAX_WORDS.toLocaleString()}-word maximum even for a long video.
+                          Over the {LONG_MAX_WORDS.toLocaleString()}-word maximum even for Longform.
                           The last {(pasteWordCount - pasteScriptBudget).toLocaleString()} words will be cut
                           before rendering.
                         </>
                       ) : (
                         <>
-                          Too long for a standard video. Pick <strong>Longform</strong> above, or cut{" "}
-                          {(pasteWordCount - pasteScriptBudget).toLocaleString()} words to fit.
+                          Too long for a standard video. Pick <strong>Longform</strong> above to read it
+                          on camera, or cut {(pasteWordCount - pasteScriptBudget).toLocaleString()} words to fit.
                         </>
                       )}
                     </span>

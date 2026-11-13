@@ -15,7 +15,7 @@ import { LookPicker } from "@/components/halo/halo-sites-card";
  * 2026-11-02 (the owner's approved mockup): At the desk (side by side, with
  * close-ups) or One at a time; partners (other SparkReels users who pressed
  * Allow) above the ready-made co-hosts, with Invite a partner; an episode
- * uses one long video.
+ * uses two videos (one long video until long videos were retired, 2026-11-13).
  */
 
 type Source = "topic" | "url" | "spark" | "text";
@@ -102,7 +102,7 @@ export function PodcastStudio() {
   }
 
   async function make() {
-    if (!window.confirm("Make this episode? It uses 1 long video from your plan.")) return;
+    if (!window.confirm(`Make this episode? It uses ${setup?.cost ?? 2} videos from your plan.`)) return;
     setMaking(true);
     try {
       const res = await fetch("/api/podcast/make", {
@@ -312,7 +312,7 @@ export function PodcastStudio() {
               <>
                 <Button onClick={() => void make()} loading={making} disabled={tooLong || !coHostId || turns.some((t) => !t.text.trim())}>Make episode</Button>
                 <span className="text-[13px] text-spark-ink-muted">
-                  Uses 1 long video{setup.videosLeft !== null ? ` · you have ${setup.videosLeft}` : ""}. 16:9, captions, about {Math.max(5, Math.round(w / 15))}–{Math.max(10, Math.round(w / 8))} minutes to make.
+                  Uses {setup.cost} videos{setup.videosLeft !== null ? ` · you have ${setup.videosLeft}` : ""}. 16:9, captions, about {Math.max(5, Math.round(w / 15))}–{Math.max(10, Math.round(w / 8))} minutes to make.
                 </span>
               </>
             )}

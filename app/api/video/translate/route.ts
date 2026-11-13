@@ -80,10 +80,9 @@ export async function POST(req: NextRequest) {
   const capMsg = await staffCapMessage(admin, user.id, profile?.role);
   if (capMsg) return NextResponse.json({ error: capMsg, code: "staff_cap" }, { status: 402 });
 
-  // Charge the same kind (short/long) the source video was charged — a
-  // translation is HeyGen's own separately-billed render, same as the
-  // original. Rows created before credit_kind existed fall back to "short".
-  const videoKind: VideoKind = source.metadata?.credit_kind === "long" ? "long" : "short";
+  // One video, whatever the source was: long videos were retired on
+  // 2026-11-13, so a translation of an old long one uses an ordinary video.
+  const videoKind: VideoKind = "short";
   const charge = profile ? chargeFor(profile, videoKind) : null;
 
   if (!isAdmin && !charge) {
@@ -91,9 +90,7 @@ export async function POST(req: NextRequest) {
       {
         code: "out_of_videos",
         kind: videoKind,
-        error: videoKind === "long"
-          ? "You've used all your long videos. Buy another in Billing or upgrade your plan."
-          : "You've used all your short videos. Buy more in Billing or upgrade your plan.",
+        error: "You've used all your videos. Buy more in Billing or upgrade your plan.",
       },
       { status: 402 },
     );

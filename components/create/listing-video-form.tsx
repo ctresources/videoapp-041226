@@ -147,18 +147,10 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
    * exists for it to read back and the editor opens exactly as it did before.
    */
   const renderMode: "voice_only" | "avatar_voice" = "avatar_voice";
-  // Long videos are a separate allowance. Offering the option to someone with
-  // none would write an eight-minute script the render then refuses — so the
-  // choice only appears once there is one to spend. The server checks too;
-  // this is what stops the dead end being reachable.
-  const [longAvailable, setLongAvailable] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/profile/allowance")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((a) => a && setLongAvailable(a.isAdmin || a.long > 0))
-      .catch(() => {});
-  }, []);
+  // Long AI videos were retired on 2026-11-13. A Longform script is still
+  // offered, for reading yourself on camera, which spends nothing, so it is
+  // open to everyone.
+  const longAvailable = true;
 
   // 20 since 2026-10-16; an Avatar video uses only the first 15 (AGENT_PHOTO_LIMIT).
   const MAX_LISTING_PHOTOS = UPLOAD_PHOTO_LIMIT;
@@ -651,7 +643,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
                 We import the listing details, then use AI to write a property tour voiceover script
                 written to Fair Housing guidelines. Up to{" "}
                 {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[0].words)} minutes, or{" "}
-                {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[1].words)} if you pick Longform, plus the
+                {ceilMinutesFor(RENDERED_SCRIPT_LENGTHS[1].words)} if you pick Longform to read on camera, plus the
                 titles, hashtags and blog post that go with it.
               </>
             )}
@@ -1032,7 +1024,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
               >
                 <span className="block text-[11px] font-bold text-brand-text">{l.label}</span>
                 <span className="block text-[10px] text-spark-ink-muted">
-                  {locked ? "needs a long video" : `up to ${ceilMinutesFor(l.words)} min`}
+                  {locked ? "needs a long video" : `up to ${ceilMinutesFor(l.words)} min${isLong ? " · on camera" : ""}`}
                 </span>
               </button>
             );
@@ -1134,8 +1126,8 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
             camera choice came on the next screen, and the camera button goes
             there now. What the two share is that neither spends a credit. */}
         Both write the script first. Reading it yourself is free; the avatar render uses one of your
-        short or long videos, and is spent at Spark Video on the setup screen, where you pick the
-        avatar, shape and music.
+        videos, and is spent at Spark Video on the setup screen, where you pick the avatar, shape
+        and music.
       </p>
       </>)}
 

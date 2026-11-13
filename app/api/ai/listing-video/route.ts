@@ -10,7 +10,7 @@ import type { ListingData } from "../scrape-listing/route";
 import {
   targetWords, maxWords, minutesFor, clampScript, type VideoLength,
 } from "@/lib/utils/video-length";
-import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
+import { ALLOWANCE_SELECT } from "@/lib/utils/video-allowance";
 import { parseCityState } from "@/lib/utils/parse-address";
 import { freeTrialLocked } from "@/lib/utils/free-trial";
 import { PLAIN_COPY_RULES, plainCopy, plainCopyAll } from "@/lib/utils/copy-style";
@@ -307,13 +307,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Profile not found." }, { status: 400 });
   }
 
-  // Asking for a long script with no long videos to spend would write one the
-  // render then refuses — a wasted wait ending in a 402. Fall back to standard
-  // instead of failing: the script is still the one they can actually make.
+  // A long script is open to everyone since long AI videos were retired
+  // (2026-11-13): it is read on camera, which spends nothing. An avatar
+  // render of it is trimmed to the standard length.
   const isUnbranded = unbranded === true;
   const isAdmin = hasAdminPerks((profile as { role?: string | null }).role);
-  const canGoLong = isAdmin || availableFor(profile as never, "long") > 0;
-  const length: VideoLength = videoLength === "long" && canGoLong ? "long" : "standard";
+  const length: VideoLength = videoLength === "long" ? "long" : "standard";
   const tier = (profile as { subscription_tier?: string | null }).subscription_tier ?? null;
 
   // Generate script

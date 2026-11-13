@@ -6,13 +6,17 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 /**
- * Monthly video allowance, tracked as TWO INDEPENDENT buckets so spending long
- * videos never eats into short ones:
- *   shortVideos -> profiles.credits_remaining       (1 per short video)
- *   longVideos  -> profiles.long_credits_remaining  (1 per long video)
+ * Monthly video allowance -> profiles.credits_remaining (1 per video, up to
+ * 2 minutes each).
  *
- * `videos` is kept as the short-video count for older callers that still read
- * it. Users never see the word "credit" — the UI shows video counts and minutes.
+ * Long AI videos were retired on 2026-11-13 (the owner's call): customers had
+ * made one in four months, an 8-minute render sits at HeyGen's 30-minute
+ * auto-fail, and the plans now give more videos instead: 4 / 7 / 10. Camera
+ * recordings stay any length and never use the allowance. longVideos stays 0
+ * so the webhook writes 0 to profiles.long_credits_remaining.
+ *
+ * `videos` and `shortVideos` are the same count. Users never see the word
+ * "credit" — the UI shows video counts and minutes.
  */
 // Plan keys (starter/agent/pro) and `tier` values are internal identifiers —
 // they're stored in profiles.subscription_tier, read by the Stripe webhook,
@@ -33,7 +37,7 @@ export const PLANS = {
     videos: 4,
     shortVideos: 4,
     longVideos: 0,
-    blurb: "4 short videos",
+    blurb: "4 videos",
     tier: "starter" as const,
   },
   agent: {
@@ -41,10 +45,11 @@ export const PLANS = {
     // $149 from $189 on 2026-10-20, in STRIPE_PRICE_PRODUCER.
     priceId: (process.env.STRIPE_PRICE_PRODUCER || process.env.STRIPE_PRICE_AGENT)!,
     price: 149,
-    videos: 4,
-    shortVideos: 4,
-    longVideos: 2,
-    blurb: "4 short + 2 long videos",
+    // 4 short + 2 long until 2026-11-13; 7 videos now (worst case ~41% before bills).
+    videos: 7,
+    shortVideos: 7,
+    longVideos: 0,
+    blurb: "7 videos",
     tier: "agent" as const,
   },
   pro: {
@@ -52,10 +57,11 @@ export const PLANS = {
     // $199 from $269 on 2026-10-20, in STRIPE_PRICE_INFLUENCER.
     priceId: (process.env.STRIPE_PRICE_INFLUENCER || process.env.STRIPE_PRICE_PRO)!,
     price: 199,
-    videos: 4,
-    shortVideos: 4,
-    longVideos: 4,
-    blurb: "4 short + 4 long videos",
+    // 4 short + 4 long until 2026-11-13; 10 videos now (worst case ~37% before bills).
+    videos: 10,
+    shortVideos: 10,
+    longVideos: 0,
+    blurb: "10 videos",
     tier: "pro" as const,
   },
 } as const;

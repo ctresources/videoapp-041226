@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { X, Zap, Video, ArrowRight, Check } from "lucide-react";
+import { X, Zap, ArrowRight, Check } from "lucide-react";
 import type { VideoKind } from "@/lib/utils/video-allowance";
 
 /**
@@ -10,17 +10,18 @@ import type { VideoKind } from "@/lib/utils/video-allowance";
  * This replaces a plain toast. Someone who has just written a script and
  * pressed Generate is at the highest intent they will ever have; a message
  * with nothing to click sends them away instead of to checkout.
+ *
+ * One kind of video since long AI videos were retired (2026-11-13); `kind` is
+ * still accepted so older callers compile, and is ignored.
  */
 export function OutOfVideosModal({
-  kind,
   tier,
   onClose,
 }: {
-  kind: VideoKind;
+  kind?: VideoKind;
   tier: string;
   onClose: () => void;
 }) {
-  const isLong = kind === "long";
   const onFreePlan = tier === "free" || tier === "beta";
 
   return (
@@ -41,22 +42,18 @@ export function OutOfVideosModal({
         </button>
 
         <div className="flex items-center gap-2.5 mb-2">
-          <div className={`w-10 h-10 flex items-center justify-center rounded-xl ${isLong ? "bg-spark-amber-tint border border-spark-amber/30" : "bg-primary-50 border border-primary-100"}`}>
-            {isLong ? <Video size={18} className="text-spark-amber" /> : <Zap size={18} className="text-primary-600" />}
+          <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-primary-50 border border-primary-100">
+            <Zap size={18} className="text-primary-600" />
           </div>
           <h2 className="text-lg font-black text-slate-900">
-            {onFreePlan
-              ? "That was your free video"
-              : `You're out of ${isLong ? "long" : "short"} videos`}
+            {onFreePlan ? "That was your free video" : "You're out of videos"}
           </h2>
         </div>
 
         <p className="text-sm text-slate-500 leading-relaxed mb-5">
           {onFreePlan
             ? "Your script is saved — pick a plan and you can generate it right away. Camera recordings and the AI tools stay free."
-            : isLong
-              ? "Your script is saved. Buy a single long video, or move up a plan for more each month."
-              : "Your script is saved. Buy more short videos, or move up a plan for a bigger monthly allowance."}
+            : "Your script is saved. Buy another video, or move up a plan for a bigger monthly allowance."}
         </p>
 
         <div className="space-y-2.5 mb-5">
@@ -72,12 +69,10 @@ export function OutOfVideosModal({
 
           {!onFreePlan && (
             <Link
-              href="/billing#add-ons"
+              href="/billing#buy-more"
               className="flex items-center justify-between gap-3 border border-slate-200 rounded-xl px-4 py-3.5 hover:border-slate-300 hover:bg-slate-50 transition-colors"
             >
-              <span className="text-sm font-semibold text-slate-700">
-                {isLong ? "Buy one long video — $29" : "Buy another short video — $25"}
-              </span>
+              <span className="text-sm font-semibold text-slate-700">Buy another video — $25</span>
               <ArrowRight size={16} className="text-slate-400" />
             </Link>
           )}

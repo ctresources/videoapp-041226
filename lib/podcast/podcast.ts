@@ -3,6 +3,7 @@ import { openaiChatJson } from "@/lib/api/openai-chat";
 import { chatJson } from "@/lib/api/perplexity-chat";
 import { generateTwinBackdrop } from "@/lib/api/openai-image";
 import { getAccessLevel, type AccessLevel } from "@/lib/access";
+import { chargeOneVideo } from "@/lib/utils/video-allowance";
 
 /**
  * Spark Podcast (2026-10-30, the owner's ask; step 1 behind the
@@ -22,8 +23,26 @@ export const PODCAST_FEATURE = "spark_podcast";
 export const PODCAST_LEVELS: readonly AccessLevel[] = ["producer", "influencer", "admin"];
 export const podcastPlanOk = (p: { subscription_tier?: string | null; role?: string | null } | null) =>
   PODCAST_LEVELS.includes(getAccessLevel(p));
-/** What one episode (up to 3 minutes) uses from the plan: one long video (2026-11-02, the owner's call; was two short). */
-export const PODCAST_LONG_VIDEOS = 1;
+/**
+ * What one episode (up to 3 minutes) uses from the plan: two videos. It was
+ * one long video from 2026-11-02; long videos were retired on 2026-11-13, so
+ * it is back to two, as before.
+ */
+export const PODCAST_VIDEOS = 2;
+
+/**
+ * Takes an episode's videos from the plan (then purchased add-ons). Returns
+ * where the first came from, recorded on the row so a failed episode refunds
+ * there. Call only after checking availableFor(p, "short") >= PODCAST_VIDEOS.
+ */
+export async function chargePodcastEpisode(admin: Admin, userId: string): Promise<string | null> {
+  let source: string | null = null;
+  for (let i = 0; i < PODCAST_VIDEOS; i++) {
+    const c = await chargeOneVideo(admin, userId, "short");
+    source ??= c?.source ?? null;
+  }
+  return source;
+}
 export const PODCAST_MAX_MINUTES = 3;
 /** Studio mode takes at most 50 scenes. */
 const MAX_TURNS = 40;

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { podcastSession } from "@/lib/podcast/session";
-import { listCoHosts, PODCAST_LONG_VIDEOS, STUDIO_SETS } from "@/lib/podcast/podcast";
+import { listCoHosts, PODCAST_VIDEOS, STUDIO_SETS } from "@/lib/podcast/podcast";
 import { listPartners } from "@/lib/podcast/partners";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
 import { hasAdminPerks } from "@/lib/utils/roles";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/podcast/setup — co-hosts (partners first), studio sets, recent Sparks and long videos left. */
+/** GET /api/podcast/setup — co-hosts (partners first), studio sets, recent Sparks and videos left. */
 export async function GET() {
   const s = await podcastSession();
   if (!s.ok) return s.response;
@@ -31,7 +31,7 @@ export async function GET() {
     coHosts, partners, sets, sparks,
     hasTwin: !!(prof as { heygen_digital_twin_look_id?: string | null } | null)?.heygen_digital_twin_look_id,
     name: p?.full_name ?? null, city: p?.location_city ?? null, state: p?.location_state ?? null,
-    videosLeft: hasAdminPerks(p?.role) ? null : availableFor(prof as never, "long"),
-    cost: PODCAST_LONG_VIDEOS,
+    videosLeft: hasAdminPerks(p?.role) ? null : availableFor(prof as never, "short"),
+    cost: PODCAST_VIDEOS,
   });
 }

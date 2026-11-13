@@ -1132,16 +1132,15 @@ export async function sendWelcomeEmail({ email, name, tier, affiliate }: {
 }): Promise<boolean> {
   if (!RESEND_API_KEY) return false;
   const plan = tier === "agent" ? "Producer" : tier === "pro" ? "Influencer" : "Creator";
-  const longLine = tier === "agent" ? "2 long videos, up to 8 minutes each"
-    : tier === "pro" ? "4 long videos, up to 8 minutes each" : null;
+  // 4 / 7 / 10 since long AI videos were retired (2026-11-13); lib/stripe.ts.
+  const videoCount = tier === "agent" ? 7 : tier === "pro" ? 10 : 4;
   const introLine = tier === "agent" || tier === "pro" ? "A free Agent Intro video every month" : null;
   const firstRaw = (name ?? "").trim().split(/\s+/)[0] || "there";
   const first = escHtml(firstRaw);
   const app = "https://www.sparkreels.ai";
 
   const monthly = [
-    "4 short AI videos, up to 2 minutes each",
-    longLine,
+    `${videoCount} AI videos, up to 2 minutes each`,
     "Unlimited blog posts and camera recordings",
     "AutoSparks: 3 posts drafted for you, ready every Monday",
     introLine,

@@ -285,6 +285,8 @@ function ScriptLengthWarning({
         <p className="mt-1.5 text-[11px] leading-snug text-spark-ink-soft">
           {words} of {cap} words for a {isLong ? "long" : "standard"} {mins(cap)}-minute
           video. The tail will be trimmed.
+          {/* Long AI videos retired 2026-11-13: reading it yourself keeps it all. */}
+          {!isLong && " Read it yourself on camera to keep all of it."}
         </p>
       </div>
       {!isLong && onSwitchToLong && (
@@ -1122,7 +1124,9 @@ export default function ProjectEditorPage() {
       // script doesn't land on a standard format and get trimmed, and a reel
       // asked for on step 1 doesn't arrive here as a landscape video.
       // Long form renders landscape only, so length wins where they disagree.
-      if (aiS.video_length === "long") setSelectedVideoType("youtube_long");
+      // Long AI videos retired 2026-11-13: an old long script opens on 16:9
+      // Shorts, and the length warning shows what will be trimmed.
+      if (aiS.video_length === "long") setSelectedVideoType("youtube_16x9");
       else if (aiS.video_platform === "reel") setSelectedVideoType("reel_9x16");
       else if (aiS.video_platform === "youtube") setSelectedVideoType("youtube_16x9");
       // Same idea for who is on screen: chosen on the listing form, before
@@ -1829,7 +1833,7 @@ export default function ProjectEditorPage() {
     if (allowance) {
       const left = videosLeft ?? 0;
       items.push({
-        label: `${selectedKind === "long" ? "Long" : "Short"} videos left`,
+        label: "Videos left",
         ok: allowance.isAdmin || left > 0,
         okText: allowance.isAdmin ? "No limit" : `${left} left`,
         badText: "None left",
@@ -2690,13 +2694,13 @@ export default function ProjectEditorPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't write the script. Try again.");
       setEditedScript(data.script as string);
-      // A long script needs the long format. A short one only has to stop the
-      // project sitting on Longform — there are two short shapes and which one
-      // is right is the agent's choice, so only Longform is corrected.
-      if (isLong) setSelectedVideoType("youtube_long");
-      else if (selectedVideoType === "youtube_long") setSelectedVideoType("youtube_16x9");
+      // Long AI videos were retired on 2026-11-13: a long script is for reading
+      // on camera, which is horizontal. Never back onto the old Longform.
+      if (isLong || selectedVideoType === "youtube_long") setSelectedVideoType("youtube_16x9");
       toast.success(
-        `${isLong ? "Longform" : "Short"} script ready: ${data.words} words, about ${data.minutes} minute${data.minutes === 1 ? "" : "s"}.`,
+        isLong
+          ? `8-minute script ready to read on camera: ${data.words} words, about ${data.minutes} minutes.`
+          : `Short script ready: ${data.words} words, about ${data.minutes} minute${data.minutes === 1 ? "" : "s"}.`,
       );
       // Returned as well as stored, for the caller that hands it straight to
       // the camera: setState is not readable until the next render, and that
@@ -3476,7 +3480,7 @@ export default function ProjectEditorPage() {
                   scope="script"
                   disabled={videoGenerating}
                   onSettings={(st) => {
-                    if (st.videoType) setSelectedVideoType(st.videoType as VideoChoice);
+                    if (st.videoType) setSelectedVideoType(st.videoType === "youtube_long" ? "youtube_16x9" : st.videoType as VideoChoice);
                     if (st.renderMode) setRenderMode(st.renderMode);
                     if (st.musicId) applyMusicId(st.musicId);
                     if (typeof st.captions === "boolean") setBurnCaptions(st.captions);
@@ -3697,7 +3701,9 @@ export default function ProjectEditorPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       {([
                         { key: "rendered_short" as const, label: "2-minute script", note: "Shorts" },
-                        { key: "rendered_long" as const, label: "8-minute script", note: "Longform" },
+                        // Long AI videos were retired on 2026-11-13; an 8-minute
+                        // script is still yours to read on camera.
+                        { key: "rendered_long" as const, label: "8-minute script", note: "on camera" },
                       ]).map(({ key, label, note }) => (
                         <button
                           key={key}
@@ -3724,7 +3730,6 @@ export default function ProjectEditorPage() {
                   words={editedScript.trim().split(/\s+/).filter(Boolean).length}
                   isLong={selectedVideoType === "youtube_long"}
                   standardCap={standardMaxWords()}
-                  onSwitchToLong={() => setSelectedVideoType("youtube_long")}
                 />
               </>
             )}
@@ -3811,7 +3816,7 @@ export default function ProjectEditorPage() {
                     onSettings={(st) => {
                       // Nulls mean "not mentioned" and must never clear a choice
                       // the user already made by hand.
-                      if (st.videoType) setSelectedVideoType(st.videoType as VideoChoice);
+                      if (st.videoType) setSelectedVideoType(st.videoType === "youtube_long" ? "youtube_16x9" : st.videoType as VideoChoice);
                       if (st.renderMode) setRenderMode(st.renderMode);
                       if (st.musicId) applyMusicId(st.musicId);
                       if (typeof st.captions === "boolean") setBurnCaptions(st.captions);
@@ -4364,7 +4369,7 @@ export default function ProjectEditorPage() {
                 <>
                   {". This uses "}
                   <span className="text-spark-ink">
-                    1 of your {videosLeft} {selectedKind} video
+                    1 of your {videosLeft} video
                     {videosLeft === 1 ? "" : "s"}
                   </span>
                 </>

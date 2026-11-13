@@ -616,8 +616,11 @@ export async function startRender(
    * look is dropped whatever else arrived with it.
    */
   const voiceOnly = renderMode === "voice_only";
-  // Long videos (up to 8 min) are landscape-only and draw 3x from the allowance.
-  const isLongForm = longForm === true && videoType !== "reel_9x16" && videoType !== "short_1x1";
+  // Long AI videos (up to 8 min) were retired on 2026-11-13, the owner's call:
+  // plans give more 2-minute videos instead. A request still asking for
+  // longForm (an old tab, a saved link) renders as a standard video and uses
+  // one ordinary video; the long branches below are left in place, unused.
+  const isLongForm: boolean = false;
   // engine "direct" routes to HeyGen's v3 Direct Video API (single talking-head)
   // instead of the default Video Agent.
   //

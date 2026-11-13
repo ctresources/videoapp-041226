@@ -60,7 +60,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
       "Your AI avatar, or your Digital Twin, speaking in your cloned voice",
       "Automatic b-roll, captions, music and your logo and colors",
       "Vertical for Reels and Shorts, or horizontal for YouTube",
-      "Short videos up to 2 minutes, and long videos up to 8 minutes on Producer and Influencer",
+      "AI videos up to 2 minutes, and recordings of yourself on camera up to 15 minutes",
       "A blog post of 1,000 to 1,500 words for your own site",
       "Titles, descriptions and hashtags for every platform",
     ],
@@ -295,8 +295,9 @@ export const FEATURE_PAGES: FeaturePage[] = [
 /** The pricing page's own questions. */
 export const PRICING_FAQS: Faq[] = [
   { q: "Is there a contract?", a: "No. Plans are billed monthly and you can cancel anytime." },
-  { q: "What's the difference between short and long videos?", a: "Short videos run up to 2 minutes, for reels and quick updates. Long videos run up to 8 minutes, for YouTube market updates and tours, and use your photos for visuals. They're counted separately." },
-  { q: "What if I need more videos one month?", a: "Add them anytime: $25 for a short video or $29 for a long one. Add-on videos never expire, so they're non-refundable." },
+  // Replaced "short vs long" on 2026-11-13, when long AI videos were retired.
+  { q: "How many videos do I get?", a: "Creator includes 4 AI videos a month, Producer 7 and Influencer 10, each up to 2 minutes. Recording yourself on camera, up to 15 minutes, never uses one." },
+  { q: "What if I need more videos one month?", a: "Add them anytime for $25 each. Add-on videos never expire, so they're non-refundable." },
   { q: "What's unlimited?", a: "Blog posts, camera recordings and screen recordings are unlimited on every paid plan, and photo reels don't use any of your monthly videos." },
   { q: "Can I try it free?", a: "Yes. Sign up free and make your first AI video, no credit card needed." },
 ];
@@ -327,9 +328,9 @@ export const FAQ_GROUPS: FaqGroup[] = [
   {
     title: "Plans and pricing",
     items: [
-      { q: "How much does SparkReels cost?", a: "Creator is $99 a month, Producer $149 and Influencer $199. Each includes a set number of AI videos, plus unlimited blog posts, camera recordings and AutoSparks." },
+      { q: "How much does SparkReels cost?", a: "Creator is $99 a month with 4 AI videos, Producer $149 with 7 and Influencer $199 with 10. Each also includes unlimited blog posts, camera recordings and AutoSparks." },
       { q: "Can I cancel anytime?", a: "Yes. There's no contract; plans are billed monthly." },
-      { q: "What are add-on videos?", a: "Extra videos you buy when you need them: $25 for a short video, $29 for a long one. They never expire." },
+      { q: "What are add-on videos?", a: "Extra videos you buy when you need them, $25 each. They never expire." },
       { q: "Do you have an affiliate program?", a: "Yes, for active paid subscribers. Sign in, apply on the Affiliates page, and earn a commission when agents you refer subscribe." },
     ],
   },

@@ -5,19 +5,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-// Add-on packs. Short and long videos have SEPARATE allowances, so `kind` says
-// which one a pack tops up. Prices are built inline via price_data, so changing
-// these needs no Stripe dashboard work. Long dropped from $49 to $29 on
-// 2026-10-20: an 8-min long is ~$8 on Avatar III; a short is ~$17 at worst as
-// a 3-min Video Agent video, which is why it stays $25.
+// Add-on packs. Prices are built inline via price_data, so changing these
+// needs no Stripe dashboard work. The $29 long video pack (long1, and its old
+// alias "3") was retired with long AI videos on 2026-11-13: those links now
+// fall through to the !packInfo redirect to /billing below.
 const CREDIT_PACKS = {
-  short1: { credits: 1, amount: 2500, kind: "short", label: "1 Short Video" },
-  long1:  { credits: 1, amount: 2900, kind: "long",  label: "1 Long Video (up to 8 minutes)" },
-  // Legacy query-param aliases so any old link or bookmark still resolves.
-  // "2" (the old 2-video pack) intentionally dropped — falls through to the
-  // !packInfo redirect to /billing below rather than resolving to anything.
-  "1": { credits: 1, amount: 2500, kind: "short", label: "1 Short Video" },
-  "3": { credits: 1, amount: 2900, kind: "long",  label: "1 Long Video (up to 8 minutes)" },
+  short1: { credits: 1, amount: 2500, kind: "short", label: "1 Video" },
+  // Legacy query-param alias so any old link or bookmark still resolves.
+  // "2" (the old 2-video pack) intentionally dropped.
+  "1": { credits: 1, amount: 2500, kind: "short", label: "1 Video" },
 } as const;
 
 export async function GET(req: NextRequest) {

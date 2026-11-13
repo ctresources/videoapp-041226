@@ -19,7 +19,7 @@ export const pricingTiers = [
     description: "For agents ready to build a consistent online presence.",
     badge: null as string | null,
     highlights: [
-      "4 short AI videos a month, up to 2 minutes each",
+      "4 AI videos a month, up to 2 minutes each",
       "Unlimited blog posts",
       "AutoSparks: 3 drafts written for you every week",
       "Publish to YouTube + 3 more platforms per video",
@@ -33,11 +33,11 @@ export const pricingTiers = [
     price: "$149",
     period: "/month",
     positioning: "Build Your Local Brand",
-    description: "For agents ready to pair weekly visibility with in-depth content.",
+    description: "For agents ready to post every week.",
     badge: "Recommended for Growing Agents" as string | null,
     highlights: [
-      "4 short AI videos a month, up to 2 minutes each",
-      "2 long AI videos a month, up to 8 minutes each",
+      // 4 short + 2 long until 2026-11-13, when long AI videos were retired.
+      "7 AI videos a month, up to 2 minutes each",
       "Publish to YouTube + every platform",
       "A free Agent Intro video every month",
       "Everything in Creator",
@@ -51,11 +51,11 @@ export const pricingTiers = [
     price: "$199",
     period: "/month",
     positioning: "Expand Your Reach",
-    description: "For agents committed to a fuller long-form content schedule.",
+    description: "For agents posting several times a week.",
     badge: null as string | null,
     highlights: [
-      "4 short AI videos a month, up to 2 minutes each",
-      "4 long AI videos a month, up to 8 minutes each",
+      // 4 short + 4 long until 2026-11-13, when long AI videos were retired.
+      "10 AI videos a month, up to 2 minutes each",
       "Publish to YouTube + every platform",
       "A free Agent Intro video every month",
       "Everything in Creator",
@@ -81,11 +81,10 @@ const SHARED = [
  * `false` is not, and a string is what that plan gets.
  */
 const COMPARISON: { feature: string; values: [boolean | string, boolean | string, boolean | string] }[] = [
-  { feature: "Short AI videos a month (up to 2 minutes, automatic b-roll)", values: ["4", "4", "4"] },
-  { feature: "Long AI videos a month (up to 8 minutes, using your photos for visuals)", values: [false, "2", "4"] },
+  { feature: "AI videos a month (up to 2 minutes, automatic b-roll)", values: ["4", "7", "10"] },
   { feature: "AutoSparks: 3 posts drafted for you every week, ready to approve", values: [true, true, true] },
   // The Agent Intro (2026-10-23, the owner's call).
-  { feature: "Agent Intro video, 30 seconds, with a short and long bio", values: ["Uses 1 short video", "1 free a month", "1 free a month"] },
+  { feature: "Agent Intro video, 30 seconds, with a short and long bio", values: ["Uses 1 video", "1 free a month", "1 free a month"] },
   { feature: "Automatic b-roll, captions and titles on every video", values: [true, true, true] },
   { feature: "MLS listing videos: paste a listing link, get a finished property tour", values: [true, true, true] },
   { feature: "Unlimited camera and screen recordings (up to 15 minutes on camera, 10 on screen)", values: [true, true, true] },
@@ -186,7 +185,7 @@ export function PricingSection() {
         </div>
 
         <p className="mt-6 text-base sm:text-lg text-neutral-400">
-          Short and long videos are counted separately — using your long videos never eats into your short ones.
+          Recording yourself on camera never uses your videos.
         </p>
 
         {/* Every plan includes */}
@@ -247,13 +246,9 @@ export function PricingSection() {
               <p className="text-lg text-neutral-400 mt-1">Add-on videos you purchase never expire — unlike your monthly plan videos, they carry over until you use them. Because of that, add-on purchases are non-refundable.</p>
             </div>
             <div className="flex flex-wrap gap-3 shrink-0 text-xl">
-              <div className="rounded-lg border border-neutral-700 px-4 py-2">
-                <span className="font-black text-white">$25</span>
-                <span className="text-neutral-400 text-lg"> · One short video, up to 2 minutes</span>
-              </div>
               <div className="rounded-lg border px-4 py-2" style={{ borderColor: GOLD }}>
-                <span className="font-black" style={{ color: GOLD }}>$29</span>
-                <span className="text-neutral-300 text-lg"> · One long video, up to 8 minutes</span>
+                <span className="font-black" style={{ color: GOLD }}>$25</span>
+                <span className="text-neutral-300 text-lg"> · One video, up to 2 minutes</span>
               </div>
             </div>
           </div>

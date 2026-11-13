@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { podcastSession } from "@/lib/podcast/session";
 import {
-  cleanConversation, listCoHosts, PODCAST_MAX_MINUTES, PODCAST_LONG_VIDEOS, STUDIO_SETS,
-  studioBody, studioSetUrl, submitStudioVideo, wordCount, type StudioSetId,
+  cleanConversation, listCoHosts, PODCAST_MAX_MINUTES, PODCAST_VIDEOS, STUDIO_SETS,
+  studioBody, studioSetUrl, submitStudioVideo, wordCount, chargePodcastEpisode, type StudioSetId,
 } from "@/lib/podcast/podcast";
 import { startDeskEpisode, type DeskRecord } from "@/lib/podcast/desk";
 import { PARTNER_PREFIX, resolvePartnerCoHost } from "@/lib/podcast/partners";
-import { ALLOWANCE_SELECT, availableFor, chargeOneVideo } from "@/lib/utils/video-allowance";
+import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
 import { ensureVoiceForRender } from "@/lib/utils/voice-slot";
 import { buildCallbackUrl } from "@/lib/utils/webhook-callback";
 import { getAvatarLooks } from "@/lib/api/heygen";
@@ -29,9 +29,9 @@ export const maxDuration = 800;
  * between the two, one person on screen at a time.
  *
  * The co-host is a ready-made avatar or a partner who allowed it
- * ("partner:<id>"). Either way an episode uses one long video
- * (2026-11-02, was two short), charged once HeyGen accepts it and refunded
- * if it fails.
+ * ("partner:<id>"). Either way an episode uses two videos (one long video
+ * from 2026-11-02 until long videos were retired on 2026-11-13), charged once
+ * HeyGen accepts it and refunded if it fails.
  */
 export async function POST(req: NextRequest) {
   const s = await podcastSession();
@@ -61,8 +61,8 @@ export async function POST(req: NextRequest) {
   const capMsg = await staffCapMessage(s.admin, s.user.id, p.role);
   if (capMsg) return NextResponse.json({ error: capMsg, code: "staff_cap" }, { status: 402 });
 
-  if (!isAdmin && availableFor(p as never, "long") < PODCAST_LONG_VIDEOS) {
-    return NextResponse.json({ error: "An episode uses 1 long video, and you don't have one left. Buy one in Billing.", code: "out_of_videos" }, { status: 402 });
+  if (!isAdmin && availableFor(p as never, "short") < PODCAST_VIDEOS) {
+    return NextResponse.json({ error: `An episode uses ${PODCAST_VIDEOS} videos, and you don't have that many left. Buy more in Billing.`, code: "out_of_videos" }, { status: 402 });
   }
 
   // The host: a look of their own (photo look, twin or outfit), else the wide headshot copy.
@@ -165,15 +165,15 @@ export async function POST(req: NextRequest) {
   }
 
   // Charged only now that HeyGen has it; recorded so a failure refunds it.
-  const source = isAdmin ? null : (await chargeOneVideo(s.admin, s.user.id, "long"))?.source ?? null;
+  const source = isAdmin ? null : await chargePodcastEpisode(s.admin, s.user.id);
   await s.admin.from("generated_videos").update({
     render_job_id: videoId,
     metadata: {
       ...((row as { metadata: Record<string, unknown> | null }).metadata ?? {}),
-      credit_cost: isAdmin ? 0 : PODCAST_LONG_VIDEOS, credit_kind: "long", credit_source: source ?? "plan",
+      credit_cost: isAdmin ? 0 : PODCAST_VIDEOS, credit_kind: "short", credit_source: source ?? "plan",
     },
   }).eq("id", videoRowId);
-  await s.admin.from("api_usage_log").insert({ user_id: s.user.id, api_provider: "heygen", endpoint: "podcast-studio", credits_used: PODCAST_LONG_VIDEOS, response_status: 202 });
+  await s.admin.from("api_usage_log").insert({ user_id: s.user.id, api_provider: "heygen", endpoint: "podcast-studio", credits_used: PODCAST_VIDEOS, response_status: 202 });
 
   return NextResponse.json({ videoId: videoRowId, projectId });
 }
