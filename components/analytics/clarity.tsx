@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 /**
  * Microsoft Clarity: recordings and heatmaps of how people use SparkReels
@@ -28,12 +29,49 @@ const NOT_RECORDED = ["/analytics", "/dashboard", "/settings/social", "/social",
 
 type ClarityFn = ((...args: unknown[]) => void) & { q?: unknown[][] };
 
+/**
+ * The owner's own visits are left out (2026-11-12, her ask): her testing was
+ * a third of all sessions. Every admin account is hers; staff are still
+ * recorded. Once an admin signs in on a device, that device is remembered,
+ * so her signed-out visits to the public pages are left out too.
+ */
+const SKIP_KEY = "sr_clarity_skip";
+// Remembered once found; "not signed in" is asked again, since signing in
+// doesn't always reload the page.
+let knownRole: string | null = null;
+async function myRole(): Promise<string | null> {
+  if (knownRole) return knownRole;
+  try {
+    const { data } = await createClient().rpc("get_my_role");
+    knownRole = typeof data === "string" ? data : null;
+  } catch {
+    /* treated as not signed in */
+  }
+  return knownRole;
+}
+function skippedDevice(): boolean {
+  try { return localStorage.getItem(SKIP_KEY) === "1"; } catch { return false; }
+}
+
 export function Clarity() {
   const pathname = usePathname() || "/";
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_VERCEL_ENV === "preview") return;
+    let cancelled = false;
+    void (async () => {
+      if (skippedDevice()) return;
+      if ((await myRole()) === "admin") {
+        try { localStorage.setItem(SKIP_KEY, "1"); } catch { /* not saved; checked again next visit */ }
+        (window as unknown as { clarity?: ClarityFn }).clarity?.("pause");
+        return;
+      }
+      if (!cancelled) record();
+    })();
+    return () => { cancelled = true; };
+  }, [pathname]);
 
+  function record() {
     const isPublic = PUBLIC_PATHS.includes(pathname);
     const blocked = NOT_RECORDED.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
@@ -61,7 +99,7 @@ export function Clarity() {
     s.async = true;
     s.src = `https://www.clarity.ms/tag/${PROJECT_ID}`;
     document.head.appendChild(s);
-  }, [pathname]);
+  }
 
   return null;
 }
