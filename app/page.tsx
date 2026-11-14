@@ -232,29 +232,29 @@ const features: { title: string; description: string; photo: string; paid?: bool
   },
 ];
 
-// Video-type strip. `len` is the real finished length for that kind of video —
-// the mix of 60 sec / 3 min / 8 min is how a visitor learns short and long form
-// both exist before they reach pricing.
+// Video-type strip. `len` is the real finished length for that kind of video.
+// AI videos run up to 2 minutes since long AI videos were retired (2026-11-13),
+// so no tile says more than that.
 const marqueeRow1 = [
-  { label: "Market Update",        len: "3 min",  img: "https://images.unsplash.com/photo-1542744095-291d1f67b221?auto=format&fit=crop&w=400&q=80" },
+  { label: "Market Update",        len: "2 min",  img: "https://images.unsplash.com/photo-1542744095-291d1f67b221?auto=format&fit=crop&w=400&q=80" },
   { label: "Listing Video",        len: "90 sec", img: "https://images.unsplash.com/photo-1762811054947-605b20298615?auto=format&fit=crop&w=400&q=80" },
-  { label: "Neighborhood Tour",    len: "8 min",  img: "https://images.unsplash.com/photo-1555192881-efc55b7550f5?auto=format&fit=crop&w=400&q=80" },
+  { label: "Neighborhood Tour",    len: "2 min",  img: "https://images.unsplash.com/photo-1555192881-efc55b7550f5?auto=format&fit=crop&w=400&q=80" },
   { label: "Just Sold",            len: "60 sec", img: "https://images.unsplash.com/photo-1741156386380-0236c72eb6f9?auto=format&fit=crop&w=400&q=80" },
-  { label: "Buyer Tips",           len: "3 min",  img: "https://images.unsplash.com/photo-1733244766159-f58f4184fd38?auto=format&fit=crop&w=400&q=80" },
+  { label: "Buyer Tips",           len: "2 min",  img: "https://images.unsplash.com/photo-1733244766159-f58f4184fd38?auto=format&fit=crop&w=400&q=80" },
   { label: "Interest Rate Update", len: "60 sec", img: "https://images.unsplash.com/photo-1648201637025-1c77b9be3013?auto=format&fit=crop&w=400&q=80" },
   { label: "Open House Recap",     len: "90 sec", img: "https://images.unsplash.com/photo-1781797221329-c3d083ab6d99?auto=format&fit=crop&w=400&q=80" },
-  { label: "Local Market Deep Dive", len: "8 min", img: "https://images.unsplash.com/photo-1780584447740-687fb6ff14eb?auto=format&fit=crop&w=400&q=80" },
+  { label: "Local Market Deep Dive", len: "2 min", img: "https://images.unsplash.com/photo-1780584447740-687fb6ff14eb?auto=format&fit=crop&w=400&q=80" },
 ];
 
 const marqueeRow2 = [
-  { label: "Seller Tips",          len: "3 min",  img: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80" },
+  { label: "Seller Tips",          len: "2 min",  img: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=400&q=80" },
   { label: "Price Reduction",      len: "60 sec", img: "https://images.unsplash.com/photo-1709880945165-d2208c6ad2ec?auto=format&fit=crop&w=400&q=80" },
-  { label: "New Construction Tour", len: "8 min", img: "https://images.unsplash.com/photo-1587582423116-ec07293f0395?auto=format&fit=crop&w=400&q=80" },
-  { label: "Investment Property",  len: "3 min",  img: "https://images.unsplash.com/photo-1543071293-d91175a68672?auto=format&fit=crop&w=400&q=80" },
+  { label: "New Construction Tour", len: "2 min", img: "https://images.unsplash.com/photo-1587582423116-ec07293f0395?auto=format&fit=crop&w=400&q=80" },
+  { label: "Investment Property",  len: "2 min",  img: "https://images.unsplash.com/photo-1543071293-d91175a68672?auto=format&fit=crop&w=400&q=80" },
   { label: "Luxury Listing",       len: "90 sec", img: "https://images.unsplash.com/photo-1682184805271-11671b7ecf4c?auto=format&fit=crop&w=400&q=80" },
-  { label: "School District Tour", len: "8 min",  img: "https://images.unsplash.com/photo-1767589565213-1daee51888b2?auto=format&fit=crop&w=400&q=80" },
+  { label: "School District Tour", len: "2 min",  img: "https://images.unsplash.com/photo-1767589565213-1daee51888b2?auto=format&fit=crop&w=400&q=80" },
   { label: "Coming Soon",          len: "60 sec", img: "https://images.unsplash.com/photo-1777106322601-578dc9213ace?auto=format&fit=crop&w=400&q=80" },
-  { label: "Condo Showcase",       len: "3 min",  img: "https://images.unsplash.com/photo-1515263487990-61b07816b324?auto=format&fit=crop&w=400&q=80" },
+  { label: "Condo Showcase",       len: "2 min",  img: "https://images.unsplash.com/photo-1515263487990-61b07816b324?auto=format&fit=crop&w=400&q=80" },
 ];
 
 // ── SAMPLE OUTPUT VIDEOS — DROP YOUR FILES HERE ──────────────────────────────
@@ -284,8 +284,8 @@ const SAMPLE_VIDEOS = [
     poster: "",
   },
   {
-    label: "Full market update",
-    meta: "8 min · 16:9 · built from your listing photos",
+    label: "Market update",
+    meta: "2 min · 16:9 · AI avatar + automatic b-roll",
     aspect: "aspect-video",
     src: "",
     poster: "",
@@ -296,7 +296,7 @@ const SAMPLE_VIDEOS = [
 const channelSteps = [
   { icon: Tv2, step: "Name it", tool: "Channel Name Generator", description: "Don't have a channel yet? Get name ideas built around your market and niche — not \"John Smith Realty 2\"." },
   { icon: Palette, step: "Brand it", tool: "Banner & Image Generator", description: "Finished banners for your YouTube channel, Facebook cover and LinkedIn profile — your headline, photos, QR codes and call to action, each at the right size. Plus post graphics for a just-listed, an open house or a market stat, with your words set in real type. No designer." },
-  { icon: Film, step: "Fill it", tool: "AI Video Generator", description: "Short reels for social and full 8-minute market updates for search — both from one voice recording." },
+  { icon: Film, step: "Fill it", tool: "AI Video Generator", description: "Reels for social and 2-minute market updates for YouTube, from one voice recording. Record yourself on camera for longer ones." },
   { icon: MousePointerClick, step: "Get the click", tool: "Thumbnail Generator", description: "Bold, readable thumbnails that hold up at phone size — the difference between 40 views and 4,000." },
   { icon: Search, step: "Get found", tool: "SEO Metadata + AI Answer Blocks", description: "SEO titles, descriptions and tags for the neighborhood keywords buyers search — plus answer blocks so AI assistants cite you too." },
   { icon: Upload, step: "Publish it", tool: "One-Click YouTube Publishing", description: "Connect your channel once. Every video after that publishes in one click — title, description and tags already filled in." },
@@ -711,7 +711,7 @@ export default function LandingPage() {
                 num: "1",
                 color: "bg-slate-900",
                 title: "Pick what you're making",
-                description: "Your avatar, your own camera, or a blog post on its own. Then hit the mic — or tap one of twenty-five topics with your city already filled in. Choose your length: a 60-second reel, or a full market update up to 8 minutes.",
+                description: "Your avatar, your own camera, or a blog post on its own. Then hit the mic — or tap one of twenty-five topics with your city already filled in. Choose your length: a 60-second reel or a 2-minute market update, or read a longer script yourself on camera.",
                 photo: "https://images.unsplash.com/photo-1598978996253-dcfb7f324f89?auto=format&fit=crop&w=600&q=80",
                 alt: "Agent speaking into mic",
               },

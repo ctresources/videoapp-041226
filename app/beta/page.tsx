@@ -205,8 +205,8 @@ export default function BetaPage() {
               <p className="text-xs text-slate-500 leading-relaxed">
                 <span className="font-semibold text-slate-700">After your free video:</span> the
                 moment you generate it, you get 14 days of unlimited camera recording and every
-                AI tool. After that, to make more AI videos — or longer ones, up to 8 minutes —
-                or to keep using camera and AI tools, you pick a plan. No auto-charge, and your
+                AI tool. After that, to make more AI videos, or to keep using camera and AI
+                tools, you pick a plan. No auto-charge, and your
                 free video itself never expires — generate it whenever you&rsquo;re ready.
               </p>
             </div>
