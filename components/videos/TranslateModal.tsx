@@ -154,7 +154,7 @@ export function TranslateModal({
               This uses 1 of your videos
             </p>
             <p className="text-xs text-amber-800 mt-0.5">
-              The dub is made from scratch, so it costs the same as making a new video.
+              The translated version is made from scratch, so it costs the same as making a new video.
               {isAdmin
                 ? " Admin accounts aren't charged."
                 : balance !== null && ` You have ${balance} left — and if it fails, you get it back.`}
