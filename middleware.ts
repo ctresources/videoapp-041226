@@ -47,6 +47,7 @@ const PAID_API_WRITES = [
   "/api/review-request",         // Ask for Google Review Video Email
   "/api/business-card",          // Video Business Card: save it, make the video (2026-10-30)
   "/api/tools/google-reviews",   // Google Reviews: draft and post replies
+  "/api/ai-visibility",          // AI Visibility: towns, questions, website (2026-11-14)
   // The affiliate routes check isAffiliateEligible themselves: a canceled
   // subscriber keeps access until their paid period ends.
 ];

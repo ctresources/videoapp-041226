@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { BarChart2, Video, Share2, TrendingUp, Eye, Heart, MessageCircle, Clock, Repeat2 } from "lucide-react";
 import { partnerPlatform } from "@/lib/utils/social-platforms";
+import { AiVisibility } from "@/components/insights/ai-visibility";
 
 async function getAnalyticsData() {
   const supabase = await createClient();
@@ -278,6 +279,10 @@ export default async function AnalyticsPage() {
           </>
         )}
       </Card>
+
+      {/* AI Visibility (2026-11-14, the owner's approved mockup): under the
+          YouTube numbers. */}
+      <AiVisibility />
 
     </div>
   );

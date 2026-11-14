@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Visibility Mockup</title>
+<style>
+  :root{
+    --amber:#BA7517; --tint:#FDF7EE; --tintb:#f1d9b0; --amberdk:#A3660F;
+    --paper:#F1EFE8; --ink:#2C2C2A; --soft:#4A4842; --muted:#6F6D64; --faint:#9B978A;
+    --rule:#E3E0D7; --green:#0f7a52; --greenbg:#e8f5ee; --greenb:#bfe3cf;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:28px 16px 70px}
+  h1{font-size:26px;margin:0 0 4px}
+  .label{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:40px 0 10px}
+  .ann{border-left:3px solid var(--amber);padding:2px 0 2px 12px;font-size:14.5px;color:var(--muted);margin:6px 0 16px}
+  .card{background:#fff;border:1px solid var(--rule);border-radius:16px;padding:18px;margin-bottom:14px}
+  .plan p,.plan li{font-size:15.5px;color:var(--soft)}
+  .plan h3{margin:18px 0 6px;font-size:17px}
+  .plan h3:first-child{margin-top:0}
+  .plan ul,.plan ol{margin:4px 0 0;padding-left:22px}
+  .plan li{margin:3px 0}
+  .decide li{margin:8px 0}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .tile{background:#fff;border:1px solid var(--rule);border-radius:14px;padding:14px 16px}
+  .tile .k{font-size:13px;color:var(--muted);font-weight:600}
+  .tile .v{font-size:30px;font-weight:800;line-height:1.1;margin-top:4px}
+  .tile .v small{font-size:16px;font-weight:600;color:var(--muted)}
+  .tile .d{font-size:13px;color:var(--green);font-weight:600;margin-top:2px}
+  .spark{display:flex;align-items:flex-end;gap:5px;height:40px;margin-top:6px}
+  .spark i{flex:1;background:var(--tintb);border-radius:3px}
+  .spark i.now{background:var(--amber)}
+  .row{display:grid;grid-template-columns:1fr 92px 92px 190px;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--rule)}
+  .row.head{border-top:0;padding-top:0;font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+  .q{font-size:15.5px;font-weight:600}
+  .src{font-size:13px;color:var(--muted);font-weight:400;margin-top:2px}
+  .mark{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:2px 10px;font-size:13px;font-weight:700;width:max-content}
+  .yes{background:var(--greenbg);color:var(--green);border:1px solid var(--greenb)}
+  .cite{background:var(--tint);color:var(--amberdk);border:1px solid var(--tintb)}
+  .no{color:var(--faint);border:1px solid var(--rule)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;padding:8px 14px;font-weight:600;font-size:14.5px;border:1px solid var(--rule);background:#fff;color:var(--ink);white-space:nowrap}
+  .btn.primary{background:var(--amber);border-color:var(--amber);color:#fff}
+  .btn.ghost{border-color:transparent;color:var(--muted);padding-left:6px;padding-right:6px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
+  .two .card{margin:0;display:flex;flex-direction:column}
+  .two .card .end{margin-top:auto;padding-top:12px}
+  .card h3{margin:0 0 10px;font-size:17px}
+  .dom{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--rule);font-size:15px}
+  .dom:first-of-type{border-top:0}
+  .dom span{color:var(--muted)}
+  .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--rule);border-radius:999px;padding:5px 12px;font-size:14px;margin:0 6px 8px 0;background:#fff}
+  .chip b{color:var(--green)}
+  .chip.add{border-style:dashed;color:var(--amberdk);border-color:var(--tintb);background:var(--tint)}
+  .topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .topbar p{margin:0;color:var(--muted);font-size:14.5px}
+  .tabs{display:flex;gap:6px;margin-bottom:16px}
+  .tab{border-radius:999px;padding:6px 14px;font-size:14px;font-weight:600;color:var(--muted);border:1px solid var(--rule);background:#fff}
+  .tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  th{font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);text-align:left;padding:0 8px 8px}
+  td{padding:10px 8px;border-top:1px solid var(--rule)}
+  td.n{font-weight:700}
+  .up{color:var(--green);font-weight:700}
+  .down{color:#b4231a;font-weight:700}
+  .flat{color:var(--faint)}
+  .small{font-size:13px;color:var(--faint);margin:10px 0 0}
+  @media (max-width:760px){
+    .tiles{grid-template-columns:1fr}
+    .two{grid-template-columns:1fr}
+    .row{grid-template-columns:1fr 1fr;row-gap:6px}
+    .row.head{display:none}
+    .row .q{grid-column:1 / -1}
+    .row .act{grid-column:1 / -1}
+    table{font-size:14px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>AI Visibility</h1>
+  <p class="ann" style="margin-top:8px">Plan and mockup for review, 2026-11-14. Nothing is built yet.</p>
+
+  <!-- ─────────────────────────── PLAN ─────────────────────────── -->
+  <p class="label">The plan</p>
+  <div class="card plan">
+    <h3>What it does</h3>
+    <p>Once a week, for every paid agent, SparkReels asks AI search the questions buyers and sellers in their town ask, then checks each answer for the agent.</p>
+    <ul>
+      <li><b>Named:</b> the agent's name or brokerage is in the answer.</li>
+      <li><b>Cited:</b> one of the agent's links is listed as a source: website, Halo site, YouTube channel or one of their YouTube videos, Video Business Card page.</li>
+      <li><b>Cited instead:</b> the sites AI used when it didn't use the agent. Shows what to make next.</li>
+    </ul>
+
+    <h3>The questions: the town's top searches</h3>
+    <p>Once a month, for each town, SparkReels types starters into Google's own search suggestions ("is blue bell pa", "best realtor blue bell pa", "homes for sale blue bell pa", "blue bell pa schools"…) and keeps the phrases that come up most. The top 10 are rewritten as questions someone would ask ChatGPT. Free: no new service. The agent can swap any question for their own.</p>
+
+    <h3>Towns</h3>
+    <p>Creator 1 town, Producer 2, Influencer 3. The first town is the agent's market from Settings; they add the others. Each town has its own questions and score.</p>
+
+    <h3>Which AI search</h3>
+    <ul>
+      <li><b>ChatGPT search</b> and <b>Perplexity</b>: both can be asked by the app and return their source links.</li>
+      <li><b>Google AI Overviews</b>: later. It needs a paid search-data service (about $1–2 per agent a month more).</li>
+    </ul>
+
+    <h3>Where it shows</h3>
+    <ol>
+      <li><b>Spark Insights</b>: a new AI Visibility section for the agent (screen 1 below).</li>
+      <li><b>Admin → AI Visibility</b> for you: every agent's score and change from last week (screen 2).</li>
+      <li><b>Your Monday watch email</b>: one line per agent who moved up or down.</li>
+    </ol>
+
+    <h3>How it's built</h3>
+    <ol>
+      <li>Two tables: each agent's questions and links, and each week's results (question, which AI, named yes/no, which of their links were cited, the top sources). Server only, with the new-table grants.</li>
+      <li>A weekly job (Sunday night, so Monday's email has it): 10 questions × 2 AI searches per agent, 2 at a time so it doesn't hit rate limits.</li>
+      <li>Matching: name and brokerage in the answer text; links matched by domain, YouTube channel and each video they've published from SparkReels.</li>
+      <li>The agent screen, then the Admin table, then the email line.</li>
+      <li><b>Make a video</b> on a question opens Create with that question as the topic.</li>
+    </ol>
+
+    <h3>Cost</h3>
+    <p>Google's suggestions are free. The weekly checks are 80 AI searches per town a month on the OpenAI and Perplexity accounts you already have: about <b>$1–1.50 per town a month</b>.</p>
+
+    <h3>To know</h3>
+    <ul>
+      <li>AI answers change every time and differ by person, so the screen shows a trend, not a promise.</li>
+      <li>New agents will start near zero. That's the reason to keep posting.</li>
+      <li>The first check runs when an agent opens the page the first time, so nobody waits a week to see anything.</li>
+    </ul>
+  </div>
+
+  <p class="label">Settled</p>
+  <div class="card plan decide">
+    <ul>
+      <li>The screen names <b>ChatGPT</b> and <b>Perplexity</b>: they are what's being measured.</li>
+      <li><b>Paid plans only</b>, like the rest of Spark Insights.</li>
+      <li>Questions come from <b>each town's top searches</b>; the agent can swap any.</li>
+      <li><b>1 / 2 / 3 towns</b> on Creator / Producer / Influencer.</li>
+    </ul>
+  </div>
+
+  <!-- ─────────────────────────── SCREEN 1 ─────────────────────────── -->
+  <p class="label">Screen 1 · Agent · Spark Insights, new section</p>
+  <p class="ann">A new section on Spark Insights, under your YouTube numbers. Checked every Sunday night.</p>
+
+  <div class="topbar">
+    <div>
+      <h2 style="margin:0;font-size:22px">AI Visibility</h2>
+      <p>Checked Sun, Nov 16 · top 10 searches · ChatGPT and Perplexity</p>
+    </div>
+    <button class="btn">Edit questions</button>
+  </div>
+  <div class="tabs">
+    <span class="tab on">Blue Bell, PA</span>
+    <span class="tab">Ambler, PA</span>
+    <span class="tab" style="border-style:dashed;color:var(--amberdk)">+ Add town · 1 left</span>
+  </div>
+
+  <div class="tiles">
+    <div class="tile">
+      <div class="k">Named in answers</div>
+      <div class="v">3 <small>of 20</small></div>
+      <div class="d">+2 from last week</div>
+    </div>
+    <div class="tile">
+      <div class="k">Your links cited</div>
+      <div class="v">2</div>
+      <div class="d">+1 from last week</div>
+    </div>
+    <div class="tile">
+      <div class="k">Last 8 weeks</div>
+      <div class="spark"><i style="height:8%"></i><i style="height:8%"></i><i style="height:15%"></i><i style="height:15%"></i><i style="height:25%"></i><i style="height:20%"></i><i style="height:35%"></i><i class="now" style="height:50%"></i></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="row head"><span>Question</span><span>ChatGPT</span><span>Perplexity</span><span></span></div>
+
+    <div class="row">
+      <div class="q">Who's the best realtor in Blue Bell, PA?<div class="src">Search: "best realtor blue bell pa" · Cited: your Halo site</div></div>
+      <span class="mark yes">Named</span>
+      <span class="mark cite">Cited</span>
+      <span class="act"></span>
+    </div>
+    <div class="row">
+      <div class="q">Is Blue Bell, PA a good place to live?<div class="src">Search: "is blue bell pa a good place to live" · Cited: your YouTube video</div></div>
+      <span class="mark no">–</span>
+      <span class="mark cite">Cited</span>
+      <span class="act"></span>
+    </div>
+    <div class="row">
+      <div class="q">What homes are for sale in Blue Bell, PA right now?<div class="src">Search: "homes for sale blue bell pa" · AI used zillow.com, redfin.com</div></div>
+      <span class="mark no">–</span>
+      <span class="mark no">–</span>
+      <span class="act"><button class="btn primary">Make a video</button></span>
+    </div>
+    <div class="row">
+      <div class="q">How good is the Blue Bell school district?<div class="src">Search: "blue bell pa school district" · AI used niche.com, wissahickonsd.org</div></div>
+      <span class="mark no">–</span>
+      <span class="mark no">–</span>
+      <span class="act"><button class="btn primary">Make a video</button></span>
+    </div>
+    <div class="row">
+      <div class="q">Who should I call to sell my house in Blue Bell?<div class="src">Search: "sell my house blue bell pa" · Named by ChatGPT, no link</div></div>
+      <span class="mark yes">Named</span>
+      <span class="mark no">–</span>
+      <span class="act"></span>
+    </div>
+    <p class="small">+ 5 more · AI answers change each time; watch the trend.</p>
+  </div>
+
+  <div class="two">
+    <div class="card">
+      <h3>Who AI cited instead</h3>
+      <div class="dom">zillow.com <span>9</span></div>
+      <div class="dom">realtor.com <span>6</span></div>
+      <div class="dom">Another agent: smithhomes.com <span>4</span></div>
+      <div class="dom">niche.com <span>3</span></div>
+      <div class="dom">septa.org <span>2</span></div>
+      <div class="end"><span class="small" style="margin:0">From this week's 20 answers.</span></div>
+    </div>
+    <div class="card">
+      <h3>Your links</h3>
+      <div>
+        <span class="chip"><b>✓</b> Halo site</span>
+        <span class="chip"><b>✓</b> YouTube channel</span>
+        <span class="chip"><b>✓</b> Video Business Card</span>
+        <span class="chip"><b>✓</b> 14 YouTube videos</span>
+        <span class="chip add">+ Your website</span>
+      </div>
+      <div class="end"><span class="small" style="margin:0">Found for you. Add your website so it's checked too.</span></div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────── SCREEN 2 ─────────────────────────── -->
+  <p class="label">Screen 2 · You · Admin → AI Visibility</p>
+  <p class="ann">Every agent with checks, highest first. Click a row to see their questions.</p>
+
+  <div class="card" style="overflow-x:auto">
+    <table>
+      <thead><tr><th>Agent</th><th>Plan</th><th>Named</th><th>Cited</th><th>vs last week</th></tr></thead>
+      <tbody>
+        <tr><td>Daniel Okiro</td><td>Producer</td><td class="n">3 of 20</td><td class="n">2</td><td class="up">▲ 3</td></tr>
+        <tr><td>Abby Vellucci</td><td>Creator</td><td class="n">1 of 20</td><td class="n">0</td><td class="flat">same</td></tr>
+        <tr><td>Carmella Thompson</td><td>Admin</td><td class="n">6 of 20</td><td class="n">4</td><td class="down">▼ 1</td></tr>
+      </tbody>
+    </table>
+    <p class="small">Sample numbers.</p>
+  </div>
+
+  <!-- ─────────────────────────── EMAIL ─────────────────────────── -->
+  <p class="label">Monday watch email · new section</p>
+  <div class="card">
+    <p style="margin:0 0 6px;font-weight:700">AI visibility this week</p>
+    <ul style="margin:0;padding-left:20px;color:var(--soft)">
+      <li>Daniel Okiro: named 3 of 20 (up 3), cited 2</li>
+      <li>Abby Vellucci: named 1 of 20 (same), cited 0</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

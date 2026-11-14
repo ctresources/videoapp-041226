@@ -4,6 +4,8 @@ import { sendSecurityWatchEmail } from "@/lib/email";
 import { findProbe } from "@/lib/security/probe";
 import { hasAdminPerks } from "@/lib/utils/roles";
 import { CLARITY_DASHBOARD, clarityToken, summarizeWeek } from "@/lib/security/clarity";
+import { recentChecks, summarizeTown } from "@/lib/ai-visibility/summary";
+import type { TownQuestion } from "@/lib/ai-visibility/shared";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -23,7 +25,8 @@ const DAY = 86_400_000;
  *   3. Three or more new accounts signing in from the same address.
  * A quiet week is one line saying so. Then Clarity's week: rage clicks,
  * dead clicks, quick backs and errors by page (lib/security/clarity.ts).
- * Then the AI crawlers that read the site, counted in middleware.ts.
+ * Then the AI crawlers that read the site, counted in middleware.ts. Then
+ * each agent's AI visibility from Sunday night's check (2026-11-14).
  */
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -159,6 +162,30 @@ export async function GET(req: NextRequest) {
       })
     : ["No AI crawlers this week."];
 
+  // ── AI visibility: each agent's towns, checked Sunday night (2026-11-14) ─
+  const { data: visTowns } = await admin.from("ai_visibility_towns")
+    .select("id, user_id, town, state, status, last_checked_at, questions").limit(2000);
+  const vt = (visTowns ?? []) as { id: string; user_id: string; town: string; state: string; status: string | null; last_checked_at: string | null; questions: TownQuestion[] | null }[];
+  const visRows = await recentChecks(admin, vt.map((t) => t.id));
+  const visIds = Array.from(new Set(vt.map((t) => t.user_id)));
+  const visNames = new Map<string, string>();
+  if (visIds.length) {
+    const { data: vp } = await admin.from("profiles").select("id, full_name, email").in("id", visIds);
+    ((vp ?? []) as { id: string; full_name: string | null; email: string | null }[])
+      .forEach((p) => visNames.set(p.id, p.full_name || p.email || "(no name)"));
+  }
+  const visLines = vt
+    .filter((t) => t.last_checked_at && now - new Date(t.last_checked_at).getTime() < 7 * DAY)
+    .map((t) => ({ t, s: summarizeTown(t, visRows) }))
+    .filter(({ s }) => s.week)
+    .sort((a, b) => (b.s.named + b.s.cited) - (a.s.named + a.s.cited))
+    .map(({ t, s }) => {
+      const move = s.prevNamed === null ? "first week" : s.named === s.prevNamed ? "same" : s.named > s.prevNamed ? `up ${s.named - s.prevNamed}` : `down ${s.prevNamed - s.named}`;
+      return `${visNames.get(t.user_id) ?? t.user_id} (${t.town}, ${t.state}): named ${s.named} of ${s.answers} (${move}), cited ${s.cited}`;
+    });
+  const visTitle = "AI visibility this week";
+  const visList = visLines.length ? visLines : ["No towns checked this week."];
+
   const text = [
     intro, "",
     ...sections.flatMap((s) => [s.title.toUpperCase(), ...s.lines.map((l) => `- ${l}`), ""]),
@@ -168,6 +195,9 @@ export async function GET(req: NextRequest) {
     snaps.length ? `Watch the recordings: ${CLARITY_DASHBOARD}` : "",
     "",
     crawlerTitle.toUpperCase(), ...crawlerLines.map((l) => `- ${l}`),
+    "",
+    visTitle.toUpperCase(), ...visList.map((l) => `- ${l}`),
+    `See every agent in Admin: ${ADMIN_URL}`,
   ].join("\n").trim();
   const html =
     `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#1f1f1f">` +
@@ -182,6 +212,9 @@ export async function GET(req: NextRequest) {
     (snaps.length ? `<p style="margin-top:12px"><a href="${CLARITY_DASHBOARD}">Watch the recordings in Clarity</a></p>` : "") +
     `<p style="margin:24px 0 6px;font-weight:bold">${esc(crawlerTitle)}</p>` +
     `<ul style="margin:0;padding-left:20px">${crawlerLines.map((l) => `<li style="margin:0 0 6px">${esc(l)}</li>`).join("")}</ul>` +
+    `<p style="margin:24px 0 6px;font-weight:bold">${esc(visTitle)}</p>` +
+    `<ul style="margin:0;padding-left:20px">${visList.map((l) => `<li style="margin:0 0 6px">${esc(l)}</li>`).join("")}</ul>` +
+    `<p style="margin-top:12px"><a href="${ADMIN_URL}">See every agent in Admin</a></p>` +
     `</div>`;
 
   const sent = await sendSecurityWatchEmail({ subject, html, text });

@@ -72,7 +72,8 @@
     { "path": "/api/cron/storage-cleanup", "schedule": "0 7 * * *" },
     { "path": "/api/cron/account-cleanup", "schedule": "30 15 * * *" },
     { "path": "/api/cron/security-watch", "schedule": "30 13 * * 1" },
-    { "path": "/api/cron/clarity-daily", "schedule": "0 6 * * *" }
+    { "path": "/api/cron/clarity-daily", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/ai-visibility", "schedule": "0 3,5,7 * * 1" }
   ],
   "headers": [
     {

@@ -1799,6 +1799,21 @@ function FullGuide() {
                 today.
               </span>
               </span>
+              {/* AI Visibility (2026-11-14, the owner's approved mockup). Paid plans only. */}
+              <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="ai-visibility" data-paid-only="true">AI Visibility</span>
+              <span className="block mt-1" data-paid-only="true">
+                Under your YouTube numbers, <strong>AI Visibility</strong> shows whether ChatGPT and
+                Perplexity mention you when people ask about your town. SparkReels finds your town&apos;s
+                top Google searches, turns the top 10 into questions, and asks both every Sunday night.
+                <strong> Named</strong> means the answer said your name; <strong>Cited</strong> means it
+                used one of your links: your website, Halo site, YouTube channel or videos, or Video
+                Business Card. <strong>Who AI cited instead</strong> lists the sites it used. Press{" "}
+                <strong>Make a video</strong> on a question nobody cited you for, to make a video
+                answering it. <strong>Edit questions</strong> swaps any question for your own. Creator
+                watches 1 town, Producer 2 and Influencer 3: <strong>Add town</strong>. Add your
+                website under <strong>Your links</strong> so it&apos;s checked too. AI answers change
+                each time, so watch the trend.
+              </span>
             </Step>
             <Step n={28} title="Spark Calendar — When It Goes Out" icon={CalendarDays}>
               The calendar puts every dated item — published or scheduled — on a month, week or list
