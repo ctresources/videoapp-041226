@@ -75,7 +75,7 @@ export function AiVisibilityTab() {
                             {a.results.map((r) => (
                               <li key={r.q} className="text-xs text-slate-600">
                                 <span className="font-medium text-slate-800">{r.q}</span>{" "}
-                                {ENGINES.map((e) => {
+                                {ENGINES.filter((e) => a.results.some((q) => q.engines[e])).map((e) => {
                                   const x = r.engines[e];
                                   const mark = !x ? "–" : !x.ok ? "not checked" : x.cited.length ? "cited" : x.named ? "named" : "–";
                                   return <span key={e} className="ml-2 text-slate-500">{ENGINE_LABEL[e]}: {mark}</span>;

@@ -1,4 +1,4 @@
-import type { Engine } from "@/lib/ai-visibility/shared";
+import { ENGINES, type Engine } from "@/lib/ai-visibility/shared";
 
 /**
  * Asks one AI search engine one question, the way a buyer would: no system
@@ -105,6 +105,97 @@ async function askPerplexity(question: string): Promise<EngineAnswer | null> {
   }
 }
 
+/**
+ * Gemini with Google Search (added 2026-11-15, the owner's yes): Google's own
+ * AI answering from Google's results. GEMINI_API_KEY from Google AI Studio;
+ * GEMINI_SEARCH_MODEL overrides the model. Tries the Interactions API first,
+ * then the older generateContent call.
+ */
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
+
+/** Google sometimes hands back its own redirect link; the title is then the real site. */
+function realUrl(url: string, title: unknown): string {
+  if (/vertexaisearch\.cloud\.google\.com|grounding-api-redirect/i.test(url)
+    && typeof title === "string" && /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(title.trim())) {
+    return `https://${title.trim()}`;
+  }
+  return url;
+}
+
+/** Every link with its title, wherever it sits in Gemini's reply. */
+function collectGeminiUrls(node: unknown, out: Set<string>) {
+  if (!node || typeof node !== "object") return;
+  if (Array.isArray(node)) { node.forEach((n) => collectGeminiUrls(n, out)); return; }
+  const o = node as Record<string, unknown>;
+  const link = typeof o.url === "string" ? o.url : typeof o.uri === "string" ? o.uri : null;
+  if (link && /^https?:\/\//i.test(link)) out.add(realUrl(link, o.title));
+  for (const [k, v] of Object.entries(o)) {
+    if (k !== "search_suggestions" && k !== "searchEntryPoint" && typeof v === "object") collectGeminiUrls(v, out);
+  }
+}
+
+/** The answer's text blocks (not the search-suggestion HTML). */
+function collectGeminiText(node: unknown, out: string[]) {
+  if (!node || typeof node !== "object") return;
+  if (Array.isArray(node)) { node.forEach((n) => collectGeminiText(n, out)); return; }
+  const o = node as Record<string, unknown>;
+  if (typeof o.text === "string" && (o.type === undefined || o.type === "text")) out.push(o.text);
+  for (const [k, v] of Object.entries(o)) {
+    if (k !== "search_suggestions" && k !== "searchEntryPoint" && k !== "annotations" && typeof v === "object") collectGeminiText(v, out);
+  }
+}
+
+async function askGemini(question: string): Promise<EngineAnswer | null> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return null;
+  const model = process.env.GEMINI_SEARCH_MODEL || "gemini-3.8-flash";
+  const headers = { "x-goog-api-key": key, "Content-Type": "application/json" };
+  try {
+    let res = await fetch(`${GEMINI_BASE}/interactions`, {
+      method: "POST",
+      headers: { ...headers, "Api-Revision": "2026-05-20" },
+      body: JSON.stringify({ model, input: question, tools: [{ type: "google_search" }] }),
+      signal: AbortSignal.timeout(TIMEOUT),
+    });
+    let from: unknown = null;
+    if (res.ok) {
+      const json = (await res.json()) as { steps?: unknown; outputs?: unknown; output?: unknown };
+      from = json.steps ?? json.outputs ?? json.output ?? json;
+    } else {
+      const first = res.status;
+      res = await fetch(`${GEMINI_BASE}/models/${encodeURIComponent(model)}:generateContent`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: question }] }], tools: [{ google_search: {} }] }),
+        signal: AbortSignal.timeout(TIMEOUT),
+      });
+      if (!res.ok) {
+        console.error(`[ai-visibility] gemini ${first}/${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
+        return null;
+      }
+      from = ((await res.json()) as { candidates?: unknown }).candidates;
+    }
+    const text: string[] = [];
+    collectGeminiText(from, text);
+    const urls = new Set<string>();
+    collectGeminiUrls(from, urls);
+    return { text: text.join("\n"), urls: Array.from(urls) };
+  } catch (e) {
+    console.error("[ai-visibility] gemini failed:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+/** The engines that have a key set; one without a key isn't asked or shown. */
+export function activeEngines(): Engine[] {
+  return ENGINES.filter((e) =>
+    e === "chatgpt" ? !!process.env.OPENAI_API_KEY
+      : e === "perplexity" ? !!process.env.PERPLEXITY_API_KEY
+        : !!process.env.GEMINI_API_KEY);
+}
+
 export function askEngine(engine: Engine, question: string): Promise<EngineAnswer | null> {
-  return engine === "chatgpt" ? askChatGPT(question) : askPerplexity(question);
+  return engine === "chatgpt" ? askChatGPT(question)
+    : engine === "perplexity" ? askPerplexity(question)
+      : askGemini(question);
 }

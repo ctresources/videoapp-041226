@@ -1,7 +1,7 @@
 import type { createAdminClient } from "@/lib/supabase/admin";
-import { askEngine } from "@/lib/ai-visibility/engines";
+import { activeEngines, askEngine } from "@/lib/ai-visibility/engines";
 import { townQuestions } from "@/lib/ai-visibility/questions";
-import { ENGINES, type Cited, type Source, type TownQuestion } from "@/lib/ai-visibility/shared";
+import { type Cited, type Source, type TownQuestion } from "@/lib/ai-visibility/shared";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -153,7 +153,7 @@ export async function runTown(admin: Admin, town: TownRow): Promise<{ named: num
   try {
     const questions = await ensureQuestions(admin, town);
     const id = await identity(admin, town.user_id);
-    const jobs = questions.flatMap((q) => ENGINES.map((engine) => ({ q, engine })));
+    const jobs = questions.flatMap((q) => activeEngines().map((engine) => ({ q, engine })));
     const rows: Record<string, unknown>[] = [];
     const week = weekOf();
     for (let i = 0; i < jobs.length; i += 4) {

@@ -1802,9 +1802,10 @@ function FullGuide() {
               {/* AI Visibility (2026-11-14, the owner's approved mockup). Paid plans only. */}
               <span className="block mt-3 scroll-mt-20 font-semibold text-brand-text" id="ai-visibility" data-paid-only="true">AI Visibility</span>
               <span className="block mt-1" data-paid-only="true">
-                Under your YouTube numbers, <strong>AI Visibility</strong> shows whether ChatGPT and
-                Perplexity mention you when people ask about your town. SparkReels finds your town&apos;s
-                top Google searches, turns the top 10 into questions, and asks both every Sunday night.
+                Under your YouTube numbers, <strong>AI Visibility</strong> shows whether ChatGPT,
+                Perplexity and Gemini mention you when people ask about your town. SparkReels finds your
+                town&apos;s top Google searches, turns the top 10 into questions, and asks all three every
+                Sunday night.
                 <strong> Named</strong> means the answer said your name; <strong>Cited</strong> means it
                 used one of your links: your website, Halo site, YouTube channel or videos, or Video
                 Business Card. <strong>Who AI cited instead</strong> lists the sites it used. Press{" "}

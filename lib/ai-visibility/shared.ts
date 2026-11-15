@@ -4,10 +4,15 @@
  * server read. No server imports here.
  */
 
-export type Engine = "chatgpt" | "perplexity";
-export const ENGINES: Engine[] = ["chatgpt", "perplexity"];
+export type Engine = "chatgpt" | "perplexity" | "gemini";
+export const ENGINES: Engine[] = ["chatgpt", "perplexity", "gemini"];
 /** Shown on screen: they are what is being measured (the owner's call). */
-export const ENGINE_LABEL: Record<Engine, string> = { chatgpt: "ChatGPT", perplexity: "Perplexity" };
+export const ENGINE_LABEL: Record<Engine, string> = { chatgpt: "ChatGPT", perplexity: "Perplexity", gemini: "Gemini" };
+
+/** "A", "A and B", "A, B and C". */
+export function joinAnd(list: string[]): string {
+  return list.length < 2 ? list.join("") : `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
+}
 
 export interface TownQuestion {
   q: string;

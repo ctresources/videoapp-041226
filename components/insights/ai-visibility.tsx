@@ -5,15 +5,24 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { Loader2, Plus, Sparkles, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { CITED_LABEL, ENGINES, ENGINE_LABEL, QUESTIONS_PER_TOWN, type Engine } from "@/lib/ai-visibility/shared";
+import { CITED_LABEL, ENGINES, ENGINE_LABEL, QUESTIONS_PER_TOWN, joinAnd, type Engine } from "@/lib/ai-visibility/shared";
 import type { QuestionResult, TownSummary } from "@/lib/ai-visibility/summary";
 
 /**
  * AI Visibility on Spark Insights (2026-11-14, the owner's approved mockup,
  * docs/mockups/ai-visibility-mockup.html). Each town's top searches, asked of
- * ChatGPT and Perplexity every Sunday night: was the agent named, was one of
- * their links cited, and who did AI use instead.
+ * ChatGPT, Perplexity and Gemini every Sunday night: was the agent named, was
+ * one of their links cited, and who did AI use instead. An engine shows only
+ * once it has answers (Gemini needs GEMINI_API_KEY).
  */
+
+/** Tailwind needs whole class names, so one set per engine count. */
+const ROW_COLS: Record<number, string> = {
+  1: "grid-cols-1 md:grid-cols-[1fr_96px_150px]",
+  2: "grid-cols-2 md:grid-cols-[1fr_96px_96px_150px]",
+  3: "grid-cols-3 md:grid-cols-[1fr_96px_96px_96px_150px]",
+};
+const FULL_SPAN: Record<number, string> = { 1: "col-span-1", 2: "col-span-2", 3: "col-span-3" };
 
 interface Links { website: string | null; halo: number; channel: boolean; videos: number; card: boolean; named: boolean }
 interface Data { limit: number; towns: TownSummary[]; links: Links }
@@ -39,15 +48,15 @@ function Mark({ r, engine }: { r: QuestionResult; engine: Engine }) {
 }
 
 /** The small line under a question: its search, then what happened. */
-function detail(r: QuestionResult): string {
+function detail(r: QuestionResult, engines: Engine[]): string {
   const parts: string[] = [];
   if (r.search) parts.push(`Search: "${r.search}"`);
-  const all = ENGINES.map((e) => r.engines[e]).filter((x): x is NonNullable<typeof x> => !!x && x.ok);
+  const all = engines.map((e) => r.engines[e]).filter((x): x is NonNullable<typeof x> => !!x && x.ok);
   const cited = all.flatMap((x) => x.cited);
   if (cited.length) parts.push(`Cited: ${Array.from(new Set(cited.map((c) => CITED_LABEL[c.kind]))).join(", ")}`);
   else {
-    const namers = ENGINES.filter((e) => r.engines[e]?.named).map((e) => ENGINE_LABEL[e]);
-    if (namers.length) parts.push(`Named by ${namers.join(" and ")}, no link`);
+    const namers = engines.filter((e) => r.engines[e]?.named).map((e) => ENGINE_LABEL[e]);
+    if (namers.length) parts.push(`Named by ${joinAnd(namers)}, no link`);
     else {
       const domains = Array.from(new Set(all.flatMap((x) => x.domains))).slice(0, 2);
       parts.push(domains.length ? `AI used ${domains.join(", ")}` : all.length ? "Not yet" : "Not checked yet");
@@ -160,7 +169,12 @@ export function AiVisibility() {
 
   const town = data.towns.find((t) => t.id === townId) ?? null;
   const left = Math.max(0, data.limit - data.towns.length);
-  const missing = town?.results.filter((r) => ENGINES.every((e) => { const x = r.engines[e]; return x?.ok && !x.named && !x.cited.length; })) ?? [];
+  // Engines with answers this week; before any, the two that always run.
+  const seen = ENGINES.filter((e) => town?.results.some((r) => r.engines[e]));
+  const shown: Engine[] = seen.length ? seen : ["chatgpt", "perplexity"];
+  const rowCols = ROW_COLS[shown.length] ?? ROW_COLS[2];
+  const fullSpan = FULL_SPAN[shown.length] ?? FULL_SPAN[2];
+  const missing = town?.results.filter((r) => shown.every((e) => { const x = r.engines[e]; return x?.ok && !x.named && !x.cited.length; })) ?? [];
 
   const addForm = (
     <div className="flex flex-wrap items-center gap-2">
@@ -194,7 +208,7 @@ export function AiVisibility() {
           <div>
             {heading}
             <p className="mt-0.5 text-sm text-slate-500">
-              {town?.lastCheckedAt ? `Checked ${shortDate(town.lastCheckedAt)} · ` : ""}top {QUESTIONS_PER_TOWN} searches · ChatGPT and Perplexity
+              {town?.lastCheckedAt ? `Checked ${shortDate(town.lastCheckedAt)} · ` : ""}top {QUESTIONS_PER_TOWN} searches · {joinAnd(shown.map((e) => ENGINE_LABEL[e]))}
             </p>
           </div>
           {town && !editing && (
@@ -306,18 +320,19 @@ export function AiVisibility() {
 
           {/* Questions */}
           <Card>
-            <div className="hidden grid-cols-[1fr_96px_96px_150px] gap-3 pb-2 text-xs font-bold uppercase tracking-wide text-slate-400 md:grid">
-              <span>Question</span><span>ChatGPT</span><span>Perplexity</span><span />
+            <div className={`hidden gap-3 pb-2 text-xs font-bold uppercase tracking-wide text-slate-400 md:grid ${rowCols}`}>
+              <span>Question</span>{shown.map((e) => <span key={e}>{ENGINE_LABEL[e]}</span>)}<span />
             </div>
             {town.results.map((r) => (
-              <div key={r.q} className="grid grid-cols-2 items-center gap-x-3 gap-y-1.5 border-t border-spark-rule py-3 md:grid-cols-[1fr_96px_96px_150px]">
-                <div className="col-span-2 md:col-span-1">
+              <div key={r.q} className={`grid items-center gap-x-3 gap-y-1.5 border-t border-spark-rule py-3 ${rowCols}`}>
+                <div className={`${fullSpan} md:col-span-1`}>
                   <p className="text-[15px] font-semibold text-brand-text">{r.q}</p>
-                  <p className="text-[13px] text-slate-500">{detail(r)}</p>
+                  <p className="text-[13px] text-slate-500">{detail(r, shown)}</p>
                 </div>
-                <span className="flex items-center gap-1.5"><span className="text-xs text-slate-400 md:hidden">ChatGPT</span><Mark r={r} engine="chatgpt" /></span>
-                <span className="flex items-center gap-1.5"><span className="text-xs text-slate-400 md:hidden">Perplexity</span><Mark r={r} engine="perplexity" /></span>
-                <span className="col-span-2 md:col-span-1">
+                {shown.map((e) => (
+                  <span key={e} className="flex items-center gap-1.5"><span className="text-xs text-slate-400 md:hidden">{ENGINE_LABEL[e]}</span><Mark r={r} engine={e} /></span>
+                ))}
+                <span className={`${fullSpan} md:col-span-1`}>
                   {missing.includes(r) && (
                     <Link
                       href={`/create?topic=${encodeURIComponent(r.q)}&city=${encodeURIComponent(town.town)}&state=${encodeURIComponent(town.state)}`}
