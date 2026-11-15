@@ -1704,6 +1704,7 @@ function FullGuide() {
               {/* Photo Touch-Up (2026-11-15). Paid plans only. */}
               <span className="block mt-1.5 scroll-mt-20" id="photo-touch-up" data-paid-only="true">
                 <strong>Photo Touch-Up</strong>, next to the Image Generator, edits a real listing photo:{" "}
+                <strong>Enhance</strong> (brighter, true colors, straight lines, sharper),{" "}
                 <strong>Stage room</strong> (Modern, Farmhouse, Coastal or Traditional furniture in an empty
                 room), <strong>Declutter</strong>, <strong>Twilight</strong> or <strong>Blue sky</strong>. Pick a
                 photo from a listing or upload one, then <strong>Save to listing</strong> or{" "}

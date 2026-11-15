@@ -12,8 +12,9 @@ import { currentUserId, uploadVideoPhoto } from "@/lib/utils/upload-photo";
  * from the wand on a listing photo (`onUse` then puts the result in place).
  */
 
-type Mode = "stage" | "declutter" | "twilight" | "sky";
+type Mode = "enhance" | "stage" | "declutter" | "twilight" | "sky";
 const MODES: { id: Mode; label: string }[] = [
+  { id: "enhance", label: "Enhance" },
   { id: "stage", label: "Stage room" },
   { id: "declutter", label: "Declutter" },
   { id: "twilight", label: "Twilight" },
@@ -41,7 +42,7 @@ export function PhotoTouchup({ initialUrl, listings = [], onUse, onClose }: {
   onClose?: () => void;
 }) {
   const [info, setInfo] = useState<Info | null>(null);
-  const [mode, setMode] = useState<Mode>("stage");
+  const [mode, setMode] = useState<Mode>("enhance");
   const [style, setStyle] = useState("Modern");
   const [label, setLabel] = useState(true);
   const [source, setSource] = useState(initialUrl ?? "");

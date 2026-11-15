@@ -15,15 +15,18 @@ const opentype = ((opentypeNs as unknown as { default?: typeof opentypeNs }).def
  * because most MLSs require edited photos to say so.
  */
 
-export type TouchupMode = "stage" | "declutter" | "twilight" | "sky";
-export const TOUCHUP_MODES: TouchupMode[] = ["stage", "declutter", "twilight", "sky"];
+export type TouchupMode = "enhance" | "stage" | "declutter" | "twilight" | "sky";
+export const TOUCHUP_MODES: TouchupMode[] = ["enhance", "stage", "declutter", "twilight", "sky"];
 export const STAGE_STYLES = ["Modern", "Farmhouse", "Coastal", "Traditional"] as const;
 export const TOUCHUP_MONTHLY_LIMIT = 30;
 
-const KEEP = `Keep the property exactly as it is: the same walls, windows, doors, floors, ceilings, built-in fixtures, roofline, siding, landscaping layout and room shape, from the same camera position and lens. Do not add, remove or move any permanent part of the home. Photorealistic, like a professional real estate photo. No people, no text, no watermark.`;
+const KEEP = `Keep the property exactly as it is: the same walls, windows, doors, floors, ceilings, built-in fixtures, roofline, siding, landscaping layout and room shape, from the same camera position and lens. Do not add, remove or move any permanent part of the home. Photorealistic, like a professional real estate photo. No people and no new text. If the photo already has a watermark or MLS logo, keep it exactly as and where it is.`;
 
 function prompt(mode: TouchupMode, style: string): string {
   switch (mode) {
+    case "enhance":
+      // Added 2026-11-15 at the owner's ask: a plain fix-up, nothing added or removed.
+      return `Enhance this real estate photo like a professional photo editor: brighten dark areas and recover blown-out windows, correct the white balance to true neutral colors, straighten tilted vertical and horizontal lines, reduce noise and sharpen gently. Do not add, remove or restyle anything in the scene. ${KEEP}`;
     case "stage":
       return `Virtually stage this room with ${style.toLowerCase()} style furniture and decor that fits the room's size and purpose: real-looking pieces, sensible scale, natural shadows and the room's own light. ${KEEP}`;
     case "declutter":
@@ -36,6 +39,7 @@ function prompt(mode: TouchupMode, style: string): string {
 }
 
 export const LABEL_TEXT: Record<TouchupMode, string> = {
+  enhance: "Digitally enhanced",
   stage: "Virtually staged",
   declutter: "Digitally enhanced",
   twilight: "Digitally enhanced",
