@@ -74,6 +74,23 @@ async function addLabel(img: Buffer, text: string): Promise<Buffer> {
   return sharp(img).composite([{ input: Buffer.from(svg), left: 0, top: 0 }]).jpeg({ quality: 90 }).toBuffer();
 }
 
+/**
+ * Enhance photo for a photo avatar (2026-11-15). A plain fix, no AI (the
+ * owner's choice): an AI retouch of her own headshot redrew the teeth and the
+ * fine lines, and an avatar has to be exactly the agent. Contrast stretched,
+ * a touch brighter and richer, gently sharpened; the face can't change.
+ */
+export async function enhanceHeadshot(source: Buffer): Promise<Buffer | null> {
+  return sharp(source)
+    .rotate()
+    .resize(2048, 2048, { fit: "inside", withoutEnlargement: true })
+    .normalise({ lower: 1, upper: 99 })
+    .modulate({ brightness: 1.04, saturation: 1.03 })
+    .sharpen({ sigma: 0.8 })
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
+
 export async function touchUpPhoto(source: Buffer, mode: TouchupMode, style: string, label: boolean): Promise<Buffer | null> {
   // Big enough to keep detail, small enough for one request.
   const input = await sharp(source).rotate().resize(2048, 2048, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 88 }).toBuffer();

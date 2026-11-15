@@ -33,6 +33,7 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
   const [adding, setAdding] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [removeBg, setRemoveBg] = useState(false);
+  const [enhance, setEnhance] = useState(false);
   const [consentLoading, setConsentLoading] = useState(false);
   const [deletingLookId, setDeletingLookId] = useState<string | null>(null);
 
@@ -135,12 +136,27 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
       // Optionally swap the photo for a background-removed version (clean
       // white) before the look is created. Failure falls back to the original.
       let imageUrl = publicUrl;
+      // Enhance photo first (2026-11-15): light and color, face unchanged.
+      if (enhance) {
+        try {
+          const enRes = await fetch("/api/avatar/enhance-photo", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageUrl }),
+          });
+          const enData = await enRes.json().catch(() => ({}));
+          if (enRes.ok && enData.url) imageUrl = enData.url;
+          else toast(enData.error || "Enhance unavailable — using the original photo.", { icon: "ℹ️" });
+        } catch {
+          toast("Enhance unavailable — using the original photo.", { icon: "ℹ️" });
+        }
+      }
       if (removeBg) {
         try {
           const bgRes = await fetch("/api/avatar/remove-background", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageUrl: publicUrl }),
+            body: JSON.stringify({ imageUrl }),
           });
           const bgData = await bgRes.json();
           if (bgRes.ok && bgData.url) {
@@ -390,6 +406,18 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
       )}
 
       {/* Chosen before picking a photo, which makes the look at once (2026-10-29). */}
+      {!showGeneratePanel && (
+        <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={enhance}
+            disabled={adding}
+            onChange={(e) => setEnhance(e.target.checked)}
+            className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+          />
+          ✨ Enhance photo <span className="text-slate-400">(better light, color and sharpness)</span>
+        </label>
+      )}
       {!showGeneratePanel && (
         <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
           <input

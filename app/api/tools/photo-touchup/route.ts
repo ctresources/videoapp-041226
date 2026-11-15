@@ -49,8 +49,9 @@ async function session() {
 }
 
 async function used(admin: ReturnType<typeof createAdminClient>, userId: string): Promise<number> {
+  // Headshot enhances (/api/avatar/enhance-photo) have their own allowance.
   const { count } = await admin.from("photo_edits").select("id", { count: "exact", head: true })
-    .eq("user_id", userId).gte("created_at", monthStart());
+    .eq("user_id", userId).neq("kind", "headshot").gte("created_at", monthStart());
   return count ?? 0;
 }
 

@@ -20,7 +20,7 @@ import { UPGRADE_HREF } from "@/lib/access";
 import { takeTwinConsentDone, withTwinConsentDone } from "@/lib/utils/twin-consent-return";
 import {
   AlertCircle, Camera, Upload, Trash2, CheckCircle, Loader2, Mic, Square,
-  RefreshCw, Image as ImageIcon, Sparkles, Phone, MapPin, Globe, FileText, Video, Play, StopCircle, ShieldCheck,
+  RefreshCw, Image as ImageIcon, Sparkles, Phone, MapPin, Globe, FileText, Video, Play, StopCircle, ShieldCheck, Wand2,
 } from "lucide-react";
 
 export interface BrandProfileInitial {
@@ -160,6 +160,57 @@ export function TalkingAvatarUploader({
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [registeringHeyGen, setRegisteringHeyGen] = useState(false);
   const [heygenError, setHeygenError] = useState<string | null>(null);
+  /** Enhance photo (2026-11-15): the enhanced copy waiting to be picked, or not. */
+  const [enhancing, setEnhancing] = useState(false);
+  const [enhanced, setEnhanced] = useState<string | null>(null);
+
+  async function enhancePhoto() {
+    if (!preview) return;
+    setEnhancing(true);
+    try {
+      const res = await fetch("/api/avatar/enhance-photo", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: preview }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't enhance this photo.");
+      setEnhanced(data.url);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't enhance this photo.");
+    } finally {
+      setEnhancing(false);
+    }
+  }
+
+  /** Use the enhanced copy: it becomes the headshot and the talking avatar. */
+  async function useEnhanced() {
+    if (!enhanced) return;
+    const url = enhanced;
+    setEnhanced(null);
+    setPreview(url);
+    setHeygenError(null);
+    setRegisteringHeyGen(true);
+    try {
+      const res = await fetch("/api/profile/heygen-avatar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_url: url }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPhotoId(data.photo_id);
+      onUpdate(data.photo_id, url);
+      toast.success("Enhanced photo saved.");
+    } catch (err) {
+      const supabaseClient = createClient();
+      await supabaseClient.from("profiles").update({ avatar_url: url }).eq("id", userId);
+      onUpdate(null, url);
+      setHeygenError(err instanceof Error ? err.message : "Registration failed");
+      toast.error("Photo saved but AI registration failed — click Retry.");
+    } finally {
+      setRegisteringHeyGen(false);
+    }
+  }
 
   async function retryHeyGenRegistration() {
     if (!preview) return;
@@ -285,6 +336,15 @@ export function TalkingAvatarUploader({
               >
                 <Upload size={11} /> {preview ? "Upload new photo" : "Upload headshot"}
               </button>
+              {preview && !enhanced && (
+                <button
+                  onClick={enhancePhoto}
+                  disabled={busy || enhancing}
+                  className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1 disabled:opacity-40"
+                >
+                  {enhancing ? <Loader2 size={11} className="animate-spin" /> : <Wand2 size={11} />} {enhancing ? "Enhancing…" : "Enhance photo"}
+                </button>
+              )}
               {preview && (
                 <button
                   onClick={() => { setPreview(null); setPhotoId(null); onUpdate(null, ""); }}
@@ -298,6 +358,25 @@ export function TalkingAvatarUploader({
           )}
         </div>
       </div>
+
+      {/* Enhance photo: before and after, pick one (2026-11-15). */}
+      {enhanced && preview && (
+        <div className="rounded-xl border border-slate-200 p-3">
+          <div className="grid grid-cols-2 gap-3">
+            {[["Original", preview], ["Enhanced", enhanced]].map(([label, src]) => (
+              <div key={label} className="flex flex-col items-center gap-1.5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt={label} className="aspect-[3/4] w-full max-w-[180px] rounded-lg object-cover" />
+                <span className="text-xs font-semibold text-slate-500">{label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            <button onClick={useEnhanced} className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700">Use enhanced</button>
+            <button onClick={() => setEnhanced(null)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600">Keep original</button>
+          </div>
+        </div>
+      )}
 
       {/* Status badges */}
       {photoId ? (
