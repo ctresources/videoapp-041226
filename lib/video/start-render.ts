@@ -1004,6 +1004,37 @@ export async function startRender(
     introFree = (count ?? 0) === 0;
   }
 
+  /**
+   * A free remake (2026-11-15, the owner's approved plan): the video check
+   * found a problem in this project's last render itself, so remaking it
+   * doesn't use one of the agent's videos. Once per flagged video.
+   */
+  let remakeFree = false;
+  let remakeOf: { id: string; metadata: Record<string, unknown> } | null = null;
+  {
+    const { data: flagged } = await admin
+      .from("generated_videos")
+      .select("id, metadata")
+      .eq("project_id", projectId)
+      .eq("user_id", user.id)
+      .not("metadata->video_check->remake", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const f = flagged as { id: string; metadata: Record<string, unknown> | null } | null;
+    const vc = (f?.metadata?.video_check ?? null) as { remake?: unknown; remake_used?: boolean } | null;
+    if (f && vc?.remake && !vc.remake_used) {
+      remakeFree = true;
+      remakeOf = { id: f.id, metadata: f.metadata ?? {} };
+    }
+  }
+  /** Marks the flagged video's free remake as used, once the new render has started. */
+  const useFreeRemake = async () => {
+    if (!remakeOf) return;
+    const vc = { ...((remakeOf.metadata.video_check ?? {}) as Record<string, unknown>), remake_used: true };
+    await admin.from("generated_videos").update({ metadata: { ...remakeOf.metadata, video_check: vc } }).eq("id", remakeOf.id);
+  };
+
   // Starts the free-trial clock (camera recording, AI Tools — see
   // lib/utils/free-trial.ts) the moment a free-tier user's first video is
   // actually generated, not at signup. Set once; a null check means this
@@ -1018,7 +1049,7 @@ export async function startRender(
   const capMsg = await staffCapMessage(admin, user.id, profile.role);
   if (capMsg) return NextResponse.json({ error: capMsg, code: "staff_cap" }, { status: 402 });
 
-  if (!isAdmin && !charge && !introFree) {
+  if (!isAdmin && !charge && !introFree && !remakeFree) {
     // `code` and `kind` let the client open the plan picker instead of
     // string-matching the message. Someone who just watched their free video
     // render is the most likely person to buy — a dead-end toast wastes that.
@@ -1646,9 +1677,9 @@ export async function startRender(
           render_job_id: directVideoId,
           metadata: {
             ...(videoRow.metadata ?? {}),
-            credit_cost: introFree ? 0 : creditCost,
+            credit_cost: introFree || remakeFree ? 0 : creditCost,
             credit_kind: videoKind,
-            credit_source: introFree ? "intro_free" : (charge?.source ?? "plan"),
+            credit_source: introFree ? "intro_free" : remakeFree ? "remake_free" : (charge?.source ?? "plan"),
             // What it was actually rendered with. Both are needed to price it:
             // the engine and the avatar type each move the rate, by up to four
             // times between them. Recorded here because this is the only place
@@ -1699,7 +1730,8 @@ export async function startRender(
       // Conditional write — see chargeOneVideo. The absolute value computed
       // above was a lost update: two tabs both read the same balance and both
       // wrote the same lower number, so one video was free.
-      if (charge && !isAdmin && !introFree) await chargeOneVideo(admin, user.id, videoKind);
+      if (charge && !isAdmin && !introFree && !remakeFree) await chargeOneVideo(admin, user.id, videoKind);
+      if (remakeFree) await useFreeRemake();
       await startFreeTrialClockIfNeeded();
       await admin.from("api_usage_log").insert({
         user_id: user.id,
@@ -1886,7 +1918,7 @@ export async function startRender(
     await admin
       .from("generated_videos")
       // credit_cost enables an automatic refund if the render later fails
-      .update({ render_job_id: sessionId, metadata: { ...(videoRow?.metadata ?? {}), credit_cost: creditCost, credit_kind: videoKind, credit_source: charge?.source ?? "plan" } })
+      .update({ render_job_id: sessionId, metadata: { ...(videoRow?.metadata ?? {}), credit_cost: remakeFree ? 0 : creditCost, credit_kind: videoKind, credit_source: remakeFree ? "remake_free" : (charge?.source ?? "plan") } })
       .eq("id", videoRow?.id);
 
     // Admins are never charged. Previously only the REFUSAL was skipped for
@@ -1895,7 +1927,8 @@ export async function startRender(
       // Conditional write — see chargeOneVideo. The absolute value computed
       // above was a lost update: two tabs both read the same balance and both
       // wrote the same lower number, so one video was free.
-      if (charge && !isAdmin && !introFree) await chargeOneVideo(admin, user.id, videoKind);
+      if (charge && !isAdmin && !introFree && !remakeFree) await chargeOneVideo(admin, user.id, videoKind);
+      if (remakeFree) await useFreeRemake();
       await startFreeTrialClockIfNeeded();
     await admin.from("api_usage_log").insert({
       user_id: user.id,

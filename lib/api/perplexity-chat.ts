@@ -8,6 +8,7 @@
  */
 
 import { withNoReveal } from "@/lib/api/ai-guard";
+import { geminiFromMessages, parseJsonReply } from "@/lib/api/gemini";
 
 const PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
 
@@ -50,10 +51,32 @@ export interface ChatTurn {
  * mid-sentence, so a thrown error would only turn a soft failure into a hard
  * one.
  */
+/**
+ * Gemini answers when Perplexity can't (2026-11-15, the owner's approved
+ * plan), so a Perplexity outage doesn't end a voice session or a rewrite.
+ */
+async function geminiBackup(system: string, turns: ChatTurn[], opts: { json: boolean; search: boolean; label: string; maxTokens: number; temperature: number }) {
+  return geminiFromMessages([{ role: "system", content: withNoReveal(system) }, ...turns], {
+    json: opts.json, search: opts.search, label: `${opts.label}-backup`, maxTokens: opts.maxTokens, temperature: opts.temperature,
+  }).catch(() => null);
+}
+
 export async function chatJson(
   system: string,
   turns: ChatTurn[],
   opts: { maxTokens?: number; temperature?: number; label?: string; search?: boolean } = {},
+): Promise<Record<string, unknown> | null> {
+  const first = await chatJsonPerplexity(system, turns, opts);
+  if (first) return first;
+  const { maxTokens = 400, temperature = 0.2, label = "chat", search = false } = opts;
+  const text = await geminiBackup(system, turns, { json: true, search, label, maxTokens: Math.max(maxTokens, 800), temperature });
+  return text ? parseJsonReply<Record<string, unknown>>(text) : null;
+}
+
+async function chatJsonPerplexity(
+  system: string,
+  turns: ChatTurn[],
+  opts: { maxTokens?: number; temperature?: number; label?: string; search?: boolean },
 ): Promise<Record<string, unknown> | null> {
   if (!process.env.PERPLEXITY_API_KEY) return null;
   const { maxTokens = 400, temperature = 0.2, label = "chat", search = false } = opts;
@@ -103,6 +126,17 @@ export async function chatText(
   system: string,
   turns: ChatTurn[],
   opts: { maxTokens?: number; temperature?: number; label?: string; search?: boolean } = {},
+): Promise<string | null> {
+  const first = await chatTextPerplexity(system, turns, opts);
+  if (first) return first;
+  const { maxTokens = 1200, temperature = 0.4, label = "chat", search = false } = opts;
+  return geminiBackup(system, turns, { json: false, search, label, maxTokens, temperature });
+}
+
+async function chatTextPerplexity(
+  system: string,
+  turns: ChatTurn[],
+  opts: { maxTokens?: number; temperature?: number; label?: string; search?: boolean },
 ): Promise<string | null> {
   if (!process.env.PERPLEXITY_API_KEY) return null;
   const { maxTokens = 1200, temperature = 0.4, label = "chat", search = false } = opts;

@@ -3,6 +3,7 @@ import { guardMessages } from "@/lib/api/ai-guard";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 import { expandNumberedGallery, extractImageUrls } from "@/lib/utils/listing-photos";
+import { sortListingPhotos } from "@/lib/utils/photo-sort";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 import { coerceListing } from "@/lib/utils/listing-data";
 
@@ -11,7 +12,8 @@ import { coerceListing } from "@/lib/utils/listing-data";
  * it — and this route declared no duration at all, so it ran on the platform
  * default while its own fetch was willing to wait 20 seconds.
  */
-export const maxDuration = 60;
+// 90 since the photo sort (2026-11-15): up to 25 s more after the read.
+export const maxDuration = 90;
 
 export interface ListingData {
   address: string;
@@ -677,6 +679,21 @@ export async function POST(req: NextRequest) {
       `[scrape-listing] ${listing.photoUrls.length} photo(s) found for ` +
       `${parsedUrl.hostname}${parsedUrl.pathname}`,
     );
+
+    // Junk out, best front first, tour order (2026-11-15). Capped so a slow
+    // look never costs the import; the original order comes back for Undo.
+    const sorted = await Promise.race([
+      sortListingPhotos(listing.photoUrls).catch(() => null),
+      new Promise<null>((r) => setTimeout(() => r(null), 25_000)),
+    ]);
+    if (sorted) {
+      console.log(`[scrape-listing] sorted: ${sorted.removed.length} removed (${sorted.removed.map((r) => r.why).join(", ")})`);
+      listing.photoUrls = sorted.urls;
+      return NextResponse.json({
+        listing,
+        photoSort: { removed: sorted.removed.length, original: sorted.original },
+      });
+    }
     return NextResponse.json({ listing });
   } catch (err) {
     console.error("Scrape listing error:", err);

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { TakeTipsCard } from "@/components/video/take-tips-card";
 import { CAMERA_LENGTHS, type CameraLength } from "@/lib/utils/video-length";
 import {
   Maximize2,
@@ -2875,6 +2876,9 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
             </span>
           </div>
         </div>
+
+        {/* Take tips (2026-11-15): written after the save; shows when ready. */}
+        {viewedSaved && !screenMode && <TakeTipsCard key={viewedSaved.videoId} videoId={viewedSaved.videoId} />}
 
         {/* After a failed upload, say where the recording actually is.
             Two different facts, and the difference matters: one of them means

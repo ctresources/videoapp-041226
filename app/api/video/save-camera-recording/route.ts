@@ -33,8 +33,12 @@ import { ensureFaststart, needsFaststart } from "@/lib/utils/faststart";
 import { SCENES_DISCLOSURE } from "@/lib/utils/ai-made";
 import { getAccessLevel, isPaidLevel } from "@/lib/access";
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
+import { geminiKey } from "@/lib/api/gemini";
+import { makeTakeTips } from "@/lib/video/take-tips";
 
-export const maxDuration = 60;
+// 300 since take tips (2026-11-15): they run after the reply, inside this budget.
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -461,6 +465,12 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error("[save-camera-recording] brief write failed (non-fatal):", err);
     }
+  }
+
+  // Take tips (2026-11-15): Gemini watches the take after the reply has gone.
+  // Not for screen recordings.
+  if (!isScreen && geminiKey()) {
+    waitUntil(makeTakeTips(videoId, publicUrl, spokenScript).catch(() => undefined));
   }
 
   // projectId goes back too, so the recorder can offer the Share Kit. Without

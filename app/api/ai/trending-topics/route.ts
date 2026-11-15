@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { guardMessages } from "@/lib/api/ai-guard";
 import { createClient } from "@/lib/supabase/server";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
+import { geminiFromMessages, parseJsonReply } from "@/lib/api/gemini";
 
 export const maxDuration = 30;
 
@@ -53,6 +54,17 @@ ${FAIR_HOUSING_GUARDRAIL}`;
     const userPrompt = `Find the top 6 trending real estate content topics for ${locationContext} right now in ${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}.
 
 Search for what buyers, sellers, and investors in this area are currently asking about, what news is affecting the local market, and what questions agents are being asked most often. Return exactly 6 topics as a JSON array.`;
+
+    // Google first, through Gemini (2026-11-15, the owner's approved plan),
+    // within the free search allowance; Perplexity when it can't.
+    const viaGoogle = await geminiFromMessages(guardMessages([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ]), { search: true, label: "trending-topics", temperature: 0.4 });
+    const googleTopics = viaGoogle ? parseJsonReply<TrendingTopic[]>(viaGoogle) : null;
+    if (Array.isArray(googleTopics) && googleTopics.length >= 3 && googleTopics.every((t) => t && typeof t.title === "string")) {
+      return NextResponse.json({ topics: googleTopics.slice(0, 6), location: locationContext });
+    }
 
     const res = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",

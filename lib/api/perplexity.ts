@@ -1,5 +1,6 @@
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 import { guardMessages } from "@/lib/api/ai-guard";
+import { geminiFromMessages } from "@/lib/api/gemini";
 
 const PERPLEXITY_API = "https://api.perplexity.ai";
 
@@ -54,8 +55,30 @@ interface SeoOutput {
   email_blurb: string;
 }
 
+/**
+ * Perplexity, with Gemini as the stand-in when it fails (2026-11-15, the
+ * owner's approved plan): a Perplexity outage no longer stops a script.
+ * Search stays on for the research model (sonar-pro), within the free cap.
+ */
 export async function perplexityChat(messages: { role: string; content: string }[], model = "sonar-pro",
   /** More request options, e.g. search_domain_filter to search only some sites. */
+  extra?: Record<string, unknown>) {
+  try {
+    return await perplexityChatOnly(messages, model, extra);
+  } catch (err) {
+    const backup = await geminiFromMessages(guardMessages(messages), {
+      search: model === "sonar-pro" && extra?.disable_search !== true,
+      label: "perplexity-backup",
+    }).catch(() => null);
+    if (backup) {
+      console.warn(`[perplexity] failed, Gemini answered instead: ${err instanceof Error ? err.message.slice(0, 120) : err}`);
+      return backup;
+    }
+    throw err;
+  }
+}
+
+async function perplexityChatOnly(messages: { role: string; content: string }[], model: string,
   extra?: Record<string, unknown>) {
   if (!process.env.PERPLEXITY_API_KEY) {
     throw new Error("PERPLEXITY_API_KEY is not set. Add it to .env.local and restart the server.");

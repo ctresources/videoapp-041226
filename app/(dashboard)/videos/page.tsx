@@ -32,6 +32,9 @@ import { BlogSocialButton } from "@/components/social/blog-social";
 import { OlderList, splitRecent, type OlderItem } from "@/components/videos/older-list";
 import { partnerPlatform } from "@/lib/utils/social-platforms";
 import { RewordButton } from "@/components/templates/reword-dialog";
+import { TakeTipsCard } from "@/components/video/take-tips-card";
+import { RemakeNote } from "@/components/videos/remake-note";
+import type { TakeTips } from "@/lib/video/take-tips";
 
 interface DraftProject {
   id: string;
@@ -68,6 +71,10 @@ interface GeneratedVideo {
     stock_clip_urls?: string[];
     /** Photos attached to a camera take, for Record again (2026-10-21). */
     camera_photos?: string[];
+    /** Gemini's coaching on a camera take (2026-11-15). */
+    take_tips?: TakeTips;
+    /** Gemini's check of a finished video found a problem in the render itself (2026-11-15). */
+    video_check?: { remake?: { at: string; what: string } | null; remake_used?: boolean; post_anyway?: boolean };
     /** A video template (2026-11-02): its design and words, and the clean video the words go over. */
     template?: { design: string; fields: Record<string, string>; clean?: string };
   } | null;
@@ -1507,6 +1514,21 @@ function VideosContent() {
                           <Download size={13} />
                         </Button>
                       </div>
+
+                      {/* Take tips on a camera take (2026-11-15). */}
+                      {video.render_provider === "camera" && video.metadata?.take_tips && (
+                        <TakeTipsCard videoId={video.id} initial={video.metadata.take_tips} wait={false} />
+                      )}
+
+                      {/* A problem in the render itself, found by the video check (2026-11-15). */}
+                      {video.metadata?.video_check?.remake && !video.metadata.video_check.remake_used && (
+                        <RemakeNote
+                          videoId={video.id}
+                          projectId={video.project_id}
+                          problem={video.metadata.video_check.remake}
+                          held={!video.metadata.video_check.remake_used && !video.metadata.video_check.post_anyway}
+                        />
+                      )}
 
                       {/* A video template's words, changed without a new render (2026-11-02). */}
                       {video.render_provider === "template" && video.metadata?.template?.clean && (

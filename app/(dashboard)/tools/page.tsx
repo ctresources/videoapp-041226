@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   Tag, FileText, Heading, ScrollText, Tv2, Image, Copy, Check,
   Sparkles, ChevronDown, Save, Loader2, HelpCircle, Video, X, User, Upload,
-  Megaphone, Bot, Camera, ImagePlus, Download, RefreshCw, Type, Newspaper, Share2, BriefcaseBusiness, Send, Star, Home, Contact,
+  Megaphone, Bot, Camera, ImagePlus, Download, RefreshCw, Type, Newspaper, Share2, BriefcaseBusiness, Send, Star, Home, Contact, Wand2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -19,6 +19,7 @@ import { SellerUpdateTool } from "@/components/tools/seller-update";
 import { ReviewRequestTool } from "@/components/tools/review-request";
 import { BusinessCardTool } from "@/components/tools/business-card";
 import { ScreenRecorderTool } from "@/components/tools/screen-recorder";
+import { PhotoTouchup } from "@/components/tools/photo-touchup";
 import { articleHeadline, isPlaceholderTitle } from "@/lib/utils/article-headline";
 import { showTrialLock } from "@/lib/utils/trial-lock";
 import { useAccount } from "@/lib/hooks/use-account";
@@ -29,7 +30,7 @@ import { BASE_AUDIENCES } from "@/lib/utils/audiences";
 import { useCustomAudiences } from "@/lib/hooks/use-custom-audiences";
 import { suggestTextColors, type BannerCustomColors } from "@/lib/utils/banner-colors";
 
-type Tab = "description" | "script" | "title" | "tags" | "channel" | "linkedin" | "thumbnail" | "image" | "banner" | "answers" | "reviews" | "seller" | "review" | "screen" | "card";
+type Tab = "description" | "script" | "title" | "tags" | "channel" | "linkedin" | "thumbnail" | "image" | "touchup" | "banner" | "answers" | "reviews" | "seller" | "review" | "screen" | "card";
 
 interface Project {
   id: string;
@@ -141,6 +142,8 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
   { id: "tags",        label: "Tag Generator",        icon: Tag },
   { id: "thumbnail",   label: "Thumbnail Generator",  icon: Image },
   { id: "image",       label: "Image Generator",      icon: ImagePlus },
+  // Stage, declutter, twilight, blue sky (2026-11-15). Paid plans only.
+  { id: "touchup",     label: "Photo Touch-Up",       icon: Wand2 },
   { id: "banner",      label: "Banners",              icon: Megaphone },
   { id: "channel",     label: "Channel Name Generator", icon: Tv2 },
   { id: "linkedin",    label: "LinkedIn Profile",     icon: BriefcaseBusiness },
@@ -166,14 +169,15 @@ const TABS: { id: Tab; label: string; icon: React.ElementType; soon?: boolean }[
  * free plan's tries.
  */
 // The Video Business Card too (2026-10-30, the owner's call).
-const WORKFLOW_TABS: Tab[] = ["seller", "review", "reviews", "screen", "card"];
+// Photo Touch-Up too (2026-11-15, the owner's approved plan).
+const WORKFLOW_TABS: Tab[] = ["seller", "review", "reviews", "screen", "card", "touchup"];
 
 // The tabs in four groups (2026-10-26, usability sweep #8): twelve tabs in a
 // row were too many to scan. Each group's chips are the tools inside it.
 const TOOL_GROUPS: { label: string; tabs: Tab[] }[] = [
   { label: "For a video",        tabs: ["thumbnail", "title", "description", "tags", "script", "screen"] },
   // Channel Name and LinkedIn moved here, and the group below renamed (2026-10-30, the owner's ask).
-  { label: "Images & banners",   tabs: ["image", "banner", "channel", "linkedin", "card"] },
+  { label: "Images & banners",   tabs: ["image", "touchup", "banner", "channel", "linkedin", "card"] },
   { label: "Reviews",            tabs: ["reviews", "review"] },
   { label: "Sellers & AI search", tabs: ["seller", "answers"] },
 ];
@@ -3444,6 +3448,13 @@ export default function ToolsPage() {
         )}
         {activeTab === "thumbnail"   && <ThumbnailGenerator projects={projects} />}
         {activeTab === "image"       && <ImageGenerator projects={projects} initialProjectId={initialProjectId} />}
+        {activeTab === "touchup"     && (
+          <PhotoTouchup
+            listings={projects
+              .filter((p) => (p.listing_data?.photoUrls?.length ?? 0) > 0)
+              .map((p) => ({ id: p.id, title: p.listing_data?.address || p.title, photoUrls: p.listing_data?.photoUrls ?? [] }))}
+          />
+        )}
         {activeTab === "banner"      && <BannerGenerator initialPlatform={bannerPlatform} prefill={bannerPrefill} />}
         {activeTab === "answers"     && <AnswerBlocksGenerator />}
         {activeTab === "reviews"     && <GoogleReviewsTool onTrialLock={(data) => showTrialLock(data as Parameters<typeof showTrialLock>[0])} onAskForReviews={() => setActiveTab("review")} />}

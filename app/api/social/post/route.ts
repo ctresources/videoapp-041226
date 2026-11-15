@@ -100,6 +100,13 @@ export async function POST(req: NextRequest) {
   if (isReviewRequest(video.projects?.ai_script)) {
     return NextResponse.json({ error: "Review request videos are emailed to your clients, not posted." }, { status: 400 });
   }
+  // The video check found a problem in this render (2026-11-15): an automatic
+  // post waits until it's remade or the agent chooses Post anyway. The agent's
+  // own Publish is their choice and goes ahead.
+  const vc = (video.metadata?.video_check ?? null) as { remake?: unknown; post_anyway?: boolean } | null;
+  if (asUser && vc?.remake && !vc.post_anyway) {
+    return NextResponse.json({ error: "Held: the video check found a problem. Remake it or choose Post anyway.", code: "video_check_held" }, { status: 409 });
+  }
 
   const aiScript = video.projects?.ai_script as Record<string, unknown> | null;
   const seoData = video.projects?.seo_data as Record<string, unknown> | null;

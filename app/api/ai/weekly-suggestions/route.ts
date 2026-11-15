@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { guardMessages } from "@/lib/api/ai-guard";
 import { NextRequest, NextResponse } from "next/server";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
+import { geminiFromMessages, parseJsonReply } from "@/lib/api/gemini";
 
 export const maxDuration = 30;
 
@@ -36,6 +37,17 @@ Return ONLY valid JSON array — no markdown, no explanation:
 ]
 
 ${FAIR_HOUSING_GUARDRAIL}`;
+
+    // Google first, through Gemini (2026-11-15, the owner's approved plan),
+    // within the free search allowance; Perplexity when it can't.
+    const viaGoogle = await geminiFromMessages(guardMessages([
+      { role: "system", content: "You are a real estate content strategist. Return only valid JSON." },
+      { role: "user", content: prompt },
+    ]), { search: true, label: "weekly-suggestions", temperature: 0.5 });
+    const googleIdeas = viaGoogle ? parseJsonReply<Suggestion[]>(viaGoogle) : null;
+    if (Array.isArray(googleIdeas) && googleIdeas.length >= 1 && googleIdeas.every((s) => s && typeof s.title === "string")) {
+      return NextResponse.json({ suggestions: googleIdeas.slice(0, 2), location });
+    }
 
     const res = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",

@@ -1133,6 +1133,13 @@ function FullGuide() {
                 <strong>−</strong> or <strong>+</strong> under the teleprompter to slow it down or speed it
                 up without stopping. If Flow feels behind you, switch to Auto.
               </span>
+              {/* Take tips (2026-11-15). */}
+              <span className="block mt-1.5 scroll-mt-20" id="take-tips">
+                <strong>Take tips</strong>: about a minute after a take is saved, a short card shows one thing
+                that went well and up to three tips with the time in the video, like looking at the lens or
+                slowing down. They stay with the video in My Sparks. Takes up to 10 minutes; not screen
+                recordings.
+              </span>
               {/* Three things can be behind the speaker now, and one of them
                   costs something, on a screen whose headline is "free". */}
               <span className="block mt-1.5 scroll-mt-20" id="behind-you">
@@ -1205,7 +1212,11 @@ function FullGuide() {
               with your avatar on screen or the photos full-frame. It uses one video. Once the
               address and price are in, press <strong>Next · video setup</strong> on the bar at the
               bottom to have the tour written, or <strong>Write it — I&apos;ll read it on camera</strong>{" "}
-              to go straight to the teleprompter with your photos behind you, free.
+              to go straight to the teleprompter with your photos behind you, free.{" "}
+              {/* Photo sort (2026-11-15). */}
+              A link&apos;s photos come back <strong>sorted</strong>: the best front of the home first, rooms in
+              tour order, and headshots, logos and repeat shots taken out. <strong>Undo</strong> puts them
+              back the way the listing had them.
               {/* Photo counts (2026-10-16). */}
               <span className="block mt-1.5">
                 A video takes up to <strong>20 photos</strong>; Avatar video uses the first 15. When
@@ -1689,6 +1700,17 @@ function FullGuide() {
                 article chooses the picture.{" "}
                 <strong>Post it</strong> sends the finished graphic to your connected accounts as a
                 photo post, with a caption you write, instead of downloading it first.
+              </span>
+              {/* Photo Touch-Up (2026-11-15). Paid plans only. */}
+              <span className="block mt-1.5 scroll-mt-20" id="photo-touch-up" data-paid-only="true">
+                <strong>Photo Touch-Up</strong>, next to the Image Generator, edits a real listing photo:{" "}
+                <strong>Stage room</strong> (Modern, Farmhouse, Coastal or Traditional furniture in an empty
+                room), <strong>Declutter</strong>, <strong>Twilight</strong> or <strong>Blue sky</strong>. Pick a
+                photo from a listing or upload one, then <strong>Save to listing</strong> or{" "}
+                <strong>Download</strong>. The walls, windows and floors are never changed. Most MLSs require
+                edited photos to say so, so each one gets a small &ldquo;Virtually staged&rdquo; or
+                &ldquo;Digitally enhanced&rdquo; label unless you switch it off. The wand on a listing photo
+                opens the same choices. 30 a month.
               </span>
               {/* Not described anywhere until now. The badge is the part people
                   ask about: it used to come back even with both boxes empty. */}

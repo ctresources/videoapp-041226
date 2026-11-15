@@ -4,6 +4,7 @@ import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 import type { ListingData } from "@/app/api/ai/scrape-listing/route";
 import { coerceListing } from "@/lib/utils/listing-data";
+import { geminiJson, geminiKey } from "@/lib/api/gemini";
 
 export const maxDuration = 60;
 
@@ -78,15 +79,7 @@ async function extractText(file: File): Promise<string> {
   return printable.slice(0, 20000);
 }
 
-async function parseWithPerplexity(text: string): Promise<ListingData> {
-  const truncated = text.slice(0, 8000);
-
-  const prompt = `Extract real estate listing details from this content and return ONLY a valid JSON object.
-
-CONTENT:
-${truncated}
-
-Return a JSON object with these exact keys (use null or empty string if not found):
+const LISTING_KEYS = `Return a JSON object with these exact keys (use null or empty string if not found):
 {
   "address": "full street address",
   "price": "$X,XXX,XXX",
@@ -107,6 +100,45 @@ Return a JSON object with these exact keys (use null or empty string if not foun
 }
 
 Return ONLY the JSON object. No markdown, no explanation.`;
+
+/**
+ * Gemini reads the file itself (2026-11-15, the owner's approved plan): a
+ * PDF's real pages, scanned ones included, and a photo of a flyer, which the
+ * text reader below can't see. Null when it can't, and the text reader runs.
+ */
+async function parseWithGemini(file: File): Promise<ListingData | null> {
+  if (!geminiKey()) return null;
+  const name = file.name.toLowerCase();
+  const isPdf = file.type === "application/pdf" || name.endsWith(".pdf");
+  const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif)$/i.test(name);
+  if (!isPdf && !isImage) return null;
+  const buf = Buffer.from(await file.arrayBuffer());
+  if (buf.length > 15 * 1024 * 1024) return null;
+  const mimeType = isPdf ? "application/pdf" : (file.type || "image/jpeg");
+  const out = await geminiJson<Record<string, unknown>>({
+    parts: [
+      { inlineData: { mimeType, data: buf.toString("base64") } },
+      { text: `This is a real estate listing ${isPdf ? "document" : "flyer or photo"}. Read every page and extract the listing details.\n\n${LISTING_KEYS}` },
+    ],
+    temperature: 0.1,
+    timeoutMs: 45_000,
+    label: "parse-listing-file",
+  });
+  if (!out) return null;
+  const listing = coerceListing({ ...out, photoUrls: [] });
+  // Nothing useful read: let the text reader try.
+  return listing.address || listing.price || listing.description ? listing : null;
+}
+
+async function parseWithPerplexity(text: string): Promise<ListingData> {
+  const truncated = text.slice(0, 8000);
+
+  const prompt = `Extract real estate listing details from this content and return ONLY a valid JSON object.
+
+CONTENT:
+${truncated}
+
+${LISTING_KEYS}`;
 
   const res = await fetch("https://api.perplexity.ai/chat/completions", {
     method: "POST",
@@ -155,6 +187,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const read = await parseWithGemini(file).catch(() => null);
+    if (read) return NextResponse.json({ listing: read, fileName: file.name });
+
     const text = await extractText(file);
 
     // If we couldn't extract any meaningful text (e.g., pure image), return empty listing

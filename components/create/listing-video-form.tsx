@@ -8,9 +8,11 @@ import { StepFooter } from "@/components/create/step-footer";
 import {
   Home, Loader2, ArrowRight, Link2, PencilLine, CheckCircle,
   X, BedDouble, Bath, Ruler, Calendar, DollarSign, Image as ImageIcon,
-  Upload, FileText, Camera, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
+  Upload, FileText, Camera, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Wand2,
 } from "lucide-react";
 import type { ListingData } from "@/app/api/ai/scrape-listing/route";
+import { PhotoTouchup } from "@/components/tools/photo-touchup";
+import { useAccount } from "@/lib/hooks/use-account";
 import { createClient } from "@/lib/supabase/client";
 import { coerceListing } from "@/lib/utils/listing-data";
 import { currentUserId } from "@/lib/utils/upload-photo";
@@ -155,6 +157,12 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
   // 20 since 2026-10-16; an Avatar video uses only the first 15 (AGENT_PHOTO_LIMIT).
   const MAX_LISTING_PHOTOS = UPLOAD_PHOTO_LIMIT;
 
+  /** The import's photo sort (2026-11-15): how many removed, and the order to Undo to. */
+  const [photoSort, setPhotoSort] = useState<{ removed: number; original: string[] } | null>(null);
+  /** Photo Touch-Up open on one photo (the wand), paid plans only (2026-11-15). */
+  const [touchupAt, setTouchupAt] = useState<number | null>(null);
+  const account = useAccount();
+
   // ── Scrape ─────────────────────────────────────────────────────────────────
   async function handleScrape() {
     if (!url.trim()) return toast.error("Paste a listing URL first");
@@ -171,6 +179,7 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
       // that fix can still hold nulls, and one null price is enough to
       // take the whole page down on `price.trim()`.
       setListing(coerceListing(data.listing));
+      setPhotoSort(data.photoSort && Array.isArray(data.photoSort.original) ? data.photoSort : null);
       setStep("review");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not read listing");
@@ -899,6 +908,17 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
                   <Trash2 size={12} />
                 </button>
                 <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded">{i + 1}</span>
+                {account?.paid && (
+                  <button
+                    type="button"
+                    onClick={() => setTouchupAt(i)}
+                    className="absolute top-1 left-1 z-10 bg-black/70 hover:bg-spark-amber text-white rounded-full p-1.5"
+                    aria-label={`Touch up photo ${i + 1}`}
+                    title="Touch up"
+                  >
+                    <Wand2 size={12} />
+                  </button>
+                )}
                 {/* Small tiles (a phone) let this row reach the delete button above it,
                     so a tap on delete moved the photo instead (2026-10-16). Delete sits
                     on top, and only the arrows themselves catch taps. */}
@@ -924,6 +944,39 @@ export function ListingVideoForm({ onRecordYourself, onListingPhotos, blogOnly =
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {touchupAt !== null && listing.photoUrls[touchupAt] && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setTouchupAt(null)}>
+            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+              <PhotoTouchup
+                initialUrl={listing.photoUrls[touchupAt]}
+                onClose={() => setTouchupAt(null)}
+                onUse={(url) => {
+                  const at = touchupAt;
+                  setListing((l) => ({ ...l, photoUrls: l.photoUrls.map((u, j) => (j === at ? url : u)) }));
+                  setTouchupAt(null);
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {photoSort && listing.photoUrls.length > 0 && (
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <span className="rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 font-bold text-green-700">✓ Sorted</span>
+            <span>Front of home first{photoSort.removed > 0 ? ` · ${photoSort.removed} removed` : ""}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setListing((l) => ({ ...l, photoUrls: photoSort.original.slice(0, MAX_LISTING_PHOTOS) }));
+                setPhotoSort(null);
+              }}
+              className="px-1.5 font-semibold text-slate-500 hover:text-slate-800"
+            >
+              Undo
+            </button>
           </div>
         )}
 

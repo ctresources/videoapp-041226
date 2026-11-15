@@ -1,4 +1,5 @@
 import { ENGINES, type Engine } from "@/lib/ai-visibility/shared";
+import { countGemini, geminiKey, searchAllowed } from "@/lib/api/gemini";
 
 /**
  * Asks one AI search engine one question, the way a buyer would: no system
@@ -146,8 +147,11 @@ function collectGeminiText(node: unknown, out: string[]) {
 }
 
 async function askGemini(question: string): Promise<EngineAnswer | null> {
-  const key = process.env.GEMINI_API_KEY;
+  const key = geminiKey();
   if (!key) return null;
+  // Shares the free 5,000 Google searches a month with research (lib/api/gemini.ts).
+  if (!(await searchAllowed())) return null;
+  void countGemini("searches");
   const model = process.env.GEMINI_SEARCH_MODEL || "gemini-3.8-flash";
   const headers = { "x-goog-api-key": key, "Content-Type": "application/json" };
   try {
@@ -191,7 +195,7 @@ export function activeEngines(): Engine[] {
   return ENGINES.filter((e) =>
     e === "chatgpt" ? !!process.env.OPENAI_API_KEY
       : e === "perplexity" ? !!process.env.PERPLEXITY_API_KEY
-        : !!process.env.GEMINI_API_KEY);
+        : !!geminiKey());
 }
 
 export function askEngine(engine: Engine, question: string): Promise<EngineAnswer | null> {

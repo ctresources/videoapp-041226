@@ -10,6 +10,8 @@ import { beatsFromSrt } from "@/lib/utils/script-beats";
 import { lineIsWaiting } from "@/lib/video/render-queue";
 import { makeCinematicClips, type CinematicClip } from "@/lib/api/cinematic-clips";
 import { CINEMATIC_DISCLOSURE } from "@/lib/utils/ai-made";
+import { checkMode, checkVideo, recordCheck, remakeProblem, scriptFor, type CheckResult } from "@/lib/video/video-check";
+import { waitUntil } from "@vercel/functions";
 
 /** Adds "Photos animated with AI." to the video's YouTube description, once. */
 async function discloseAnimatedPhotos(admin: ReturnType<typeof createAdminClient>, videoId: string) {
@@ -157,6 +159,7 @@ export async function storeVideoDetailed(
   opts: StoreOptions = {},
 ): Promise<StoreResult> {
   const admin = createAdminClient();
+  const storeStarted = Date.now();
 
   /**
    * Whose video this is, taken from the row.
@@ -266,6 +269,9 @@ export async function storeVideoDetailed(
   // fails here is logged and skipped, and the raw render gets published in its
   // place rather than the row being left with nothing.
   const srtDir = join(tmpdir(), `srt-${randomUUID()}`);
+  /** The file that gets published, for the video check below (2026-11-15). */
+  let finalBuf: Buffer | null = opts.cutout ? null : buffer;
+  let checkFlags = { captions: false, background: false };
   try {
     let processed = buffer;
     let changed = false;
@@ -472,16 +478,60 @@ export async function storeVideoDetailed(
       );
     }
     await mergeMetadata(admin, videoId, { post_processed: true, post_processing_applied: changed });
+    finalBuf = seeThrough ? null : processed;
+    checkFlags = { captions: !!srtPath || opts.burnCaptions === false, background: brollApplied };
   } catch (err) {
     console.error("[store-video] Post-processing failed for", videoId, err instanceof Error ? err.message : err);
   } finally {
     await fs.rm(srtDir, { recursive: true, force: true }).catch(() => {});
   }
 
+  /**
+   * The video check (2026-11-15, the owner's approved plan): before the video
+   * shows as ready for admin accounts (and everyone, once the owner turns it
+   * on). A problem in the added captions, b-roll or music gets finishing redone
+   * once, free; a problem in the render itself offers a free Remake. For
+   * everyone else it runs after publishing and only records what it found.
+   */
+  const mode = finalBuf ? await checkMode(userId).catch(() => null) : null;
+  if (mode === "enforce" && finalBuf) {
+    const script = await scriptFor(videoId).catch(() => "");
+    const result = await Promise.race([
+      checkVideo(finalBuf, script, checkFlags),
+      new Promise<CheckResult>((r) => setTimeout(() => r({ status: "error", problems: [], seconds: 90 }), 90_000)),
+    ]).catch((): CheckResult => ({ status: "error", problems: [], seconds: 0 }));
+    const { data: metaRow } = await admin.from("generated_videos").select("metadata").eq("id", videoId).single();
+    const already = !!(metaRow?.metadata as Record<string, unknown> | null)?.video_check_refinish;
+    const finishing = result.problems.some((p) => p.kind === "finishing");
+    const renderProblem = remakeProblem(result);
+    const elapsed = (Date.now() - storeStarted) / 1000;
+    if (finishing && !renderProblem && !already && elapsed < 360) {
+      console.log(`[store-video] ${videoId}: video check found finishing problems, redoing finishing once`);
+      await recordCheck({ videoId, userId, mode, result, action: "refinished" });
+      await mergeMetadata(admin, videoId, { video_check_refinish: true, post_processed: false, post_processing_started_at: null });
+      return storeVideoDetailed(sourceUrl, videoId, opts);
+    }
+    await recordCheck({ videoId, userId, mode, result, action: renderProblem ? "remake_offered" : null });
+    if (renderProblem) {
+      await mergeMetadata(admin, videoId, { video_check: { remake: { at: renderProblem.at, what: renderProblem.what } } });
+    }
+  }
+
   // The one and only publish: the finished file if post-processing got there,
   // the raw render if it didn't. Until this line the row carries no video_url,
   // so nothing downstream can present a half-made video as ready to watch.
   await publish(publicUrl);
+
+  if (mode === "record" && finalBuf) {
+    const buf = finalBuf;
+    const flags = checkFlags;
+    waitUntil((async () => {
+      const script = await scriptFor(videoId).catch(() => "");
+      const result = await checkVideo(buf, script, flags);
+      const action = remakeProblem(result) ? "would_offer_remake" : result.problems.length ? "would_refinish" : null;
+      await recordCheck({ videoId, userId, mode, result, action });
+    })().catch((e) => console.error(`[video-check] ${videoId}:`, e instanceof Error ? e.message : e)));
+  }
 
   /**
    * What the vendor actually charged for this render.
