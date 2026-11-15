@@ -34,6 +34,8 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [removeBg, setRemoveBg] = useState(false);
   const [enhance, setEnhance] = useState(false);
+  /** Enhance photo's before/after, waiting for the agent to pick (2026-11-15). */
+  const [enhancePick, setEnhancePick] = useState<{ file: File; original: string; enhanced: string } | null>(null);
   const [consentLoading, setConsentLoading] = useState(false);
   const [deletingLookId, setDeletingLookId] = useState<string | null>(null);
 
@@ -124,8 +126,6 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
   }
 
   async function handleAddLook(file: File) {
-    const name = `Look ${new Date().toLocaleDateString()}`;
-
     setAdding(true);
     try {
       // Through the server (2026-10-29), like every other picture: straight
@@ -133,24 +133,44 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
       // session ("row-level security"). Big phone photos are shrunk first.
       const publicUrl = await uploadImage(file, "look");
 
-      // Optionally swap the photo for a background-removed version (clean
-      // white) before the look is created. Failure falls back to the original.
-      let imageUrl = publicUrl;
-      // Enhance photo first (2026-11-15): light and color, face unchanged.
+      // Enhance photo (2026-11-15): the original and the enhanced copy side
+      // by side, and the agent picks, as on the headshot. The look is made
+      // once they choose.
       if (enhance) {
         try {
           const enRes = await fetch("/api/avatar/enhance-photo", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageUrl }),
+            body: JSON.stringify({ imageUrl: publicUrl }),
           });
           const enData = await enRes.json().catch(() => ({}));
-          if (enRes.ok && enData.url) imageUrl = enData.url;
-          else toast(enData.error || "Enhance unavailable — using the original photo.", { icon: "ℹ️" });
+          if (enRes.ok && enData.url) {
+            setEnhancePick({ file, original: publicUrl, enhanced: enData.url });
+            setAdding(false);
+            return;
+          }
+          toast(enData.error || "Enhance unavailable — using the original photo.", { icon: "ℹ️" });
         } catch {
           toast("Enhance unavailable — using the original photo.", { icon: "ℹ️" });
         }
       }
+      await finishLook(file, publicUrl);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add look");
+      cancelAdd();
+      setAdding(false);
+    }
+  }
+
+  /** The chosen photo (original or enhanced) → background removed if asked → the look. */
+  async function finishLook(file: File, chosenUrl: string) {
+    const name = `Look ${new Date().toLocaleDateString()}`;
+    setEnhancePick(null);
+    setAdding(true);
+    try {
+      // Optionally swap the photo for a background-removed version (clean
+      // white) before the look is created. Failure falls back to the original.
+      let imageUrl = chosenUrl;
       if (removeBg) {
         try {
           const bgRes = await fetch("/api/avatar/remove-background", {
@@ -402,6 +422,25 @@ export function AvatarLooksManager({ userId, hasPhoto, hasAvatar }: { userId: st
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* Enhance photo: before and after, pick one (2026-11-15). */}
+      {enhancePick && (
+        <div className="rounded-xl border border-slate-200 p-3">
+          <div className="grid grid-cols-2 gap-3">
+            {([["Original", enhancePick.original], ["Enhanced", enhancePick.enhanced]] as const).map(([label, src]) => (
+              <div key={label} className="flex flex-col items-center gap-1.5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt={label} className="aspect-[3/4] w-full max-w-[180px] rounded-lg object-cover" />
+                <span className="text-xs font-semibold text-slate-500">{label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            <button type="button" onClick={() => void finishLook(enhancePick.file, enhancePick.enhanced)} className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700">Use enhanced</button>
+            <button type="button" onClick={() => void finishLook(enhancePick.file, enhancePick.original)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600">Keep original</button>
+          </div>
         </div>
       )}
 
