@@ -30,6 +30,83 @@ export type WhatsNewItem = {
 
 const ITEMS: WhatsNewItem[] = [
   {
+    id: "photo-touch-up",
+    title: "Photo Touch-Up",
+    description:
+      "Make a listing photo shine: Enhance, Stage an empty room, Declutter, Twilight or Blue sky. The home itself is never changed, and each photo is labeled for the MLS. Pick a listing photo or upload your own.",
+    releaseDate: "2026-11-15",
+    featureKey: "tool_workflows",
+    howItWorksAnchor: "photo-touch-up",
+    badge: "NEW",
+    paidOnlyDetails: true,
+  },
+  {
+    id: "take-tips",
+    title: "Take Tips for Camera Recordings",
+    description:
+      "After you record yourself, get one thing you did well and up to three quick tips, each with the moment in your video, like looking at the lens or slowing down.",
+    releaseDate: "2026-11-15",
+    howItWorksAnchor: "take-tips",
+    badge: "NEW",
+    freeHref: "/create?tab=camera",
+    freeLabel: "Record yourself",
+  },
+  {
+    id: "enhance-photo",
+    title: "Enhance Your Avatar Photo",
+    description:
+      "Brighten and sharpen your headshot or a new look before it becomes your avatar. Your face is never changed, and you pick the original or the enhanced one.",
+    releaseDate: "2026-11-15",
+    howItWorksAnchor: "enhance-photo",
+    badge: "NEW",
+    freeHref: "/settings#brand",
+    freeLabel: "Open Settings",
+  },
+  {
+    id: "listing-photo-sort",
+    title: "Listing Photos, Sorted",
+    description:
+      "Import a listing and the photos come back in tour order with the best front of the home first. Agent headshots, logos and repeat shots are taken out, and Undo puts them back.",
+    releaseDate: "2026-11-15",
+    howItWorksAnchor: "photo-sort",
+    badge: "IMPROVED",
+    freeHref: "/create",
+    freeLabel: "Make a listing video",
+  },
+  {
+    id: "thumbnails-match-script",
+    title: "Thumbnails That Match Your Video",
+    description:
+      "The thumbnail background now pictures what your script talks about, and each one looks different from your last few.",
+    releaseDate: "2026-11-15",
+    howItWorksAnchor: "thumbnail-generator",
+    badge: "IMPROVED",
+    freeHref: "/tools?tab=thumbnail",
+    freeLabel: "Open the Thumbnail Generator",
+  },
+  {
+    id: "ai-visibility",
+    title: "AI Visibility",
+    description:
+      "See whether ChatGPT, Perplexity and Gemini name you or cite your links when people ask about your town. Every week, from your town's top searches, with the sites AI used instead and a Make a video button for each gap.",
+    releaseDate: "2026-11-14",
+    featureKey: "spark_insights",
+    howItWorksAnchor: "ai-visibility",
+    badge: "NEW",
+    paidOnlyDetails: true,
+  },
+  {
+    id: "plans-4-7-10",
+    title: "Simpler Plans: 4, 7 or 10 Videos",
+    description:
+      "Creator, Producer and Influencer now include 4, 7 or 10 AI videos a month, each up to 2 minutes. Recording yourself on camera never uses your videos.",
+    releaseDate: "2026-11-13",
+    howItWorksAnchor: "step-11",
+    badge: "IMPROVED",
+    freeHref: "/settings/billing",
+    freeLabel: "See plans",
+  },
+  {
     id: "halo-leads",
     title: "Halo Leads",
     description:

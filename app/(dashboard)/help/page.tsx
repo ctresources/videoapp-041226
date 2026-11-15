@@ -260,6 +260,14 @@ function FullGuide() {
                 plan you have one photo: choose <strong>Vertical</strong> or <strong>Horizontal</strong> for the
                 shape you post most.
               </span>
+              {/* Enhance photo (2026-11-15): a plain fix, the face never changes. */}
+              <span className="block mt-1.5 scroll-mt-20" id="enhance-photo">
+                <strong>Enhance photo</strong>, beside Upload new photo, brightens a dark or yellowish photo and
+                sharpens it. Your face is never changed. You see the <strong>Original</strong> and the{" "}
+                <strong>Enhanced</strong> side by side and press <strong>Use enhanced</strong> or{" "}
+                <strong>Keep original</strong>. New looks have the same choice: tick{" "}
+                <strong>Enhance photo</strong> before you pick the photo.
+              </span>
             </Step>
             {/* Back since 2026-10-20: HeyGen confirmed API twins need no
                 Enterprise plan. The owner's wording. */}
@@ -1214,9 +1222,11 @@ function FullGuide() {
               bottom to have the tour written, or <strong>Write it — I&apos;ll read it on camera</strong>{" "}
               to go straight to the teleprompter with your photos behind you, free.{" "}
               {/* Photo sort (2026-11-15). */}
-              A link&apos;s photos come back <strong>sorted</strong>: the best front of the home first, rooms in
-              tour order, and headshots, logos and repeat shots taken out. <strong>Undo</strong> puts them
-              back the way the listing had them.
+              <span className="scroll-mt-20" id="photo-sort">
+                A link&apos;s photos come back <strong>sorted</strong>: the best front of the home first, rooms in
+                tour order, and headshots, logos and repeat shots taken out. <strong>Undo</strong> puts them
+                back the way the listing had them.
+              </span>
               {/* Photo counts (2026-10-16). */}
               <span className="block mt-1.5">
                 A video takes up to <strong>20 photos</strong>; Avatar video uses the first 15. When
@@ -1723,7 +1733,11 @@ function FullGuide() {
                 background. The <strong>Market Badge</strong> is the city and state shown on it.
                 Type a different one to change it, which also updates the video&apos;s market so its
                 title and description match, or clear both boxes and press Update Thumbnail to
-                leave the badge off.
+                leave the badge off.{" "}
+                {/* Script-matched scenes (2026-11-15). */}
+                The AI background pictures what your script actually talks about, and each new one
+                is shot differently from your last few. Not right? Type what you want in the
+                background box and press <strong>New background</strong>; your words are used exactly.
               </span>
               <span className="block mt-1.5 scroll-mt-20" id="banners">
                 <SectionVideo id="banners" /> <strong>Banners</strong> makes the wide image across the top of your YouTube channel,
