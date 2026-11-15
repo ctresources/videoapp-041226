@@ -103,7 +103,7 @@ export async function generateThumbnailBackground(opts: {
 
 SUBJECT: ${scene || `the subject of this video — "${(opts.topic || "").trim().slice(0, 140)}" — photographed literally, not a generic property shot`}
 
-Style: bright, vibrant, high-energy. Punchy color grading built around TWO dominant colors with one warm accent. Crisp daylight, high contrast, HD photographic quality. If the subject is outdoors, a deep saturated sky belongs in the upper frame; if it is indoors or a close subject, light it bright and clean instead.
+Style: bright, vibrant, high-energy. Punchy color grading built around TWO dominant colors with one warm accent. Use the light and camera angle the subject describes (crisp daylight if it names none), high contrast, HD photographic quality. If the subject is outdoors, a deep saturated sky belongs in the upper frame (rich blue by day, deep blue at dusk); if it is indoors or a close subject, light it bright and clean instead.
 ${paletteLine(opts.brandColors)}
 Composition: leave the right ~40% of the frame relatively clean and uncluttered (a presenter photo will be placed there); concentrate the hero imagery in the left ~60%. One clear subject — this is seen small, on a phone, while scrolling.
 

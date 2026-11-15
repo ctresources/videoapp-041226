@@ -571,12 +571,32 @@ export async function renderAndSaveThumbnail(
      * Skipped when a scene cannot be written: the prompt still falls back to
      * the title, which is at least this video rather than any video.
      */
-    sceneUsed = (opts.scene || "").trim() || (await photoBriefFor({
+    // A scene the agent typed is used exactly as written. Otherwise the brief
+    // sees this agent's last few scenes so the next one differs (2026-11-15).
+    const typed = (opts.scene || "").trim();
+    let recentScenes: string[] = [];
+    if (!typed) {
+      let q = admin
+        .from("projects")
+        .select("id, scene:seo_data->>thumbnail_scene")
+        .eq("user_id", opts.userId)
+        .not("seo_data->>thumbnail_scene", "is", null)
+        .order("updated_at", { ascending: false })
+        .limit(9);
+      if (opts.projectId) q = q.neq("id", opts.projectId);
+      const { data: recent } = await q;
+      recentScenes = ((recent ?? []) as { scene: string | null }[])
+        .map((r) => r.scene ?? "")
+        .filter(Boolean)
+        .slice(0, 8);
+    }
+    sceneUsed = typed || (await photoBriefFor({
       headline: sourceTitle || headlineText,
       body: scriptText,
       city,
       state,
       kind: "thumbnail",
+      recentScenes,
     })) || "";
 
     const aiBg = await generateThumbnailBackground({
