@@ -5,7 +5,7 @@ import { getVideoStatus, getVideoAgentSession, getVideoV3Status, getVideoScenes 
 import { friendlyRenderError, GENERIC_RENDER_ERROR } from "@/lib/utils/render-errors";
 import { publishWebhookEvent } from "@/lib/utils/webhook-publisher";
 import { refundVideoCredits } from "@/lib/utils/refund-credits";
-import { downloadAndStoreVideo } from "@/lib/utils/store-video";
+import { storeVideoDetailed } from "@/lib/utils/store-video";
 import { buildStoreOptions } from "@/lib/utils/store-options";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -30,25 +30,35 @@ async function finalizeDirectVideo(
   heygenUrl: string,
   heygenVideoId: string,
 ): Promise<string | null> {
-  // Claim the row (rendering/pending -> storing). Only one caller wins.
-  const { data: claimed } = await admin
-    .from("generated_videos")
-    .update({ render_status: "storing" })
-    .eq("id", video.id)
-    .eq("render_status", video.render_status)
-    .select("id")
-    .single();
-  if (!claimed) return null; // someone else is finalizing
-
+  /**
+   * Claimed the way the webhook claims it: inside storeVideoDetailed
+   * (claim_video_post_processing, which stamps post_processing_started_at).
+   *
+   * This used to claim by setting render_status to "storing", which the
+   * table's check constraint doesn't allow. The update failed silently on
+   * every poll, so when HeyGen's webhook didn't arrive (2026-11-17, a twin
+   * video HeyGen finished in 3 minutes sat on "rendering" for 30+) this
+   * backup could never finish the video, and the 15-minute stall fallback
+   * never fired either, since nothing had stamped a start time.
+   */
   // The same options the webhook would have used — b-roll, music and captions.
   // This poll and the webhook race each other, and only the winner does the
   // work, so anything missing here is missing from the finished video.
   const storeOpts = await buildStoreOptions(video.metadata, heygenVideoId);
 
-  // downloadAndStoreVideo never throws (photo/music steps fall back internally),
-  // so on any failure we still land on the raw HeyGen URL rather than a stuck row.
-  const stored = await downloadAndStoreVideo(heygenUrl, video.id, storeOpts);
-  const finalUrl = stored || heygenUrl;
+  let result: Awaited<ReturnType<typeof storeVideoDetailed>>;
+  try {
+    result = await storeVideoDetailed(heygenUrl, video.id, storeOpts);
+  } catch (err) {
+    console.error(`[status] storing ${video.id} threw:`, err instanceof Error ? err.message : err);
+    result = { url: null, state: "failed" };
+  }
+  // Another caller (the webhook, or another poll) holds the claim. Still
+  // working: wait. Already published: hand back what it published.
+  if (result.state === "elsewhere") return result.url;
+
+  // On any failure we still land on the raw HeyGen URL rather than a stuck row.
+  const finalUrl = result.url || heygenUrl;
 
   await admin
     .from("generated_videos")
