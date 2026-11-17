@@ -608,11 +608,22 @@ function FullGuide() {
               already said or typed comes with you.{" "}
               <strong>More options</strong> folds the rest away until you want it:{" "}
               <strong>3 · Script Source</strong> — <strong>AI writes it</strong> from
-              a topic, or <strong>My Content/Forwarded in</strong>, which is also where anything
-              you forwarded in turns up (step 6). A listing or a photos only reel skips this
+              a topic, <strong>My Content/Forwarded in</strong>, which is also where anything
+              you forwarded in turns up (step 6), or <strong>Like a video I love</strong> (below). A listing or a photos only reel skips this
               one (step 19). <strong>4 · Details</strong> — the city and state, who
               it&apos;s for, and a video&apos;s format. Details opens by itself when your city and
               state are missing, since Next needs them.
+              {/* Make one like this (2026-11-16). */}
+              <span className="block mt-1.5 scroll-mt-20" id="like-a-video">
+                <strong>Like a video I love</strong>: upload a video you like (up to 3 minutes), or paste a
+                YouTube link, and say or type your topic. Press <strong>Read the video</strong>. In about 30
+                seconds you see its style (hook, length, pace, order, tone, captions, music, shape) and a new
+                script on your topic, built the same way. The video type, shape, captions and music are
+                picked to match; change any of them, edit the script, or press <strong>Write it again</strong>.{" "}
+                <strong>Spark It</strong> opens the video setup with those picks. Nothing of the original is
+                copied, and the video you add is deleted right after it&apos;s read. 20 reads a month. On
+                Camera / Teleprompter it&apos;s a script choice too, and the script goes into your teleprompter.
+              </span>
               <span className="block mt-1.5">
                 You don&apos;t have to work down all four. Give it a topic at the top, check the
                 city and state, and press <strong>Next</strong> at the bottom. The sections

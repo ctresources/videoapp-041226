@@ -737,6 +737,13 @@ export default function ProjectEditorPage() {
     if (source === "paste") setRenderMode("avatar_voice");
   }, [source]);
 
+  // Make one like this picked "You on camera" from the video (2026-11-16).
+  // Only the first pick: the tiles can still change it.
+  useEffect(() => {
+    if (searchParams.get("onscreen") === "self") setSelfRecord(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Default to voice-follow when the browser supports it
   useEffect(() => {
     if (isVoiceFollowSupported()) {

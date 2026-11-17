@@ -30,6 +30,17 @@ export type WhatsNewItem = {
 
 const ITEMS: WhatsNewItem[] = [
   {
+    id: "like-a-video",
+    title: "Make One Like a Video You Love",
+    description:
+      "Upload a video you like or paste a YouTube link, and say your topic. SparkReels reads its style and writes your own script built the same way, with the video type, shape, captions and music picked to match.",
+    releaseDate: "2026-11-17",
+    howItWorksAnchor: "like-a-video",
+    badge: "NEW",
+    freeHref: "/create?tab=like",
+    freeLabel: "Try it",
+  },
+  {
     id: "moving-photos",
     title: "Moving Photos in Quick Reels",
     description:

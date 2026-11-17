@@ -29,7 +29,8 @@ export const geminiImageModel = () => process.env.GEMINI_IMAGE_MODEL || "gemini-
 export type GeminiPart =
   | { text: string }
   | { inlineData: { mimeType: string; data: string } }
-  | { fileData: { mimeType: string; fileUri: string } };
+  // mimeType left out for a YouTube link, which Gemini reads by URL.
+  | { fileData: { mimeType?: string; fileUri: string } };
 
 /** Counts one use this month; returns the new total for that kind, or null. */
 export async function countGemini(kind: string, n = 1): Promise<number | null> {

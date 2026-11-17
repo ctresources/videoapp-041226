@@ -24,9 +24,29 @@ export async function POST(req: NextRequest) {
     audience?: string;
     tone?: string;
     purpose?: string;
+    /**
+     * Make one like this (2026-11-16): the settings read from the video the
+     * agent loves, so setup opens on them. Each can still be changed there.
+     */
+    like?: {
+      platform?: string;
+      onScreen?: string;
+      music?: string;
+      captions?: boolean;
+    };
   };
 
   const { script, city = "", state = "" } = body;
+  const like = body.like && typeof body.like === "object" ? body.like : null;
+  const likeFields = like ? {
+    ...(like.platform === "reel" || like.platform === "youtube" ? { video_platform: like.platform } : {}),
+    ...(like.onScreen === "voice" ? { render_mode: "voice_only" }
+      : like.onScreen === "full" || like.onScreen === "circle" ? { render_mode: "avatar_voice", avatar_style: like.onScreen }
+        : {}),
+    ...(typeof like.music === "string" && /^[a-z]{2,20}$/.test(like.music) ? { draft_music_id: like.music } : {}),
+    ...(typeof like.captions === "boolean" ? { draft_captions: like.captions } : {}),
+    from_like_video: true,
+  } : {};
 
   // Untitled projects are named for their market, not "My Script". The old
   // fallback put the same string on every untitled video, so a library of them
@@ -106,6 +126,7 @@ export async function POST(req: NextRequest) {
     audience: body.audience?.trim() || null,
     tone: body.tone?.trim() || null,
     purpose: body.purpose?.trim() || null,
+    ...likeFields,
   };
 
   const { data: project, error: projectError } = await admin

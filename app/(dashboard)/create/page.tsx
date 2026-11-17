@@ -52,6 +52,7 @@ import { SparkleeAgent } from "@/components/create/sparklee-agent";
 import { SPARKREELS_CHIPS, SPARKREELS_TRY } from "@/lib/sparkreels-chips";
 import { SparkreelsIdeas } from "@/components/create/sparkreels-ideas";
 import { StepFooter } from "@/components/create/step-footer";
+import { LikeVideoPanel } from "@/components/create/like-video-panel";
 import { uploadVideoPhoto } from "@/lib/utils/upload-photo";
 import { toStateAbbr } from "@/lib/utils/us-states";
 import { BASE_AUDIENCES, MAX_AUDIENCE_LENGTH } from "@/lib/utils/audiences";
@@ -101,7 +102,8 @@ type Step = "input" | "uploading" | "transcribing" | "done";
 // One mode per tab. "content" used to be a fifth, a merged tab that showed a
 // chooser routing into "paste" or "listing" — those two are their own tabs
 // now, so the mode that only existed to hold them is gone.
-type InputMode = "script" | "camera" | "listing" | "paste";
+// "like": Make one like this (2026-11-16), a script in the style of a video the agent loves.
+type InputMode = "script" | "camera" | "listing" | "paste" | "like";
 
 // Shown one at a time above the composer while the topic is still blank, to
 // answer "what am I supposed to say into this" without a paragraph of help
@@ -681,7 +683,7 @@ function CreatePageInner() {
    * details in. Photos are not in the list: they are b-roll, not a script,
    * and stay available whichever way in you pick.
    */
-  const [cameraSource, setCameraSource] = useState<"speak" | "uploads" | "audio" | "own" | "freestyle">("speak");
+  const [cameraSource, setCameraSource] = useState<"speak" | "uploads" | "audio" | "own" | "freestyle" | "like">("speak");
   /**
    * Arrived from an existing Spark with the script already written.
    *
@@ -758,7 +760,7 @@ function CreatePageInner() {
     // the toggle; there is no parent any more.
     if (tab === "camera") setInputMode("camera");
     else if (tab === "listing") { setInputMode("listing"); setLastSparkTab("listing"); }
-    else if (tab === "paste" || tab === "script") { setInputMode(tab); setLastSparkTab(tab); }
+    else if (tab === "paste" || tab === "script" || tab === "like") { setInputMode(tab); setLastSparkTab(tab); }
     if (topic) { setLocCustomTopic(topic); setInputMode("script"); setLastSparkTab("script"); }
     // The home page's "What buyers in your area ask AI" box left its first
     // question here (2026-10-23): it becomes the topic once, within a week.
@@ -2247,7 +2249,7 @@ function CreatePageInner() {
    */
   const cameraSetupHidden = inputMode === "camera" && cameraPhase === "script" && !cameraHandoff
     && cameraMode !== "brand" && !cameraGeneratedScript
-    && (cameraSource === "speak" || cameraSource === "uploads");
+    && (cameraSource === "speak" || cameraSource === "uploads" || cameraSource === "like");
   /**
    * Behind you, in the take's setup right after the teleprompter (2026-10-21):
    * Just me, your photos, your own footage (plays behind you), or AI scenes.
@@ -2440,6 +2442,7 @@ function CreatePageInner() {
     inputMode === "camera" ? "Camera/Teleprompter"
       : inputMode === "script" ? "AI writes it"
         : inputMode === "listing" ? "Listings & photos"
+          : inputMode === "like" ? "Like a video I love"
           : "My Content/Forwarded in";
 
   /**
@@ -2670,7 +2673,7 @@ function CreatePageInner() {
   // Listings keep their own submit inside ListingVideoForm, which owns that
   // form's validity; the other three tabs put their primary action on the bar.
   const anyActionBar =
-    step === "input" && (inputMode === "script" || inputMode === "paste" || inputMode === "camera" || inputMode === "listing");
+    step === "input" && (inputMode === "script" || inputMode === "paste" || inputMode === "like" || inputMode === "camera" || inputMode === "listing");
 
   return (
     // Every tab fills the full content width — the AI-script step lays out as
@@ -2916,7 +2919,7 @@ function CreatePageInner() {
                   setListingMode("scenes");
                 } else if (kind === "video") {
                   // Either kind of video is already this card.
-                  if (!blogOnly && (inputMode === "script" || (inputMode as InputMode) === "paste" || scenesRoute)) return;
+                  if (!blogOnly && (inputMode === "script" || (inputMode as InputMode) === "paste" || (inputMode as InputMode) === "like" || scenesRoute)) return;
                   setBlogOnly(false);
                   if (inputMode !== "script") { setInputMode("script"); setLastSparkTab("script"); }
                 } else {
@@ -3568,6 +3571,7 @@ function CreatePageInner() {
               { key: "uploads" as const,   label: "From a document" },
               { key: "audio" as const,     label: "From a voice memo" },
               { key: "own" as const,       label: "Paste my own script" },
+              { key: "like" as const,      label: "Like a video I love" },
               { key: "freestyle" as const, label: "No script" },
             ]).map(({ key, label }) => (
               <button
@@ -3673,7 +3677,7 @@ function CreatePageInner() {
           className={besideCard ? "mt-6" : "mt-7 lg:mt-4"}
           eyebrow={`${sectionNo("Script Source")} · ${blogOnly ? "Source" : "Script Source"}`}
         />
-        <div className={`mt-2.5 grid grid-cols-1 gap-2 ${blogOnly ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+        <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
           {([
             // Its blog subtitle used to read "From a topic, or from an
             // article you already have" — back when the second half had no
@@ -3695,6 +3699,8 @@ function CreatePageInner() {
               // owner's name for it. What it takes is said under the name,
               // where it was over it.
               { mode: "paste" as InputMode, label: "My Content/Forwarded in", desc: "Script, article, PDF or email", content: true },
+              // Make one like this (2026-11-16, the owner's mockup).
+              { mode: "like" as InputMode, label: "Like a video I love", desc: "Upload it or paste a link", isNew: true },
             ]),
             // Blog route only. On the video route this was "My listings/My
             // photos", and it is now the fourth card in the row above: a reel
@@ -3714,7 +3720,7 @@ function CreatePageInner() {
               source: true,
               content: true,
             }] : []),
-          ] as { mode: InputMode; label: string; kicker?: string; desc?: string; source?: boolean; content?: boolean }[]).map(({ mode, kicker, label, desc, ...rest }) => {
+          ] as { mode: InputMode; label: string; kicker?: string; desc?: string; source?: boolean; content?: boolean; isNew?: boolean }[]).map(({ mode, kicker, label, desc, ...rest }) => {
             // Two tiles share a mode on the blog route, so `active` cannot be
             // the mode alone: without this, picking either lights both.
             const isSource = "source" in rest;
@@ -3731,7 +3737,8 @@ function CreatePageInner() {
               // Something forwarded in since the last look, on the tile that
               // now holds it. The "Free" tag the blog tiles carried went the
               // way of the cost tags on the cards above.
-              cost={rest.content && newEmails > 0 ? <CostPill free={false}>{newEmails} new</CostPill> : undefined}
+              cost={rest.content && newEmails > 0 ? <CostPill free={false}>{newEmails} new</CostPill>
+                : rest.isNew ? <CostPill free={false}>New</CostPill> : undefined}
               active={active}
               onClick={() => {
                 setInputMode(mode);
@@ -4240,7 +4247,9 @@ function CreatePageInner() {
                       ? "Attach a PDF or URL, then write the script from it."
                       : cameraSource === "audio"
                         ? "Drop a recording of yourself talking, audio or video, and we'll turn what you said into a script."
-                        : "Type your script below, then press Open Camera."
+                        : cameraSource === "like"
+                          ? "Add a video you love and your topic, then Read the video."
+                          : "Type your script below, then press Open Camera."
           }
         >
           {/* Three ways into this tab, and the footer used to know about two.
@@ -4286,6 +4295,26 @@ function CreatePageInner() {
             </Button>
           ) : null}
         </StepFooter>
+      )}
+
+      {/* ══════════════════════════════════════════
+          LIKE A VIDEO I LOVE (Make one like this, 2026-11-16)
+          The panel carries its own Read the video and Spark It; the bar
+          below is for Back.
+      ══════════════════════════════════════════ */}
+      {inputMode === "like" && step === "input" && (
+        <div className="mt-3 max-w-3xl">
+          <LikeVideoPanel
+            mode="render"
+            city={locCity.trim()}
+            state={locState.trim()}
+            brief={briefFields()}
+            initialTopic={locCustomTopic.trim()}
+          />
+        </div>
+      )}
+      {inputMode === "like" && step === "input" && (
+        <StepFooter wide={twoCols} onBack={backToStart}>{null}</StepFooter>
       )}
 
       {/* ══════════════════════════════════════════
@@ -5221,6 +5250,24 @@ function CreatePageInner() {
                 <VoiceUploader onFileSelected={handleFileSelected} />
               </div>
             )}
+            {/* Make one like this (2026-11-16): the script follows a video
+                the agent loves, then loads into the teleprompter. */}
+            {cameraSource === "like" && (
+              <div className="mb-4">
+                <LikeVideoPanel
+                  mode="camera"
+                  city={locCity.trim()}
+                  state={locState.trim()}
+                  brief={briefFields()}
+                  initialTopic={cameraTopicText}
+                  onUse={(s) => {
+                    setCameraGeneratedScript(s);
+                    toast.success("Script ready. It's now loaded in your teleprompter below.");
+                    setTimeout(() => document.getElementById("camera-script")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+                  }}
+                />
+              </div>
+            )}
             {/* Videos already on the YouTube channel (2026-10-25). */}
             {cameraSource === "uploads" && (
               <div className="mb-4">
@@ -5308,7 +5355,7 @@ function CreatePageInner() {
               // this page, above. Without this the recorder drew its own
               // "Spark with AI" panel underneath them — a second topic box for
               // the same script.
-              scriptSourceAbove={cameraSource === "speak" || cameraSource === "uploads"}
+              scriptSourceAbove={cameraSource === "speak" || cameraSource === "uploads" || cameraSource === "like"}
               // A script carried here from a Spark is the one thing on this
               // screen that cannot be written again — there is no writer on
               // this page to redo it, and the Share Kit it came from is two

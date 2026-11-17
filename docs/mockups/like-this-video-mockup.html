@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Like This Video</title>
+<style>
+  :root{
+    --amber:#BA7517; --tint:#FDF7EE; --tintb:#f1d9b0; --amberdk:#A3660F;
+    --paper:#F1EFE8; --chip:#f4f2e8; --ink:#2C2C2A; --soft:#4A4842; --muted:#6F6D64; --faint:#9B978A;
+    --rule:#E3E0D7; --green:#0f7a52; --greenbg:#e8f5ee; --greenb:#bfe3cf;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:28px 16px 70px}
+  h1{font-size:26px;margin:0 0 4px}
+  .lead{color:var(--muted);margin:0}
+  .label{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:40px 0 10px}
+  .ann{border-left:3px solid var(--amber);padding:2px 0 2px 12px;font-size:14.5px;color:var(--muted);margin:6px 0 16px}
+  .card{background:#fff;border:1px solid var(--rule);border-radius:16px;padding:18px;margin-bottom:14px}
+  .plan h3{margin:20px 0 6px;font-size:17px}
+  .plan h3:first-child{margin-top:0}
+  .plan ul{margin:4px 0 0;padding-left:22px}
+  .plan li{margin:3px 0;font-size:15.5px;color:var(--soft)}
+
+  .eyebrow{font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--amberdk);margin:0 0 10px}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .tile{border:1.5px solid var(--rule);background:#fff;border-radius:14px;padding:14px 16px;min-height:86px;display:flex;flex-direction:column;justify-content:center}
+  .tile b{font-size:17px}
+  .tile span{font-size:14px;color:var(--muted);margin-top:2px}
+  .tile.on{border-color:var(--amber);background:var(--tint)}
+  .tile .new{align-self:flex-start;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#fff;background:var(--amber);border-radius:999px;padding:1px 8px;margin-bottom:6px}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;padding:10px 18px;font-weight:700;font-size:15.5px;border:1px solid var(--rule);background:#fff;color:var(--ink);white-space:nowrap}
+  .btn.primary{background:var(--amber);border-color:var(--amber);color:#fff}
+  .btn.ghost{border-color:transparent;color:var(--amberdk);padding-left:4px;padding-right:4px;text-decoration:underline}
+
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
+  .two>.box{display:flex;flex-direction:column}
+  .box{border:1.5px solid var(--rule);border-radius:14px;padding:16px;background:#fff}
+  .box h4{margin:0 0 10px;font-size:16.5px}
+  .drop{flex:1;border:2px dashed var(--tintb);background:var(--tint);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:22px 12px;text-align:center;min-height:150px}
+  .drop .ic{font-size:30px}
+  .drop b{font-size:16px}
+  .or{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:13.5px;margin:12px 0}
+  .or:before,.or:after{content:"";flex:1;height:1px;background:var(--rule)}
+  .input{border:1.5px solid var(--rule);border-radius:12px;padding:11px 13px;font-size:15.5px;color:var(--faint);background:#fff;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .input.filled{color:var(--ink)}
+  .mic{width:36px;height:36px;border-radius:999px;background:var(--amber);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+  textarea.topic{flex:1;width:100%;border:1.5px solid var(--rule);border-radius:12px;padding:12px 13px;font:inherit;font-size:15.5px;color:var(--ink);resize:none;min-height:150px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+  .end{margin-top:auto;padding-top:14px}
+
+  .vthumb{aspect-ratio:9/16;max-height:300px;margin:0 auto;border-radius:14px;background:linear-gradient(160deg,#3b3a36,#7a7466);position:relative;width:100%;max-width:170px}
+  .vthumb:after{content:"▶";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:30px;opacity:.85}
+  .vname{text-align:center;font-size:14px;color:var(--muted);margin-top:10px}
+  .recipe{list-style:none;margin:0;padding:0}
+  .recipe li{display:grid;grid-template-columns:96px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--rule);font-size:15px}
+  .recipe li:first-child{border-top:0;padding-top:0}
+  .recipe li b{color:var(--amberdk);font-size:13.5px;text-transform:uppercase;letter-spacing:.05em;padding-top:1px}
+
+  .set{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 12px;font-size:14px;font-weight:700;background:var(--chip);border:1px solid var(--rule)}
+  .pill.amber{background:var(--tint);border-color:var(--tintb);color:var(--amberdk)}
+  .script{font-size:15.5px;color:var(--soft);line-height:1.65}
+  .script .beat{display:block;font-size:12.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:12px 0 2px}
+  .script .beat:first-child{margin-top:0}
+  .reading{display:flex;align-items:center;gap:10px;font-weight:600}
+  .spin{width:18px;height:18px;border-radius:999px;border:2.5px solid var(--tintb);border-top-color:var(--amber)}
+
+  @media (max-width:760px){
+    .tiles{grid-template-columns:1fr}
+    .two{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Make one like this</h1>
+  <p class="lead">An agent picks a video they love and gets a new one in the same style, on their own topic.</p>
+
+  <div class="label">The plan</div>
+  <div class="card plan">
+    <h3>Where it lives</h3>
+    <ul>
+      <li>Create → Video / Reel → Script Source gets a third tile, <b>Like a video I love</b>, next to AI writes it and My Content/Forwarded in.</li>
+      <li>The same choice goes on the Camera/Teleprompter tab as a chip, so the teleprompter script follows the video too.</li>
+    </ul>
+    <h3>What the agent does</h3>
+    <ul>
+      <li>Uploads the video, or pastes a YouTube link. For Instagram or TikTok, they save the video and upload it.</li>
+      <li>Says or types their topic, then taps <b>Read the video</b>. It takes about 30 seconds.</li>
+    </ul>
+    <h3>What comes back</h3>
+    <ul>
+      <li>What we picked up: hook, length, pace, order, tone, captions, music and shape.</li>
+      <li>A new script on the agent's topic, built the same way, in the normal script box so they can edit it.</li>
+      <li>The matching settings already chosen: shape, length, captions, music mood and b-roll pace. Each one can still be changed.</li>
+      <li>Nothing renders until Spark It, and the render costs one video, the same as today.</li>
+    </ul>
+    <h3>Rules</h3>
+    <ul>
+      <li>It never copies their footage, face, voice, music or exact words. The script is written fresh.</li>
+      <li>Videos up to 3 minutes and 200 MB. The file goes straight to storage, so the 4.5 MB limit doesn't apply.</li>
+      <li>Open to every plan. Up to 20 reads a month per account, with no limit for admins. Each read costs us a few cents.</li>
+      <li>The uploaded video is deleted from Gemini right after the read. We keep only the "what we picked up" notes.</li>
+    </ul>
+  </div>
+
+  <!-- 1 -->
+  <div class="label">1 · Script Source</div>
+  <div class="ann">A third tile in the row that's already there.</div>
+  <div class="card">
+    <p class="eyebrow">3 · Script Source</p>
+    <div class="tiles">
+      <div class="tile"><b>AI writes it</b></div>
+      <div class="tile"><b>My Content/Forwarded in</b><span>Script, article, PDF or email</span></div>
+      <div class="tile on"><span class="new">NEW</span><b>Like a video I love</b><span>Upload it or paste a link</span></div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="label">2 · Add the video and your topic</div>
+  <div class="ann">Two even columns: their video on the left, the agent's topic on the right.</div>
+  <div class="card">
+    <div class="two">
+      <div class="box">
+        <h4>The video you love</h4>
+        <div class="drop">
+          <div class="ic">🎬</div>
+          <b>Upload a video</b>
+          <span style="font-size:14px;color:var(--muted)">Up to 3 minutes</span>
+        </div>
+        <div class="or">or</div>
+        <div class="input">Paste a YouTube link</div>
+      </div>
+      <div class="box">
+        <h4>Your topic</h4>
+        <textarea class="topic" readonly>3 things buyers in Bel Air get wrong about closing costs</textarea>
+        <div class="end row" style="justify-content:space-between">
+          <span class="mic" title="Say it">🎤</span>
+          <span class="btn primary">Read the video</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2b -->
+  <div class="label">While it reads</div>
+  <div class="card">
+    <div class="reading"><span class="spin"></span> Watching your video, about 30 seconds.</div>
+  </div>
+
+  <!-- 3 -->
+  <div class="label">3 · What we picked up</div>
+  <div class="ann">The video on the left, its style on the right. Both columns end level.</div>
+  <div class="card">
+    <div class="two">
+      <div class="box">
+        <h4>Your video</h4>
+        <div class="vthumb"></div>
+        <div class="vname">closing-costs-reel.mp4 · 0:48</div>
+        <div class="end" style="text-align:center"><span class="btn ghost">Use a different video</span></div>
+      </div>
+      <div class="box">
+        <h4>Its style</h4>
+        <ul class="recipe">
+          <li><b>Hook</b><span>A bold claim in the first 2 seconds: "You're about to overpay."</span></li>
+          <li><b>Length</b><span>48 seconds</span></li>
+          <li><b>Pace</b><span>Fast. A new shot every 2–3 seconds</span></li>
+          <li><b>Order</b><span>Hook → 3 numbered tips → one-line wrap → follow ask</span></li>
+          <li><b>Tone</b><span>Friendly, straight talk, a little playful</span></li>
+          <li><b>Captions</b><span>Big, word by word, centered</span></li>
+          <li><b>Music</b><span>Upbeat, light</span></li>
+          <li><b>Shape</b><span>Vertical 9:16</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="label">4 · Your script, in that style</div>
+  <div class="ann">The normal script box, editable. The settings above it are already set to match and can still be changed. Then Spark It as usual.</div>
+  <div class="card">
+    <div class="set">
+      <span class="pill amber">Vertical 9:16</span>
+      <span class="pill amber">~45 seconds</span>
+      <span class="pill amber">Word-by-word captions</span>
+      <span class="pill amber">Upbeat music</span>
+      <span class="pill amber">Fast b-roll</span>
+    </div>
+    <div class="box" style="margin-top:14px">
+      <div class="script">
+        <span class="beat">Hook</span>
+        Buying in Bel Air? You're about to pay more at closing than you think.
+        <span class="beat">Tip 1</span>
+        Closing costs aren't just fees. Expect 2 to 5 percent of the price.
+        <span class="beat">Tip 2</span>
+        Maryland's transfer and recordation taxes are often split. Ask how before you sign.
+        <span class="beat">Tip 3</span>
+        Lender credits can cover part of it, but the rate goes up. Do the math.
+        <span class="beat">Wrap</span>
+        Know the number before you fall in love with the house.
+        <span class="beat">Ask</span>
+        Follow for more Bel Air buyer tips.
+      </div>
+    </div>
+    <div class="row" style="justify-content:flex-end">
+      <span class="btn">Write it again</span>
+      <span class="btn primary">✨ Spark It</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>
