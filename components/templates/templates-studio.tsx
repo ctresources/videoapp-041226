@@ -19,7 +19,7 @@ type DesignId = "just_listed" | "open_house" | "luxury" | "market_update" | "nei
 interface Field { key: string; label: string; placeholder?: string }
 interface Design { id: DesignId; name: string; blurb: string; photos: "listing" | "place" | "none"; fields: Field[]; defaults: Record<string, string> }
 interface Listing { id: string; address: string; price: string | number; beds: string | number; baths: string | number; sqft: string | number; photos: string[] }
-interface Setup { designs: Design[]; listings: Listing[]; videosLeft: number | null; accent: string; faces?: { twin: boolean; avatar: boolean } }
+interface Setup { designs: Design[]; listings: Listing[]; videosLeft: number | null; accent: string; faces?: { twin: boolean; avatar: boolean }; paid?: boolean }
 interface Found { period: string; source: string; sourceUrl: string }
 type LookItem = { id: string; name: string; preview_image_url: string | null; status: string | null; shape?: "landscape" | "portrait" | "square" | null };
 
@@ -53,6 +53,8 @@ export function TemplatesStudio() {
   const [bg, setBg] = useState("");
   const [music, setMusic] = useState(true);
   const [openWithMe, setOpenWithMe] = useState(false);
+  // Moving photos (2026-11-16): paid plans, off unless turned on.
+  const [moving, setMoving] = useState(false);
   // Agent Introduction: which of their looks is in the big circle (2026-11-03, the owner's ask).
   const [looks, setLooks] = useState<LookItem[] | null>(null);
   const [twinLookId, setTwinLookId] = useState<string | null>(null);
@@ -182,7 +184,7 @@ export function TemplatesStudio() {
     if (!window.confirm("Make this video? It uses 1 short video from your plan.")) return;
     setMaking(true);
     try {
-      const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "make", design, shape, fields: words, photos, script, face, music, openWithMe, ...(pickedLook && { lookId: pickedLook.id }) }) });
+      const r = await fetch("/api/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "make", design, shape, fields: words, photos, script, face, music, openWithMe, moving: moving && !!setup?.paid && d?.photos !== "none", ...(pickedLook && { lookId: pickedLook.id }) }) });
       const out = await r.json().catch(() => ({}));
       if (!r.ok) { toast.error(out.error || "Couldn't make the video."); return; }
       setMade(out.videoId);
@@ -272,7 +274,18 @@ export function TemplatesStudio() {
                 )}
                 <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => void upload(e.target.files)} />
               </div>
-              {d.photos === "place" && photos.length === 0 && <p className="mt-1.5 text-[13px] text-spark-ink-muted">None added? A picture of the place is made for you.</p>}
+              {d.photos === "place" && photos.length === 0 && <p className="mt-1.5 text-[13px] text-spark-ink-muted">{moving && setup.paid ? "None added? Moving shots of the place are made for you." : "None added? A picture of the place is made for you."}</p>}
+            </>
+          )}
+
+          {/* Photos brought to life by AI, true to the photo (2026-11-16). Paid plans. */}
+          {d.photos !== "none" && setup.paid && (
+            <>
+              <p className="mb-1.5 mt-4 text-[17px] font-bold text-spark-ink">Moving photos</p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className={chip(moving)} onClick={() => setMoving(true)}>On</button>
+                <button type="button" className={chip(!moving)} onClick={() => setMoving(false)}>Off</button>
+              </div>
             </>
           )}
 

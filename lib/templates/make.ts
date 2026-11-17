@@ -18,11 +18,13 @@ import { announceVideoReady } from "@/lib/video/ready-notice";
 import { canUseDigitalTwin } from "@/lib/utils/plan-features";
 import { hasAdminPerks } from "@/lib/utils/roles";
 import { designById, introBackground, SIZE, wordsLayer, type Circle, type DesignId, type Shape } from "@/lib/templates/designs";
-import { addWords, composeClean, faststart, secondsOf } from "@/lib/templates/compose";
+import { addWords, composeClean, faststart, photoTiming, secondsOf, type TemplateMedia } from "@/lib/templates/compose";
 import { animatedProject, renderAnimatedWords } from "@/lib/templates/animated";
 import { OPEN_PLACE, templateLine } from "@/lib/templates/opener";
 import { makeAgentOpener } from "@/lib/api/agent-opener";
 import { prependClip } from "@/lib/utils/composite-photos";
+import { getAccessLevel, isPaidLevel } from "@/lib/access";
+import { clipSize, inBatches, movingPhoto, townClips } from "@/lib/templates/moving";
 
 /** The words, animated by HyperFrames; null (still words) if that fails. */
 async function animateWords(rec: TemplateRecord, fields: Record<string, string>, seconds: number, logo: Buffer | null, key: string): Promise<Buffer | null> {
@@ -106,6 +108,13 @@ export interface TemplateRecord {
   openerClip?: { url: string; seconds: number; talks: boolean } | null;
   /** Where the face circle was put in this video (kept so new words line up with it). */
   circle?: Circle;
+  /**
+   * Moving photos On (2026-11-16, paid plans): the photos brought to life, or
+   * moving town footage for a Market Update or Neighborhood with no photo.
+   */
+  moving?: boolean;
+  /** How many photos actually moved in the finished video (town clips count too). */
+  movedCount?: number;
 }
 
 const PROFILE = `${ALLOWANCE_SELECT}, role, subscription_tier, full_name, company_name, phone, company_phone, mobile_phone, website, location_city, location_state, brand_colors, logo_url, photo_wide_url, photo_tall_url, avatar_url, heygen_voice_id, voice_sample_url, heygen_look_wide, heygen_look_tall, heygen_digital_twin_look_id, twin_consent_needed, heygen_photo_id, heygen_twin2_look_id, twin_outfit_look_ids, twin2_consent_needed`;
@@ -173,6 +182,8 @@ export async function makeTemplateVideo(admin: Admin, user: { id: string }, o: {
   openWithMe?: boolean;
   /** A look the agent picked (Agent Introduction, 2026-11-03): a photo look, twin or outfit of their own. */
   lookId?: string;
+  /** Moving photos (2026-11-16): paid plans only; ignored otherwise. */
+  moving?: boolean;
 }): Promise<{ videoId: string; projectId: string } | { error: string; status: number; code?: string }> {
   const d = designById(o.design);
   if (!d) return { error: "Pick a design.", status: 400 };
@@ -218,6 +229,7 @@ export async function makeTemplateVideo(admin: Admin, user: { id: string }, o: {
   const projectId = (project as { id: string }).id;
   const record: TemplateRecord = {
     design: o.design, shape: o.shape, fields: o.fields, photos, accent: accentOf(p), logo: p.logo_url, musicOn: o.music !== false,
+    ...(o.moving && d.photos !== "none" && isPaidLevel(getAccessLevel(p)) && { moving: true }),
     // Only the twin has the agent's own voice linked, so only the twin talks.
     ...(o.openWithMe && { openWith: { lookId, line: twinOk ? templateLine(o.design, o.fields, p.company_name) : null } }),
   };
@@ -315,8 +327,15 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
     const postCopy = writePostCopy(admin, row.project_id, String(row.metadata.title ?? d.name), rec);
 
     let photos = rec.photos;
+    // The render first: its length decides how much moving footage is needed.
+    const avatar = await download(renderUrl, path.join(work, "avatar.mp4"));
+    const total = Math.max(3, await secondsOf(avatar));
+    const place = rec.fields.name || rec.fields.title || "a friendly American town";
+    // Moving photos (2026-11-16): with no photo of the place, moving shots of it.
+    const town = !!rec.moving && d.photos === "place" && photos.length === 0;
+    const townMaking = town ? townClips(place, rec.shape, total, rowId) : Promise.resolve(null);
     if (d.photos === "place" && photos.length === 0) {
-      const place = rec.fields.name || rec.fields.title || "a friendly American town";
+      // Still made with town footage too: the opener's backdrop, and the fallback.
       const url = await placePhoto(admin, row.user_id, rec.shape, place);
       if (url) photos = [url];
     }
@@ -327,7 +346,6 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
           aspect: rec.shape === "vertical" ? "9:16" : "16:9", line: rec.openWith.line, timeoutMs: 300_000,
         })
       : Promise.resolve(null);
-    const avatar = await download(renderUrl, path.join(work, "avatar.mp4"));
     const local = await Promise.all(photos.map((u, i) => download(u, path.join(work, `photo-${i}`)).catch(() => null)));
     const still = d.photos === "none" ? path.join(work, "still.png") : null;
     if (still) fs.writeFileSync(still, await introBackground(rec.shape, rec.accent));
@@ -339,9 +357,38 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
       // No picture at all: a plain tinted background rather than a failed video.
       fs.writeFileSync(path.join(work, "plain.png"), await introBackground(rec.shape, rec.accent));
     }
+    // Moving photos: a clip in each photo's place; any photo whose clip didn't come back stays a photo.
+    let media: TemplateMedia[] | undefined;
+    let segment: number | undefined;
+    let movedCount = 0;
+    const townMade = await townMaking;
+    if (townMade?.clips.length) {
+      const size = clipSize(rec.shape === "vertical" ? "9:16" : "16:9");
+      media = townMade.clips.map((b, i) => {
+        const f = path.join(work, `town-${i}.mp4`);
+        fs.writeFileSync(f, b);
+        return { file: f, clip: size };
+      });
+      segment = Math.max(3, townMade.seconds - 1);
+      movedCount = townMade.clips.length;
+    } else if (rec.moving && !town && usable.length) {
+      const { clipSeconds } = photoTiming(total, usable.length);
+      // Started no later than 4 minutes in, so a slow day can't hold the video up for long.
+      const stopBy = Date.now() + 240_000;
+      const made = await inBatches(usable.map((f, i) => () =>
+        Date.now() > stopBy ? Promise.resolve(null) : movingPhoto(fs.readFileSync(f), clipSeconds, i % 2 === 0, `${rowId}-p${i}`)), 6);
+      media = usable.map((f, i) => {
+        const m = made[i];
+        if (!m) return { file: f };
+        const cf = path.join(work, `move-${i}.mp4`);
+        fs.writeFileSync(cf, m.clip);
+        return { file: cf, clip: clipSize(m.aspect) };
+      });
+      movedCount = made.filter(Boolean).length;
+    }
     const clean = await composeClean({
       workDir: work, shape: rec.shape, circle, avatar,
-      photos: usable, still: still ?? (usable.length ? null : path.join(work, "plain.png")), threads: 1,
+      photos: usable, media, segment, still: still ?? (usable.length || media?.length ? null : path.join(work, "plain.png")), threads: 1,
     });
     // The words animated (HyperFrames), else the still words.
     const animated = await animateWords(rec, rec.fields, await secondsOf(clean), logo, `${rowId}-words-1`);
@@ -362,7 +409,7 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
     // Music over the whole video, opener included.
     const music = await musicFinding;
     const final = await topAndTail(work, worded, openerClip, music);
-    console.log(`[templates] ${rowId} put together in ${Math.round((Date.now() - t0) / 1000)}s (${animated ? "animated" : "still"} words${openerClip ? ", opener" : ""}${music ? ", music" : ""})`);
+    console.log(`[templates] ${rowId} put together in ${Math.round((Date.now() - t0) / 1000)}s (${animated ? "animated" : "still"} words${openerClip ? ", opener" : ""}${music ? ", music" : ""}${rec.moving ? `, ${movedCount} moving` : ""})`);
 
     const cleanPath = `${row.user_id}/${rowId}-clean.mp4`;
     const finalPath = `${row.user_id}/${rowId}.mp4`;
@@ -374,7 +421,7 @@ export async function finishTemplateVideo(admin: Admin, rowId: string, renderUrl
       metadata: {
         ...row.metadata,
         ...(openerClip && { opener_seconds: openerClip.seconds }),
-        template: { ...rec, photos, clean: pub(cleanPath), animated: !!animated, circle, music: music ?? null, musicAt: "final", openerClip },
+        template: { ...rec, photos, clean: pub(cleanPath), animated: !!animated, circle, music: music ?? null, musicAt: "final", openerClip, ...(rec.moving && { movedCount }) },
       },
     }).eq("id", rowId);
     await postCopy;

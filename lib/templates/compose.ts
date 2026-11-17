@@ -6,9 +6,18 @@ import ffmpegPath from "@ffmpeg-installer/ffmpeg";
 import sharp from "sharp";
 import type { Circle, Shape } from "@/lib/templates/designs";
 import { SIZE } from "@/lib/templates/designs";
-import { fitImageBuffer } from "@/lib/utils/fit-frame";
+import { ffmpegFitFilter, fitImageBuffer } from "@/lib/utils/fit-frame";
 
 const run = promisify(execFile);
+
+/** One piece of the background: a photo, or a moving clip made from one (with its size). */
+export interface TemplateMedia { file: string; clip?: { w: number; h: number } }
+
+/** How long each photo is on screen (3 to 7 seconds), and so how long a moving clip needs to be. */
+export function photoTiming(total: number, count: number): { per: number; clipSeconds: number } {
+  const per = Math.min(7, Math.max(3, total / Math.max(1, count)));
+  return { per, clipSeconds: per + 0.8 };
+}
 
 /**
  * Puts a template video together (2026-11-02): the photos (or the intro
@@ -43,6 +52,14 @@ export async function composeClean(o: {
   avatar: string;
   /** Local photo files, in order; empty when a still background is used instead. */
   photos: string[];
+  /**
+   * Moving photos (2026-11-16): the background as photos and clips, in order.
+   * A clip plays in its photo's place, fitted by the same rule; when given,
+   * it is used instead of `photos`.
+   */
+  media?: TemplateMedia[];
+  /** Seconds each piece is on screen, instead of the usual 3 to 7 (town footage: each clip's length). */
+  segment?: number;
   /** A still background (Agent Introduction). */
   still?: string | null;
   threads?: number;
@@ -51,33 +68,45 @@ export async function composeClean(o: {
   const t = String(o.threads ?? 1);
   const a = await probe(o.avatar);
   const total = Math.max(3, a.dur);
+  const media: TemplateMedia[] = o.media?.length ? o.media : o.photos.map((file) => ({ file }));
 
   // The background: each photo for an equal share of the video (3 to 7 seconds), repeated if needed.
   // Since 2026-11-03 (owner's ask): a photo of the other shape is shown whole over a blurred copy,
   // each one slowly zooms, and each fades into the next.
   let bg: string;
-  if (o.photos.length) {
-    const per = Math.min(7, Math.max(3, total / o.photos.length));
-    const count = Math.max(o.photos.length, Math.ceil(total / per));
-    // Fitted once per photo, a little bigger than the frame so the zoom stays sharp.
+  if (media.length) {
+    const per = o.segment && o.segment >= 2 ? o.segment : photoTiming(total, media.length).per;
+    const count = Math.max(media.length, Math.ceil(total / per));
+    // Photos fitted once each, a little bigger than the frame so the zoom stays sharp.
     const fitted: string[] = [];
-    for (let i = 0; i < o.photos.length; i++) {
-      const buf = await fitImageBuffer(fs.readFileSync(o.photos[i]), Math.round(W * 1.5), Math.round(H * 1.5));
+    for (let i = 0; i < media.length; i++) {
+      if (media[i].clip) { fitted.push(media[i].file); continue; }
+      const buf = await fitImageBuffer(fs.readFileSync(media[i].file), Math.round(W * 1.5), Math.round(H * 1.5));
       const f = `fit${i}.jpg`;
       fs.writeFileSync(path.join(o.workDir, f), buf);
       fitted.push(f);
     }
     const FADE = 0.8, FPS = 25;
-    const seq = Array.from({ length: count }, (_, i) => fitted[i % fitted.length]);
-    const inputs = seq.flatMap((p) => ["-i", p]);
-    const parts = seq.map((_, i) => {
+    const seq = Array.from({ length: count }, (_, i) => i % media.length);
+    const inputs = seq.flatMap((m) => ["-i", fitted[m]]);
+    const parts = seq.map((m, i) => {
       const start = i * per;
       const len = Math.max(0.5, Math.min(per + FADE, total - start + FADE));
+      const fade = i === 0 ? "" : `,fade=t=in:st=0:d=${FADE}:alpha=1`;
+      const clip = media[m].clip;
+      if (clip) {
+        // The clip fitted to the frame. Clips are asked for at least this long
+        // (no tpad to hold a last frame: the server's ffmpeg is a 2018 build).
+        return ffmpegFitFilter({
+          input: `[${i}:v]`, output: `[p${i}]`, width: W, height: H, srcW: clip.w, srcH: clip.h, tag: `c${i}`,
+          pre: `fps=${FPS}`,
+          post: `trim=duration=${len.toFixed(3)},setpts=PTS-STARTPTS,setsar=1,format=yuva420p${fade},setpts=PTS-STARTPTS+${start.toFixed(3)}/TB`,
+        }).join(";");
+      }
       const frames = Math.ceil(len * FPS);
       // Alternate zooming in and out, about 10% over the photo's time.
       const step = (0.1 / frames).toFixed(6);
       const z = i % 2 === 0 ? `min(1+${step}*on,1.1)` : `max(1.1-${step}*on,1)`;
-      const fade = i === 0 ? "" : `,fade=t=in:st=0:d=${FADE}:alpha=1`;
       return `[${i}:v]zoompan=z='${z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${FPS},setsar=1,format=yuva420p${fade},setpts=PTS-STARTPTS+${start.toFixed(3)}/TB[p${i}]`;
     });
     let chain = `color=c=black:s=${W}x${H}:r=${FPS}:d=${total.toFixed(3)}[b0]`;
@@ -99,7 +128,7 @@ export async function composeClean(o: {
   const mask = await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${d}" height="${d}"><rect width="${d}" height="${d}" fill="#000"/><circle cx="${d / 2}" cy="${d / 2}" r="${d / 2}" fill="#fff"/></svg>`)).grayscale().png().toBuffer();
   fs.writeFileSync(path.join(o.workDir, "mask.png"), mask);
   const x = Math.round(o.circle.cx - d / 2), y = Math.round(o.circle.cy - d / 2);
-  const bgInput = o.photos.length ? ["-i", bg] : ["-loop", "1", "-i", bg];
+  const bgInput = media.length ? ["-i", bg] : ["-loop", "1", "-i", bg];
   await ff(o.workDir, [
     "-threads", t, "-i", o.avatar, ...bgInput, "-loop", "1", "-i", "mask.png",
     "-filter_complex",

@@ -1294,7 +1294,12 @@ function FullGuide() {
                 picks which of your looks is in the big circle.
               </span>
               <span className="block mt-1.5">
-                Add up to 12 photos; each slowly zooms and fades into the next. Then choose{" "}
+                Add up to 12 photos; each slowly zooms and fades into the next.{" "}
+                <span id="moving-photos" className="scroll-mt-20">On a paid plan, turn{" "}
+                <strong>Moving photos</strong> on and AI brings each photo to life with a slow camera
+                move, made only from the photo itself, so nothing in the home is changed or added. On
+                Market Update or Neighborhood with no photo, you get moving shots of the place instead.
+                It adds a minute or two to the making.</span> Then choose{" "}
                 <strong>Vertical</strong> or <strong>Horizontal</strong>, a <strong>Background</strong>{" "}
                 color, <strong>Music</strong> on or off, <strong>Digital Twin</strong> or{" "}
                 <strong>Avatar</strong> when you have both, and <strong>Open with me</strong>: a short

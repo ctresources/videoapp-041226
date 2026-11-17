@@ -5,6 +5,7 @@ import { lookUpMarketNumbers } from "@/lib/templates/numbers";
 import { accentOf, facesOf, hasNumbers, makeTemplateVideo, previewImage, rewordTemplateVideo, templateProfile, writeTemplateScript } from "@/lib/templates/make";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
 import { hasAdminPerks } from "@/lib/utils/roles";
+import { getAccessLevel, isPaidLevel } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 // Changing the words re-makes the video's picture (about a minute).
@@ -36,6 +37,8 @@ export async function GET() {
   return NextResponse.json({
     designs: DESIGNS.map((d) => ({ ...d, defaults: defaultFields(d.id, prof) })),
     profile: prof, accent: accentOf(p), listings, faces: facesOf(p),
+    // Moving photos are paid plans only (2026-11-16).
+    paid: isPaidLevel(getAccessLevel(p)),
     videosLeft: hasAdminPerks(p?.role) ? null : availableFor(allow as never, "short"),
   });
 }
@@ -88,7 +91,7 @@ export async function POST(req: NextRequest) {
     const head = (fields.headline || d.name).toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
     const title = String(b.title ?? "").trim().slice(0, 100) || [head, fields.address || fields.name || fields.title].filter(Boolean).join(": ");
     const face = b.face === "avatar" ? "avatar" : b.face === "twin" ? "twin" : undefined;
-    const r = await makeTemplateVideo(s.admin, s.user, { design, shape, fields, photos, script: String(b.script ?? ""), title, face, music: b.music !== false, openWithMe: b.openWithMe === true,
+    const r = await makeTemplateVideo(s.admin, s.user, { design, shape, fields, photos, script: String(b.script ?? ""), title, face, music: b.music !== false, openWithMe: b.openWithMe === true, moving: b.moving === true,
       lookId: typeof b.lookId === "string" ? b.lookId.slice(0, 80) : undefined });
     if ("error" in r) return NextResponse.json({ error: r.error, code: r.code }, { status: r.status });
     return NextResponse.json(r);

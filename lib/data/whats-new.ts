@@ -30,6 +30,16 @@ export type WhatsNewItem = {
 
 const ITEMS: WhatsNewItem[] = [
   {
+    id: "moving-photos",
+    title: "Moving Photos in Quick Reels",
+    description:
+      "Turn on Moving photos and each listing photo comes to life with a slow camera move, made only from the photo, so the home is never changed. Market Update and Neighborhood get moving shots of the town.",
+    releaseDate: "2026-11-16",
+    howItWorksAnchor: "moving-photos",
+    badge: "NEW",
+    paidOnlyDetails: true,
+  },
+  {
     id: "photo-touch-up",
     title: "Photo Touch-Up",
     description:

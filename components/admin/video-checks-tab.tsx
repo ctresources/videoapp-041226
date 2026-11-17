@@ -111,9 +111,10 @@ export function VideoChecksTab() {
           <span>Video checks: <b>{u.video_checks ?? 0}</b></span>
           <span>Take tips: <b>{u.take_tips ?? 0}</b></span>
           <span>Photo sorts: <b>{u.photo_sorts ?? 0}</b></span>
+          <span>Moving photos: <b>{u.video_seconds ?? 0}</b> seconds</span>
         </div>
         <p className="mt-2 text-[13px] text-slate-400">
-          About ${(((u.images ?? 0) * 5 + (u.video_checks ?? 0) * 1.5 + (u.take_tips ?? 0) * 1.5 + (u.photo_sorts ?? 0) * 0.5) / 100).toFixed(2)} so far. Research stops using Google searches at {data.searchCap}.
+          About ${(((u.images ?? 0) * 5 + (u.video_checks ?? 0) * 1.5 + (u.take_tips ?? 0) * 1.5 + (u.photo_sorts ?? 0) * 0.5 + (u.video_seconds ?? 0) * 7) / 100).toFixed(2)} so far. Research stops using Google searches at {data.searchCap}.
         </p>
       </Card>
     </div>
