@@ -18,6 +18,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { projectThumbnailUrl } from "@/lib/utils/thumbnail-url";
+import { chatText } from "@/lib/api/perplexity-chat";
+import { FAIR_HOUSING_SHORT } from "@/lib/utils/fair-housing";
+import { fitCaption } from "@/lib/utils/social-platforms";
 
 export const dynamic = "force-dynamic";
 
@@ -189,6 +192,32 @@ export async function GET(req: NextRequest) {
   const ytId = (postRow as { platform_post_id?: unknown } | null)?.platform_post_id;
   const youtubeVideoId = typeof ytId === "string" && ytId ? ytId : null;
 
+  /**
+   * The caption: the short Instagram caption first (2026-11-17, the owner's
+   * ask). ai_script.description used to come first, but the setup screen
+   * saves the YouTube description into it whenever its title or description
+   * boxes are saved, so a 2,259-character YouTube text went out as the
+   * Instagram caption and Instagram refused the post. That field is used only
+   * when it is short and isn't the YouTube text. With neither, a short
+   * caption is written from the script now and saved for next time.
+   */
+  const ytText = (seo.youtube_description ?? "").trim();
+  const aiDesc = (ai.description ?? "").trim();
+  let caption = (seo.instagram_caption ?? "").trim()
+    || (aiDesc && aiDesc !== ytText && aiDesc.length <= 600 ? aiDesc : "");
+  if (!caption && projectId && (ai.script || proj?.title)) {
+    const written = await chatText(
+      `You write Instagram captions for real estate agents' videos. 150 to 220 characters, punchy, first person, one emoji at most, no hashtags (they are added separately), no phone numbers or links. Return only the caption.\n${FAIR_HOUSING_SHORT}`,
+      [{ role: "user", content: `Video title: "${proj?.title ?? ""}"\nWhat is said in it:\n"${(ai.script ?? "").slice(0, 3000)}"` }],
+      { maxTokens: 200, temperature: 0.6, label: "publish-caption" },
+    ).catch(() => null);
+    const clean = (written ?? "").replace(/\[\d+\]/g, "").replace(/^["']|["']$/g, "").trim();
+    if (clean) {
+      caption = fitCaption(clean, 400);
+      await admin.from("projects").update({ seo_data: { ...seo, instagram_caption: caption } }).eq("id", projectId);
+    }
+  }
+
   return NextResponse.json({
     projectId,
     photos,
@@ -228,10 +257,7 @@ export async function GET(req: NextRequest) {
     youtubeVideoId,
     title: vidMeta?.publish_title || seo.youtube_title || proj?.title || "Untitled Video",
     description: vidMeta?.publish_description || description,
-    // The short social blurb — ai_script.description is written to be exactly
-    // that. The long YouTube text above is right for YouTube and far too long
-    // for an Instagram caption, so the two fields get two texts.
-    caption: ai.description || seo.instagram_caption || "",
+    caption,
     tags: seo.hashtags ?? seo.keywords ?? ai.hashtags ?? ai.keywords ?? [],
     // Where this video's article lives on the agent's own site, if they have
     // said. The Publish window offers it as the first comment.
