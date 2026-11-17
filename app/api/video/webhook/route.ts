@@ -440,6 +440,24 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  /**
+   * The account-wide endpoint (registered 2026-11-17, a backup for when the
+   * per-video callback doesn't arrive) delivers every render on the account.
+   * Should one of those come without our callback_id, a Quick Reels template
+   * or podcast part could be matched by its HeyGen id below and published as
+   * a plain video. Those finish only through their own ":tpl"/":host" callback.
+   */
+  if (!callbackId && (videoId || sessionId)) {
+    const ids = [videoId, sessionId].filter((v): v is string => !!v);
+    const { data: own } = await admin
+      .from("generated_videos").select("render_provider").in("render_job_id", ids).limit(1).maybeSingle();
+    const provider = (own as { render_provider?: string } | null)?.render_provider;
+    if (provider === "template" || provider === "podcast_desk" || provider === "podcast_copy") {
+      console.log(`[webhook] ${eventType} for a ${provider} render with no callback_id; left to its own finishing`);
+      return NextResponse.json({ received: true });
+    }
+  }
+
   // ── Find the generated_videos row ─────────────────────────────────────────
   // Try to match by: callback_id (most reliable) → video_id → session_id
   let video: { id: string; project_id: string | null; user_id: string; video_type: string; metadata: Record<string, unknown> | null } | null = null;
