@@ -480,7 +480,11 @@ export async function POST(req: NextRequest) {
         }
         await handOff(asVideo, caption, (requestId) => publishVideo({
           username, platforms: asVideo, requestId, title: fitCaption(caption, 2200),
-          description: caption, scheduledAt: scheduledAt || null, extra, videoUrl: video.video_url!,
+          // Instagram reads `description` and refuses over 2,200 characters,
+          // which failed Instagram, Facebook and LinkedIn together
+          // (2026-11-17, 2,259). Facebook and LinkedIn get their full text
+          // from facebook_description / linkedin_description above.
+          description: fitCaption(caption, 2200), scheduledAt: scheduledAt || null, extra, videoUrl: video.video_url!,
         }), { linkedin: extra.linkedin_description });
       }
 
