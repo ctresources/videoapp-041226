@@ -242,6 +242,9 @@ const RATE_PER_SECOND_USD: Record<string, Record<string, number>> = {
   // unexpected pairing costs something rather than silently costing nothing.
   // $7.20/min on the owner's bills (2026-10-19), not the $4 once listed.
   avatar_v:   { photo_avatar: 0.12, digital_twin: 0.12, studio: 0.12 },
+  // Avatar 6, measured 2026-11-18 on the owner's twin: 22.15 s charged $2.20
+  // from the wallet ($0.099/sec, about $6/min). Twin rate copied across.
+  "heygen-avatar-6": { photo_avatar: 0.099, digital_twin: 0.099, studio: 0.099 },
 };
 
 /**
@@ -266,7 +269,7 @@ const TRANSLATE_RATE_PER_SECOND = Number(process.env.HEYGEN_RATE_TRANSLATE || ""
  */
 export function estimateRenderCostUsd(params: {
   renderProvider: string | null | undefined;
-  /** avatar_iii | avatar_iv | avatar_v — absent means HeyGen's default, avatar_iv. */
+  /** avatar_iii | avatar_iv | avatar_v | heygen-avatar-6 — absent means HeyGen's default, avatar_iv. */
   engine?: string | null;
   /** HeyGen's own classification of the look, which is what it bills on. */
   avatarType?: string | null;
@@ -729,8 +732,10 @@ export interface GenerateVideoV3Params {
    * avatar_v = highest-fidelity motion/lip-sync — Digital Twin looks only,
    * same $0.0667/sec price as avatar_iv on twins (measured ~3.5 min for a
    * ~22s render vs ~4.2 min on avatar_iv).
+   * heygen-avatar-6 = Avatar 6 (2026-11-18): gestures follow the script,
+   * $0.099/sec on a twin, 22 s rendered in 2 min 22 s. 1080p or 2K only.
    */
-  engine?: "avatar_iii" | "avatar_iv" | "avatar_v";
+  engine?: "avatar_iii" | "avatar_iv" | "avatar_v" | "heygen-avatar-6";
   /**
    * Burn synchronized captions into the render.
    *

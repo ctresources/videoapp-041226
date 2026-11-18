@@ -1595,8 +1595,10 @@ export async function startRender(
       // test renders of her twin: Avatar V ($7.20/min against $0.99) is not
       // offered, so nothing here may choose it. (The circle test this replaced
       // was true for every short and every long video already.)
-      // Avatar V only for an Agent Intro with a Digital Twin (2026-10-23).
-      const preferredEngine = (isAgentIntro && isDigitalTwin ? "avatar_v" : "avatar_iii") as "avatar_iii" | "avatar_iv" | "avatar_v";
+      // An Agent Intro with a Digital Twin was Avatar V (2026-10-23); Avatar 6
+      // since 2026-11-18, the owner's call after a test on her twin: $6/min
+      // against $7.20, gestures that follow the script, and a faster render.
+      const preferredEngine = (isAgentIntro && isDigitalTwin ? "heygen-avatar-6" : "avatar_iii") as "avatar_iii" | "avatar_iv" | "avatar_v" | "heygen-avatar-6";
 
       /**
        * Ask the look what it supports before asking it for anything.
