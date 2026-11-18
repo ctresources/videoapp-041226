@@ -744,6 +744,9 @@ function CreatePageInner() {
           trialLocked: !!d.trialLocked, trialStarted: d.trialStarted !== false,
           freeBlogLeft: typeof d.freeBlogLeft === "number" ? d.freeBlogLeft : null,
           freeRecordingLeft: typeof d.freeRecordingLeft === "number" ? d.freeRecordingLeft : null,
+          // Was dropped here, so admins were never let past a blank town
+          // (found 2026-11-18): locationOk reads it.
+          isAdmin: !!d.isAdmin,
         });
       })
       .catch(() => { /* the screen still works; it just cannot warn early */ });
