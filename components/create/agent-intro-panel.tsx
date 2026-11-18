@@ -25,7 +25,12 @@ export interface IntroDefaults {
  * 2026-10-23). Writes the intro and
  * opens it in the editor.
  */
-export function AgentIntroPanel({ defaults, onClose }: { defaults: IntroDefaults; onClose: () => void }) {
+export function AgentIntroPanel({ defaults, townOptional = false, onClose }: {
+  defaults: IntroDefaults;
+  /** Admins may leave the area out (2026-11-18, the owner's ask). */
+  townOptional?: boolean;
+  onClose: () => void;
+}) {
   const router = useRouter();
   const [name, setName] = useState(defaults.name ?? "");
   const [brokerage, setBrokerage] = useState(defaults.brokerage ?? "");
@@ -39,7 +44,8 @@ export function AgentIntroPanel({ defaults, onClose }: { defaults: IntroDefaults
   const [busy, setBusy] = useState(false);
 
   async function write() {
-    if (!name.trim() || !city.trim()) { toast.error("Add your name and the area you serve."); return; }
+    if (!name.trim()) { toast.error("Add your name."); return; }
+    if (!city.trim() && !townOptional) { toast.error("Add your name and the area you serve."); return; }
     setBusy(true);
     try {
       const res = await fetch("/api/ai/agent-intro", {

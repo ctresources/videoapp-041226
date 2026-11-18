@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { runBriefTurn, type BriefEmail, type BriefTurn } from "@/lib/api/brief-session";
 import { noteProbe } from "@/lib/security/probe";
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 30;
@@ -64,10 +65,12 @@ export async function POST(req: NextRequest) {
   // model prompt to distrust.
   const { data: prof } = await supabase
     .from("profiles")
-    .select("location_city, location_state")
+    .select("location_city, location_state, role")
     .eq("id", user.id)
     .maybeSingle();
-  const m = prof as { location_city: string | null; location_state: string | null } | null;
+  const m = prof as { location_city: string | null; location_state: string | null; role: string | null } | null;
+  // Admins may leave the town out (2026-11-18, the owner's ask), as on Create.
+  const townOptional = hasAdminPerks(m?.role);
   const savedMarket = m?.location_city?.trim() && m?.location_state?.trim()
     ? { city: m.location_city.trim().slice(0, 80), state: m.location_state.trim().slice(0, 40) }
     : null;
@@ -84,7 +87,7 @@ export async function POST(req: NextRequest) {
   const emails: BriefEmail[] = ((imports ?? []) as { id: string; subject: string | null }[])
     .map((e) => ({ id: e.id, subject: e.subject ?? "" }));
 
-  const result = await runBriefTurn(turns, mode, savedMarket, emails);
+  const result = await runBriefTurn(turns, mode, savedMarket, emails, townOptional);
   if (!result) {
     // The caller drops back to the typed form rather than looping on a mic that
     // will not answer.
@@ -94,5 +97,5 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json(result);
+  return NextResponse.json({ ...result, townOptional });
 }

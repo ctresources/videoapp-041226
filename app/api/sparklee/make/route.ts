@@ -48,12 +48,13 @@ export async function POST(req: NextRequest) {
   const topic = slots.topic?.trim();
   if (!topic) return NextResponse.json({ ask: "What should the video be about?" });
 
-  const p = s.profile as unknown as { location_city?: string | null; location_state?: string | null };
+  const p = s.profile as unknown as { location_city?: string | null; location_state?: string | null; role?: string | null };
   const city = slots.city?.trim() || p.location_city?.trim() || "";
   const state = slots.state?.trim() || p.location_state?.trim() || "";
   // SparkReels mode (2026-11-01): a video about SparkReels has no town.
+  // Admins may leave it out too (2026-11-18, the owner's ask).
   const promoMode = await isSparkreelsMode(s.user.id);
-  if ((!city || !state) && !promoMode) return NextResponse.json({ ask: "Which town and state is it for?" });
+  if ((!city || !state) && !promoMode && !hasAdminPerks(p.role)) return NextResponse.json({ ask: "Which town and state is it for?" });
 
   const t = words.toLowerCase();
   const size = slots.platform === "reel" || /\bvertical\b|\btall\b/.test(t) ? "vertical"

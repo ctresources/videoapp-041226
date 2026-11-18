@@ -1,4 +1,5 @@
 import { isSparkreelsMode } from "@/lib/sparkreels-mode";
+import { hasAdminPerks } from "@/lib/utils/roles";
 import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { createClient } from "@/lib/supabase/server";
@@ -34,10 +35,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ fill: `/create?say=${encodeURIComponent(`Make a video: ${String(first.topic || first.title).slice(0, 300)}`)}` });
   }
 
-  const p = s.profile as unknown as { location_city?: string | null; location_state?: string | null };
+  const p = s.profile as unknown as { location_city?: string | null; location_state?: string | null; role?: string | null };
   const city = p.location_city?.trim() || "";
   const state = p.location_state?.trim() || "";
-  if ((!city || !state) && !(await isSparkreelsMode(s.user.id))) return NextResponse.json({ error: "Add your town and state in Settings first.", href: "/settings" }, { status: 400 });
+  // Admins may leave the town out (2026-11-18, the owner's ask).
+  if ((!city || !state) && !hasAdminPerks(p.role) && !(await isSparkreelsMode(s.user.id))) return NextResponse.json({ error: "Add your town and state in Settings first.", href: "/settings" }, { status: 400 });
 
   // Only accounts that are really connected, checked again here.
   const { data: prof } = await s.admin.from("profiles")

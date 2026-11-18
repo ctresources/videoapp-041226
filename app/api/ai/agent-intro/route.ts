@@ -5,6 +5,7 @@ import { chatJson } from "@/lib/api/perplexity-chat";
 import { ensureSparkFor } from "@/lib/utils/ensure-spark";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { PLAIN_COPY_RULES, plainCopy } from "@/lib/utils/copy-style";
+import { hasAdminPerks } from "@/lib/utils/roles";
 
 export const maxDuration = 60;
 
@@ -50,13 +51,19 @@ export async function POST(req: NextRequest) {
   const words = 72;
 
   if (!name) return NextResponse.json({ error: "Add your name." }, { status: 400 });
-  if (!city) return NextResponse.json({ error: "Add the area you serve." }, { status: 400 });
+  if (!city) {
+    // Admins may leave the area out (2026-11-18, the owner's ask).
+    const { data: me } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    if (!hasAdminPerks((me as { role?: string | null } | null)?.role)) {
+      return NextResponse.json({ error: "Add the area you serve." }, { status: 400 });
+    }
+  }
   const market = [city, state].filter(Boolean).join(", ");
 
   const facts = [
     `Name: ${name}`,
     brokerage && `Brokerage: ${brokerage}`,
-    `Area served: ${market}`,
+    market && `Area served: ${market}`,
     years && `Years in real estate: ${years}`,
     helps.length > 0 && `Helps most: ${helps.join(", ")}`,
     different && `What makes them different, in their words: ${different}`,

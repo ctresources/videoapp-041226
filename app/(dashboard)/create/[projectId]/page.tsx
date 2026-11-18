@@ -1347,21 +1347,26 @@ export default function ProjectEditorPage() {
     if (!project) return;
     const city = marketCity.trim();
     const state = marketState.trim().toUpperCase();
-    if (!city || !state) { toast.error("Enter a city and a state"); return; }
+    // Admins may leave it blank (2026-11-18, the owner's ask): blank clears it.
+    if ((!city || !state) && !allowance?.isAdmin) { toast.error("Enter a city and a state"); return; }
+    const newCity = city || null;
+    const newState = state || null;
     setSavingMarket(true);
     try {
       const supabase = createClient();
       const { error } = await supabase
         .from("projects")
-        .update({ location_city: city, location_state: state })
+        .update({ location_city: newCity, location_state: newState })
         .eq("id", project.id);
       if (error) throw new Error(error.message);
-      setProject((prev) => (prev ? { ...prev, location_city: city, location_state: state } : prev));
+      setProject((prev) => (prev ? { ...prev, location_city: newCity, location_state: newState } : prev));
       setEditingMarket(false);
       // Says what it actually affects. "Saved" would leave the user guessing
       // whether the script they are looking at is about to change (it isn't —
       // this feeds what gets written from here on).
-      toast.success(`Market set to ${city}, ${state}. New titles, descriptions and thumbnails will use it.`);
+      toast.success(newCity
+        ? `Market set to ${[newCity, newState].filter(Boolean).join(", ")}. New titles, descriptions and thumbnails will use it.`
+        : "Market cleared.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't save the market");
     } finally {

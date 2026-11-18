@@ -218,6 +218,8 @@ export async function runBriefTurn(
    * offered to the model when they said the word, see SAID_EMAIL.
    */
   emails: BriefEmail[] = [],
+  /** Admins may leave the town out (2026-11-18): only the topic is required. */
+  townOptional = false,
 ): Promise<BriefSessionResult | null> {
   if (!process.env.PERPLEXITY_API_KEY) return null;
 
@@ -244,7 +246,7 @@ ${offered.map((e, i) => `${i + 1}. "${e.subject}"`).join("\n")}
   const system = `You are taking a ${isBlog ? "blog article" : "video"} brief from a real estate agent, out loud, one short exchange at a time.
 
 Collect these fields:
-- city and state (state as a 2-letter abbreviation) — REQUIRED
+- city and state (state as a 2-letter abbreviation) — ${townOptional ? "optional: take them if said, but never ask for them" : "REQUIRED"}
 - topic: what the video is about, in the agent's own words — REQUIRED
 - audience: who the video is for, in their words. Common ones are ${AUDIENCES.join(", ")}, but anything they say counts — "people relocating", "downsizers", "first responders". Do not force it to the nearest common one — optional
 - tone: one of ${TONES.join(", ")} — optional
@@ -277,10 +279,10 @@ Rules for the fields:
 Rules for "reply":
 - One or two sentences. It is spoken aloud, so no lists, no markdown, no field names.
 - Sound like a colleague who is glad to be helping, not a form being filled in. Warm, brief, a little energy. "Spark" is the product's own verb — "what are we sparking", "let's spark it" — use it naturally, never more than once in a reply, and never at the cost of being clear.
-- Ask for ONE missing required field at a time — market first, then topic.
+- Ask for ONE missing required field at a time — ${townOptional ? "here only the topic is required" : "market first, then topic"}.
 - When you have both, read the brief back in a single sentence and ask if they want to go ahead. Name what is being made when they said it: "a blog article", "a short vertical video with your avatar".
 - Never ask about audience, tone or length. Take them if offered, but they are optional and asking for them makes the conversation drag.
-- Once city, state and topic are all filled, read the brief back in one sentence and stop there. Do NOT tell them what to say or press to go ahead: the screen already shows a button for that, and repeating it in the reply is the same instruction given twice. Ending on the read-back leaves them free to correct it or to go.`;
+- Once ${townOptional ? "the topic is" : "city, state and topic are all"} filled, read the brief back in one sentence and stop there. Do NOT tell them what to say or press to go ahead: the screen already shows a button for that, and repeating it in the reply is the same instruction given twice. Ending on the read-back leaves them free to correct it or to go.`;
 
   try {
     const parsed = await chatJson(system, turns, { maxTokens: 400, label: "brief-session" });
@@ -296,7 +298,7 @@ Rules for "reply":
     }
     const reply = typeof parsed.reply === "string" ? parsed.reply.trim().slice(0, 400) : "";
 
-    const hasRequired = !!(slots.city && slots.state && slots.topic);
+    const hasRequired = !!(slots.topic && (townOptional || (slots.city && slots.state)));
     const lastUser = [...turns].reverse().find((t) => t.role === "user")?.content ?? "";
     const ready = hasRequired && saidGoAhead(lastUser);
 

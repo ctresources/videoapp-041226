@@ -3170,6 +3170,7 @@ function CreatePageInner() {
                   state: locState || ctaProfile?.location_state,
                   years: ctaProfile?.market_years,
                 }}
+                townOptional={!!allowance?.isAdmin}
                 onClose={() => setIntroOpen(false)}
               />
             )}

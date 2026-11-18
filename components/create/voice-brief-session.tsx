@@ -259,7 +259,8 @@ export function VoiceBriefSession({
       onSlotsRef.current(got);
       if (opts?.go) {
         onReplyRef.current?.(typeof data.reply === "string" ? data.reply : "");
-        const complete = !!(got.topic && got.city && got.state);
+        // Admins may leave the town out (2026-11-18); the server says when.
+        const complete = !!(got.topic && (data.townOptional || (got.city && got.state)));
         const knowsWhat = !!(got.output || got.onScreen);
         if (complete && knowsWhat && !wentRef.current) {
           wentRef.current = true;
