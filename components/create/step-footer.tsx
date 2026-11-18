@@ -25,9 +25,10 @@ interface StepFooterProps {
  */
 export function StepFooter({ onBack, backLabel = "Back", hint, wide = false, children }: StepFooterProps) {
   return (
-    // Full width since the side menu left computers (2026-10-14); it was
-    // still starting 184px in, where the menu used to end.
-    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-spark-rule bg-spark-paper/95 backdrop-blur">
+    // Starts past the 184px side menu on computers again (2026-11-18): the
+    // menu came back on 10-29 and was covering the start of the status line
+    // ("…bout to carry on."), the one line that says why Next is dim.
+    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-spark-rule bg-spark-paper/95 backdrop-blur md:left-[184px]">
       <div className={`mx-auto flex max-w-3xl items-center gap-3 px-4 py-3 md:px-6 ${wide ? "lg:max-w-none lg:px-6" : ""}`}>
         {onBack && (
           <button
