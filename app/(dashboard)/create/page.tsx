@@ -373,7 +373,9 @@ function CreatePageInner() {
   // The shorter Create page (2026-10-26, usability sweep #6): the ideas and
   // the extra choices are folded away until wanted.
   const [showIdeas, setShowIdeas] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
+  // Open from the start since 2026-11-18 (the owner's ask), so where the
+  // script comes from (a link among them) is on screen, not under a fold.
+  const [moreOpen, setMoreOpen] = useState(true);
   /** Settings' market has been read in, so a missing town is really missing. */
   const [marketLoaded, setMarketLoaded] = useState(false);
   /**
@@ -3702,7 +3704,7 @@ function CreatePageInner() {
               // "Use my content" and "Imported content" in one, under the
               // owner's name for it. What it takes is said under the name,
               // where it was over it.
-              { mode: "paste" as InputMode, label: "My Content/Forwarded in", desc: "Script, article, PDF or email", content: true },
+              { mode: "paste" as InputMode, label: "My Content/Forwarded in", desc: "Script, article, PDF, URL or email", content: true },
               // Make one like this (2026-11-16, the owner's mockup).
               { mode: "like" as InputMode, label: "Like a video I love", desc: "Upload it or paste a link", isNew: true },
             ]),
@@ -3720,7 +3722,7 @@ function CreatePageInner() {
             ...(blogOnly ? [{
               mode: "script" as InputMode,
               label: "My Content/Forwarded in",
-              desc: "PDF, link or email",
+              desc: "PDF, URL or email",
               source: true,
               content: true,
             }] : []),
