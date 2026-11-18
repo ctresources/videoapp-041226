@@ -50,7 +50,9 @@ export function StepFooter({ onBack, backLabel = "Back", hint, wide = false, chi
             thing on the bar nobody could read. Still clamped, because a hint
             that grows without limit would push the action off a small screen. */}
         {hint && (
-          <p className="hidden min-w-0 flex-1 text-[12.5px] leading-[1.35] text-spark-ink-faint line-clamp-2 sm:block">
+          // Right-aligned, beside the button it explains (2026-11-18, the
+          // owner's ask): at the far left it read as unrelated to Next.
+          <p className="hidden min-w-0 flex-1 text-right text-[12.5px] leading-[1.35] text-spark-ink-faint line-clamp-2 sm:block">
             {hint}
           </p>
         )}
