@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { scriptWithoutRepeats } from "@/lib/utils/script-assembly";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { writeSellerUpdate, writeSellerVideoScript } from "@/lib/api/seller-update";
@@ -178,7 +179,7 @@ export async function POST(req: NextRequest) {
     await admin.from("api_usage_log").insert({
       user_id: user.id, api_provider: "perplexity", endpoint: "seller_video_script", credits_used: 0, response_status: 200,
     });
-    return NextResponse.json({ script });
+    return NextResponse.json({ script: scriptWithoutRepeats(script) });
   }
 
   const email = await writeSellerUpdate({ ...facts, hasVideo: !!found.current?.video_url });

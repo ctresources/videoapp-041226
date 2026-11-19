@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { templateSession } from "@/lib/templates/session";
+import { scriptWithoutRepeats } from "@/lib/utils/script-assembly";
 import { DESIGNS, defaultFields, designById, type DesignId, type Shape } from "@/lib/templates/designs";
 import { lookUpMarketNumbers } from "@/lib/templates/numbers";
 import { accentOf, facesOf, hasNumbers, makeTemplateVideo, previewImage, rewordTemplateVideo, templateProfile, writeTemplateScript } from "@/lib/templates/make";
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
   if (b.action === "script") {
     try {
       const script = await writeTemplateScript({ design, shape, fields, name: p?.full_name ?? null, city: p?.location_city ?? null });
-      return NextResponse.json({ script });
+      return NextResponse.json({ script: scriptWithoutRepeats(script) });
     } catch (err) {
       return NextResponse.json({ error: err instanceof Error ? err.message : "Couldn't write the script." }, { status: 502 });
     }

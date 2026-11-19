@@ -6,6 +6,7 @@ import { ensureSparkFor } from "@/lib/utils/ensure-spark";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { PLAIN_COPY_RULES, plainCopy } from "@/lib/utils/copy-style";
 import { hasAdminPerks } from "@/lib/utils/roles";
+import { scriptWithoutRepeats } from "@/lib/utils/script-assembly";
 
 export const maxDuration = 60;
 
@@ -94,7 +95,7 @@ Use only facts given here or found on the profile link. Never invent awards, sal
   const out = await chatJson(system, [{ role: "user", content: prompt }], {
     maxTokens: 900, temperature: 0.5, label: "agent-intro", search: !!profileUrl,
   });
-  const script = plainCopy(String(out?.script ?? "")).trim();
+  const script = scriptWithoutRepeats(plainCopy(String(out?.script ?? "")));
   if (!out || !script) {
     return NextResponse.json({ error: "We couldn't write your intro just now. Please try again." }, { status: 502 });
   }

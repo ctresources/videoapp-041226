@@ -2,6 +2,7 @@ import { countGemini, geminiDeleteFile, geminiJson, geminiUpload, type GeminiPar
 import { chatText } from "@/lib/api/perplexity-chat";
 import { scriptBriefGuidance } from "@/lib/api/perplexity-prompts";
 import { FAIR_HOUSING_SHORT } from "@/lib/utils/fair-housing";
+import { scriptWithoutRepeats } from "@/lib/utils/script-assembly";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 
 /**
@@ -209,5 +210,6 @@ Rules:
     .filter(Boolean)
     .join("\n\n");
   if (!body) return null;
-  return { script: body, title: title || opts.topic.trim().slice(0, 100) };
+  // Nothing said twice (2026-11-18).
+  return { script: scriptWithoutRepeats(body), title: title || opts.topic.trim().slice(0, 100) };
 }

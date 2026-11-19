@@ -33,6 +33,7 @@ import { speakLongInVoice } from "@/lib/api/long-speech";
 import type { WordTimestamp } from "@/lib/api/whisper";
 import { transcribeToWords } from "@/lib/utils/srt";
 import { NextRequest, NextResponse } from "next/server";
+import { scriptWithoutRepeats } from "@/lib/utils/script-assembly";
 import { waitUntil } from "@vercel/functions";
 import { randomUUID } from "crypto";
 
@@ -278,7 +279,8 @@ export async function POST(req: NextRequest) {
        * If that fails the older path still reads it, in the old clone or a
        * stock voice, and the reply says which so the form can tell them.
        */
-      const text = body.script.trim();
+      // Nothing said twice (2026-11-18).
+      const text = scriptWithoutRepeats(body.script);
       let speech: { audioBuffer: Buffer; wordTimestamps: WordTimestamp[] } | null = null;
       if (p.heygen_voice_id || p.voice_sample_url) {
         try {

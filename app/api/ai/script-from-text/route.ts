@@ -9,6 +9,7 @@ import {
   type VideoLength,
 } from "@/lib/utils/video-length";
 import { PLAIN_COPY_RULES, plainCopy } from "@/lib/utils/copy-style";
+import { scriptWithoutRepeats } from "@/lib/utils/script-assembly";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -224,7 +225,8 @@ export async function POST(req: NextRequest) {
   // Not `body` — that name is the parsed request body at the top of this route.
   const spoken = titleMatch ? replied.slice(titleMatch[0].length).trim() : replied;
 
-  const script = clampScript(plainCopy(spoken), cap);
+  // Nothing said twice (2026-11-18), before it is counted.
+  const script = clampScript(scriptWithoutRepeats(plainCopy(spoken)), cap);
   const words = script.split(/\s+/).length;
 
   return NextResponse.json({

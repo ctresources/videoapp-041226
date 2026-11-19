@@ -4,6 +4,7 @@ import { chatJson } from "@/lib/api/perplexity-chat";
 import { generateTwinBackdrop } from "@/lib/api/openai-image";
 import { getAccessLevel, type AccessLevel } from "@/lib/access";
 import { chargeOneVideo } from "@/lib/utils/video-allowance";
+import { dropRepeatedAcross } from "@/lib/utils/script-assembly";
 
 /**
  * Spark Podcast (2026-10-30, the owner's ask; step 1 behind the
@@ -143,13 +144,15 @@ Return ONLY JSON: {"title":"episode title under 60 characters","turns":[{"speake
 
 export function cleanConversation(raw: unknown): Conversation {
   const r = (raw ?? {}) as { title?: unknown; turns?: unknown };
+  const raws = ((Array.isArray(r.turns) ? r.turns : []) as { speaker?: unknown; text?: unknown }[])
+    .map((t) => ({ speaker: (t.speaker === "guest" ? "guest" : "host") as Turn["speaker"], text: typeof t.text === "string" ? t.text.replace(/\s+/g, " ").trim().slice(0, 600) : "" }))
+    .filter((t) => t.text);
+  // No line said twice by either speaker (2026-11-18).
+  const texts = dropRepeatedAcross(raws.map((t) => t.text));
   const turns: Turn[] = [];
-  for (const t of (Array.isArray(r.turns) ? r.turns : []) as { speaker?: unknown; text?: unknown }[]) {
-    const text = typeof t.text === "string" ? t.text.replace(/\s+/g, " ").trim().slice(0, 600) : "";
-    if (!text) continue;
-    turns.push({ speaker: t.speaker === "guest" ? "guest" : "host", text });
-    if (turns.length >= MAX_TURNS) break;
-  }
+  raws.forEach((t, i) => {
+    if (texts[i] && turns.length < MAX_TURNS) turns.push({ speaker: t.speaker, text: texts[i] });
+  });
   if (turns.length < 2) throw new Error("Couldn't write the conversation. Try again.");
   return { title: typeof r.title === "string" && r.title.trim() ? r.title.trim().slice(0, 80) : "Spark Podcast", turns };
 }

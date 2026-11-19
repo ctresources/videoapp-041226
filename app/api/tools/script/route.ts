@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { perplexityChat } from "@/lib/api/perplexity";
 import { FAIR_HOUSING_GUARDRAIL } from "@/lib/utils/fair-housing";
+import { scriptWithoutRepeats } from "@/lib/utils/script-assembly";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { NextRequest, NextResponse } from "next/server";
 import { briefBlock } from "@/lib/api/brief-context";
@@ -71,6 +72,8 @@ Return ONLY this JSON:
   const end = text.lastIndexOf("}");
   if (start !== -1 && end !== -1) text = text.slice(start, end + 1);
   const result = JSON.parse(text);
+  // Nothing said twice, the hook included (2026-11-18).
+  if (typeof result?.script === "string") result.script = scriptWithoutRepeats(result.script, typeof result.hook === "string" ? result.hook : null);
 
   return NextResponse.json(result);
 }

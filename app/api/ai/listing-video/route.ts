@@ -14,7 +14,7 @@ import { ALLOWANCE_SELECT } from "@/lib/utils/video-allowance";
 import { parseCityState } from "@/lib/utils/parse-address";
 import { freeTrialLocked } from "@/lib/utils/free-trial";
 import { PLAIN_COPY_RULES, plainCopy, plainCopyAll } from "@/lib/utils/copy-style";
-import { dropDuplicateCta } from "@/lib/utils/script-assembly";
+import { dropDuplicateCta, scriptWithoutRepeats } from "@/lib/utils/script-assembly";
 import { expandShortArticle } from "@/lib/api/blog-length";
 
 // The script, the YouTube metadata and the article are three Perplexity calls
@@ -339,7 +339,8 @@ export async function POST(req: NextRequest) {
     // The script's own closing ask removed when it repeats the CTA. The prompt
     // now tells it not to write one, but a model told not to do a thing does it
     // anyway often enough that the render would still stutter.
-    dropDuplicateCta(ctaClamped, scriptData.script ?? ""),
+    // And nothing said twice, the hook included (2026-11-18).
+    dropDuplicateCta(ctaClamped, scriptWithoutRepeats(scriptData.script ?? "", scriptData.hook)),
     Math.max(50, maxWords(length, tier) - ctaWords),
   );
 

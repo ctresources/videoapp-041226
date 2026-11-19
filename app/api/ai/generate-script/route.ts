@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSparkFor } from "@/lib/utils/ensure-spark";
+import { scriptWithoutRepeats } from "@/lib/utils/script-assembly";
 import { generateVideoScript, generateSeoData, generateYoutubeMetadata } from "@/lib/api/perplexity";
 import { searchRealEstateContext } from "@/lib/api/yousearch";
 import { targetWords } from "@/lib/utils/video-length";
@@ -87,6 +88,8 @@ export async function POST(req: NextRequest) {
     // that writes one anyway would put "give me a call" into the very video
     // that may not carry it — and nothing later in the flow would catch it.
     if (isUnbranded) aiScript.cta = "";
+    // Nothing said twice, the hook included (2026-11-18).
+    aiScript.script = scriptWithoutRepeats(aiScript.script, aiScript.hook);
 
     // No thumbnail_url is written here any more. It used to be a URL with the
     // hook baked into its query string, built before the project it belongs to

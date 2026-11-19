@@ -1,6 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { scriptWithoutRepeats } from "@/lib/utils/script-assembly";
 import sharp from "sharp";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { generateVideoV3, getAvatarLooks, lookOrientation, searchBackgroundMusic } from "@/lib/api/heygen";
@@ -189,7 +190,8 @@ export async function makeTemplateVideo(admin: Admin, user: { id: string }, o: {
   if (!d) return { error: "Pick a design.", status: 400 };
   if (o.design === "market_update" && !hasNumbers(o.fields)) return { error: "Add at least one number first.", status: 400 };
   if (o.design === "open_house" && !hasWhen(o.fields)) return { error: "Add the open house date and time first.", status: 400 };
-  const script = o.script.trim();
+  // Nothing said twice, however it was written (2026-11-18).
+  const script = scriptWithoutRepeats(o.script);
   if (!script) return { error: "Write the script first.", status: 400 };
   if (script.split(/\s+/).length > 260) return { error: "Keep the script under about 2 minutes (260 words).", status: 400 };
   const photos = o.photos.filter((u) => /^https:\/\//.test(u)).slice(0, 12);

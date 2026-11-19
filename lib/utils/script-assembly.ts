@@ -91,7 +91,60 @@ function nearlySame(a: string, b: string): boolean {
   if (nums(wa) !== nums(wb)) return false;
   let shared = 0;
   wa.forEach((w) => { if (wb.has(w)) shared++; });
-  return shared / Math.max(wa.size, wb.size) >= 0.8;
+  if (shared / Math.max(wa.size, wb.size) >= 0.8) return true;
+  // A reworded copy (2026-11-18): the shorter line nearly all inside the
+  // longer. A Blue Bell take opened "Thanksgiving is right around the corner,
+  // and I don't know about you, but one of my favorite things…" and the next
+  // paragraph said the same minus "I don't know about you, but" — 75% of the
+  // longer, so both were read. Six words or more each, and the shorter at
+  // least 60% of the longer, so a short line is never lost inside a long one.
+  const lo = Math.min(wa.size, wb.size);
+  const hi = Math.max(wa.size, wb.size);
+  return lo >= 6 && lo / hi >= 0.6 && shared / lo >= 0.9;
+}
+
+/**
+ * The script with every sentence removed that repeats an earlier one in the
+ * same or nearly the same words (2026-11-18, the owner's ask: no script, however
+ * it is recorded, says a line twice). Only sentences of six words or more are
+ * ever removed, the first copy always stays, and paragraphs and line breaks
+ * are kept. Returns the script untouched when nothing repeats.
+ */
+export function dropRepeatedLines(script: string): string {
+  return dropRepeatsAgainst(script, []);
+}
+
+/**
+ * The same across several pieces read one after another — a podcast's turns —
+ * so a line one speaker said is not said again by either. A turn left with
+ * nothing comes back empty; the caller drops it.
+ */
+export function dropRepeatedAcross(pieces: string[]): string[] {
+  const kept: string[] = [];
+  return pieces.map((p) => dropRepeatsAgainst(p, kept));
+}
+
+/** dropRepeatedLines against sentences already said (`kept`, which it extends). */
+function dropRepeatsAgainst(script: string, kept: string[]): string {
+  const s = (script ?? "").trim();
+  if (!s) return s;
+  let changed = false;
+  const paragraphs: string[] = [];
+  for (const para of s.split(/\n\s*\n/)) {
+    const lines: string[] = [];
+    for (const line of para.split(/\n/)) {
+      const out: string[] = [];
+      for (const sentence of splitSentences(line)) {
+        if (wordSet(sentence).size >= 6 && kept.some((k) => nearlySame(k, sentence))) { changed = true; continue; }
+        kept.push(sentence);
+        out.push(sentence);
+      }
+      if (out.length) lines.push(out.join(" "));
+      else if (line.trim()) changed = true;
+    }
+    if (lines.length) paragraphs.push(lines.join("\n"));
+  }
+  return changed ? paragraphs.join("\n\n") : s;
 }
 
 /** Sentences, split after . ! ? (and any closing quote) that a space follows. */
@@ -141,7 +194,20 @@ export function dropRepeatsOfOpening(script: string, title?: string): string {
   // A title that names the place with " — City, ST" is compared without it.
   const cleanTitle = (title ?? "").replace(/\s+[—–-]\s+[^—–-]+,\s*[A-Z]{2}\s*$/, "").trim();
   const body = dropRepeatedSentences(rest, [...splitSentences(opening), cleanTitle]);
-  return body ? `${opening}\n\n${body}` : opening;
+  return dropRepeatedLines(body ? `${opening}\n\n${body}` : opening);
+}
+
+/**
+ * A script body with nothing said twice (2026-11-18): no copy of its hook at
+ * the start or further in, and no sentence that repeats an earlier one. For
+ * every place a script is written, loaded or rendered; the hook stays a field
+ * of its own.
+ */
+export function scriptWithoutRepeats(script: string, hook?: string | null): string {
+  const h = (hook ?? "").trim();
+  let s = (script ?? "").trim();
+  if (h) s = dropRepeatedSentences(dropDuplicateHook(h, s), [h]);
+  return dropRepeatedLines(s);
 }
 
 /**
@@ -153,7 +219,7 @@ export function dropRepeatsOfOpening(script: string, title?: string): string {
 export function joinHookAndScript(hook: string, script: string): string {
   const h = hook.trim();
   const body = dropDuplicateHook(h, script ?? "");
-  return [h, body].filter(Boolean).join("\n\n");
+  return dropRepeatedLines([h, body].filter(Boolean).join("\n\n"));
 }
 
 /** Last sentence, by terminal punctuation — falling back to the whole thing. */

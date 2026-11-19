@@ -16,6 +16,7 @@ import { freeBlogAvailable, freeTrialLocked, isPreVideoAccount, markFreeBlog } f
 import { NextRequest, NextResponse } from "next/server";
 import { isPlaceholderTitle } from "@/lib/utils/article-headline";
 import { closingLineWords, shortScriptBudget } from "@/lib/utils/script-budget";
+import { scriptWithoutRepeats } from "@/lib/utils/script-assembly";
 import { isSparkreelsMode, sparkreelsFacts } from "@/lib/sparkreels-mode";
 import { noteProbe } from "@/lib/security/probe";
 
@@ -265,7 +266,8 @@ export async function POST(req: NextRequest) {
   // agree with the number shown and then disagree with what render enforces.
   const ctaClamped = clampScript(parsed.cta, 200);
   const ctaWordCount = ctaClamped.trim().split(/\s+/).filter(Boolean).length;
-  const scriptClamped = clampScript(parsed.script, Math.max(50, cap - ctaWordCount));
+  // Nothing said twice, the hook included (2026-11-18), before it is counted.
+  const scriptClamped = clampScript(scriptWithoutRepeats(parsed.script, parsed.hook), Math.max(50, cap - ctaWordCount));
 
   const aiScript = {
     title: parsed.title,

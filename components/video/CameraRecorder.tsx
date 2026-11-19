@@ -54,6 +54,7 @@ import { BrandedComposite, type SmoothSkin } from "@/lib/utils/branded-recorder"
 import { VoiceFollower, LiveTranscriber, isVoiceFollowSupported, followWordInContainer } from "@/lib/utils/voice-follow";
 import { PublishModal } from "@/components/social/PublishModal";
 import { useAccount } from "@/lib/hooks/use-account";
+import { scriptWithoutRepeats } from "@/lib/utils/script-assembly";
 import { FieldMic, PROSE_SILENCE_MS } from "@/components/ui/field-mic";
 import { TopicRadar } from "@/components/create/topic-radar";
 
@@ -256,12 +257,14 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
   simple?: boolean;
 }) {
   const [step, setStep] = useState<CamStep>("script");
-  const [script, setScript] = useState(initialScript ?? "");
+  // Loaded with nothing said twice (2026-11-18): a Blue Bell take read its
+  // opening line twice, the second time reworded.
+  const [script, setScript] = useState(() => scriptWithoutRepeats(initialScript ?? ""));
   /** Live dictation, shown under the box until the turn settles into `script`. */
   const [scriptInterim, setScriptInterim] = useState("");
 
   useEffect(() => {
-    if (initialScript) setScript(initialScript);
+    if (initialScript) setScript(scriptWithoutRepeats(initialScript));
   }, [initialScript]);
 
   /**
@@ -1285,7 +1288,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
       // that looks compliant and isn't.
       const cta = unbranded ? "" : buildChannelCta();
       const generated = (data.script as string) || "";
-      setScript(cta.trim() ? `${generated.trimEnd()}\n\n${cta}` : generated);
+      setScript(scriptWithoutRepeats(cta.trim() ? `${generated.trimEnd()}\n\n${cta}` : generated));
       setShowSpark(false);
       setSparkTopic("");
       toast.success(unbranded

@@ -29,7 +29,7 @@ import { parseScriptLocation } from "@/lib/utils/parse-address";
 import { formatPhone, formatPhones } from "@/lib/utils/format-phone";
 import { notifyRenderBalanceLow } from "@/lib/email";
 import { registerFormatLooks } from "@/lib/utils/avatar-crops";
-import { dropDuplicateCta, dropRepeatsOfOpening } from "@/lib/utils/script-assembly";
+import { dropDuplicateCta, dropRepeatedLines, dropRepeatsOfOpening } from "@/lib/utils/script-assembly";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits";
 import { NextResponse } from "next/server";
 import { joinLineIfBusy, joinLine } from "@/lib/video/render-queue";
@@ -815,9 +815,11 @@ export async function startRender(
       : ((aiScript?.title as string) || project.title);
 
   // The opening line and the title are said once, never again further in
-  // (2026-11-11). Not for a pasted script, which is read word for word.
+  // (2026-11-11). A pasted script is read word for word except that a line it
+  // says twice is said once (2026-11-18, the owner's ask: no script, however
+  // it is made, repeats).
   const scriptIn = script || (aiScript?.script as string) || project.title;
-  const rawScript = isVerbatimProject ? scriptIn : dropRepeatsOfOpening(scriptIn, title);
+  const rawScript = isVerbatimProject ? dropRepeatedLines(scriptIn) : dropRepeatsOfOpening(scriptIn, title);
 
   const { data: profileData } = await admin
     .from("profiles")

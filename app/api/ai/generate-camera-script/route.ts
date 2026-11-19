@@ -11,6 +11,7 @@ import {
   type CameraLength, type RenderedScriptLength,
 } from "@/lib/utils/video-length";
 import { closingLineWords, shortScriptBudget } from "@/lib/utils/script-budget";
+import { scriptWithoutRepeats } from "@/lib/utils/script-assembly";
 import { isSparkreelsMode, sparkreelsFacts } from "@/lib/sparkreels-mode";
 
 const PERPLEXITY_API = "https://api.perplexity.ai";
@@ -183,7 +184,8 @@ Rules:
     const script = data.choices?.[0]?.message?.content;
     if (!script) throw new Error("Empty response from AI");
 
-    return NextResponse.json({ script: script.trim() });
+    // Nothing read twice off the teleprompter (2026-11-18).
+    return NextResponse.json({ script: scriptWithoutRepeats(script) });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to generate script";
     console.error("[generate-camera-script]", msg);
