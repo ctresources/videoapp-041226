@@ -26,6 +26,7 @@ import {
   Film,
   Trash2,
   Mail,
+  Pencil,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { showTrialLock } from "@/lib/utils/trial-lock";
@@ -536,6 +537,8 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
   const [takeShape, setTakeShape] = useState<{ width: number; height: number; branded: boolean } | null>(null);
   const transcriberRef = useRef<LiveTranscriber | null>(null);
   const stoppingRef = useRef(false);
+  /** Set by Start over: the recorder's stop throws the take away. */
+  const discardRef = useRef(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -1006,8 +1009,10 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
    * with a hand returning to the desk and a face still settling. The
    * teleprompter starts with the recording, not with the count.
    */
-  function beginCountdown() {
-    if (countdown !== null || isRecording) return;
+  function beginCountdown(afterStartOver = false) {
+    // Start over calls this in the same tick it ends the take, before
+    // isRecording has re-rendered as false.
+    if (countdown !== null || (isRecording && !afterStartOver)) return;
     setCountdown(3);
     const tick = setInterval(() => {
       setCountdown((n) => {
@@ -1096,6 +1101,13 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
     recorder.onstop = () => {
+      // Start over: this take is thrown away, and the camera stays open for
+      // the next one.
+      if (discardRef.current) {
+        discardRef.current = false;
+        chunksRef.current = [];
+        return;
+      }
       const type = recordedType(recorder, mimeType);
       const blob = new Blob(chunksRef.current, { type });
       const url = URL.createObjectURL(blob);
@@ -1238,6 +1250,47 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
     } else {
       recorderRef.current?.stop();
     }
+  }
+
+  /**
+   * Start over (2026-11-18, the owner's ask): a slip mid-read throws this take
+   * away and starts again at once — script back to the top, 3-2-1, same
+   * camera, look and settings. Nothing is saved and the setup step is skipped.
+   */
+  function startOver() {
+    const rec = recorderRef.current;
+    if (!rec || rec.state === "inactive" || stoppingRef.current) return;
+    discardRef.current = true;
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    stopPrompter();
+    compositeRef.current?.pauseBroll();
+    compositeRef.current?.rewind();
+    rec.stop();
+    setIsRecording(false);
+    setIsPaused(false);
+    setSeconds(0);
+    scrollPosRef.current = 0;
+    if (teleRef.current) teleRef.current.scrollTop = 0;
+    beginCountdown(true);
+  }
+
+  /**
+   * Record again, from the finished take (2026-11-18): straight back to the
+   * camera with the script at the top, ready to record. The take just made
+   * stays in the takes list to compare. Edit script still goes to setup.
+   */
+  async function recordAgain() {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    setVideoUrl(null);
+    setVideoBlob(null);
+    setIsRecording(false);
+    setIsPaused(false);
+    setSeconds(0);
+    scrollPosRef.current = 0;
+    setCamError(null);
+    await openCamera();
+    // The camera didn't open: setup is where its error is shown.
+    if (!streamRef.current && !screenStreamRef.current) setStep("script");
   }
 
   function handleReset() {
@@ -2743,7 +2796,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
                   <RotateCcw size={15} /> Back
                 </Button>
                 <Button
-                  onClick={beginCountdown}
+                  onClick={() => beginCountdown()}
                   disabled={countdown !== null || shapeUnsafe}
                   size="lg"
                   className="gap-2 flex-[2]"
@@ -2751,6 +2804,13 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
                   <Video size={17} /> {countdown !== null ? "Starting…" : "Start Recording"}
                 </Button>
               </>
+            )}
+            {/* Start over (2026-11-18): a slip mid-read restarts the take
+                from the top, without going back to setup. */}
+            {isRecording && (
+              <Button onClick={startOver} variant="outline" size="lg" className="gap-2 flex-1 bg-white/10 text-white border-white/20 hover:bg-white/20">
+                <RotateCcw size={17} /> Start over
+              </Button>
             )}
             {isRecording && !isPaused && (
               <>
@@ -2923,8 +2983,11 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
             owner's ask): the same Email it page My Sparks opens, set to this
             video. Paid plans, as everywhere else. */}
         <div className={cn("grid gap-2", viewedSaved && account?.paid ? "grid-cols-3" : "grid-cols-2")}>
-          <Button onClick={handleDownload} variant="outline" size="lg" className="gap-2">
-            <Download size={16} /> Download
+          {/* Record again (2026-11-18, the owner's approved mockup): straight
+              back to the camera, not to setup. Download moved to the small
+              links below. */}
+          <Button onClick={() => void recordAgain()} variant="outline" size="lg" className="gap-2">
+            <RotateCcw size={16} /> Record again
           </Button>
           {viewedSaved && account?.paid && (
             <a href={`/video-email?video=${viewedSaved.videoId}`} className="contents">
@@ -2975,9 +3038,15 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
         )}
 
         <div className="flex items-center justify-between gap-3">
-          <Button onClick={handleReset} variant="ghost" size="sm" className="gap-1.5 text-slate-400">
-            <RotateCcw size={13} /> Re-record
-          </Button>
+          <div className="flex items-center gap-1">
+            {/* Back to setup, as Re-record did: change the script or the look. */}
+            <Button onClick={handleReset} variant="ghost" size="sm" className="gap-1.5 text-slate-400">
+              <Pencil size={13} /> Edit script
+            </Button>
+            <Button onClick={handleDownload} variant="ghost" size="sm" className="gap-1.5 text-slate-400">
+              <Download size={13} /> Download
+            </Button>
+          </div>
           {viewedSaved && (
             <Button
               onClick={() => void handleDeleteTake()}

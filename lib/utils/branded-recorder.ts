@@ -705,6 +705,33 @@ export class BrandedComposite {
     this.brollRunning = false;
     this.brollVideoEl?.pause();
   }
+
+  /**
+   * Back to the very start, for Start over (2026-11-18): the take in progress
+   * is thrown away and the next one should open exactly as the first did —
+   * music from its first note, the opener and photos from the beginning, no
+   * caption or end card left over. The camera and the look stay as they are.
+   */
+  rewind() {
+    this.pauseMusic();
+    if (this.musicEl) { try { this.musicEl.currentTime = 0; } catch { /* not seekable yet */ } }
+    this.brollRunning = false;
+    this.brollElapsed = 0;
+    this.brollLastTick = performance.now();
+    this.brollIndex = -1;
+    this.prevIndex = null;
+    this.brollShownAt = 0;
+    this.brollPass = 0;
+    this.scriptProgress = null;
+    this.brollVideoAt = 0;
+    this.openerActive = false;
+    if (this.brollVideoEl) {
+      this.brollVideoEl.pause();
+      try { this.brollVideoEl.currentTime = 0; } catch { /* not seekable yet */ }
+    }
+    this.caption = { text: "", at: 0 };
+    this.endCardLatched = false;
+  }
   private tickBroll() {
     // A file plays on its own clock. Wall time and media time are the same
     // thing for a live camera, but the moment playback buffers — or the tab is
