@@ -72,17 +72,24 @@ export async function makeVideoCard(card: Card, videoUrl: string): Promise<Buffe
     const layers: { input: Buffer; left: number; top: number }[] = [];
     let endText: string;
     const wide = W > H;
+    // No text measuring in FFmpeg, so each line is sized down from an estimate
+    // of its width (a little generous, so nothing reaches the edge).
+    const fitTo = (colW: number) => (base: number, text: string, perChar: number) =>
+      Math.max(Math.round(base * 0.5), Math.min(base, Math.floor(colW / Math.max(1, text.length * perChar))));
 
     if (!wide) {
-      // Tall (and square): one centred column, as approved 2026-10-30.
+      // Tall (and square): one centred column, as approved 2026-10-30. Long
+      // lines shrink to fit inside the white card since 2026-11-18 (a long
+      // title ran edge to edge).
       const cardW = Math.round(W * 0.84);
       const cardX = Math.round((W - cardW) / 2);
       const avatarD = Math.round(S * 0.24);
       const qrD = Math.round(S * 0.3);
       const gap = Math.round(S * 0.03);
-      const nameSize = Math.round(S * 0.062);
-      const subSize = Math.round(S * 0.036);
-      const lineSize = Math.round(S * 0.04);
+      const fit = fitTo(Math.round(cardW * 0.88));
+      const nameSize = fit(Math.round(S * 0.062), name, 0.62);
+      const subSize = sub ? fit(Math.round(S * 0.036), sub, 0.56) : Math.round(S * 0.036);
+      const lineSize = Math.min(...[Math.round(S * 0.04), ...contact.map((c) => fit(Math.round(S * 0.04), c, 0.56))]);
       const cardH = gap * 2 + avatarD + gap + Math.round(nameSize * 1.4) + Math.round(subSize * 1.6)
         + contact.length * Math.round(lineSize * 1.55) + gap + qrD + Math.round(subSize * 1.8) + gap;
       const cardY = Math.max(Math.round(S * 0.04), Math.round((H - cardH) / 2));
@@ -123,11 +130,7 @@ export async function makeVideoCard(card: Card, videoUrl: string): Promise<Buffe
       const photo = await roundPhoto(avatarD);
       const textX = cardX + padX + (photo ? avatarD + gap : 0);
       const qrX = cardX + cardW - padX - qrD;
-      const colW = qrX - gap - textX;
-      // No text measuring in FFmpeg, so each line is sized down from an
-      // estimate of its width (a little generous, so nothing touches the QR).
-      const fit = (base: number, text: string, perChar: number) =>
-        Math.max(Math.round(base * 0.5), Math.min(base, Math.floor(colW / Math.max(1, text.length * perChar))));
+      const fit = fitTo(qrX - gap - textX);
       const nameSize = fit(Math.round(H * 0.062), name, 0.62);
       const subSize = sub ? fit(Math.round(H * 0.034), sub, 0.56) : Math.round(H * 0.034);
       const lineSize = Math.min(...[Math.round(H * 0.038), ...contact.map((c) => fit(Math.round(H * 0.038), c, 0.56))]);
