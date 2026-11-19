@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horizontal video card</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;800&display=swap" rel="stylesheet">
+<style>
+  :root { --paper:#F6F1E9; --ink:#24221E; --muted:#77736A; --brand:#1B5E82; --amber:#B9770E; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font-family:Inter, system-ui, sans-serif; padding:28px 16px 60px; }
+  .wrap { max-width:1180px; margin:0 auto; }
+  h1 { font-size:15px; letter-spacing:.12em; text-transform:uppercase; color:#6B645B; margin:0 0 18px; }
+  .label { font-size:13px; font-weight:700; color:var(--amber); margin:22px 0 8px; }
+  .row { display:grid; grid-template-columns:minmax(0,3fr) minmax(0,1fr); gap:24px; align-items:end; }
+  @media (max-width:860px){ .row { grid-template-columns:1fr; } }
+  .frame { position:relative; width:100%; background:var(--brand); border-radius:10px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.12); }
+  .wide { aspect-ratio:16/9; }
+  .tall { aspect-ratio:9/16; max-width:260px; }
+  .scene { position:absolute; inset:0; background:linear-gradient(135deg,#8a7a68,#4b4038); }
+  .face { position:absolute; left:50%; top:16%; width:22%; aspect-ratio:3/4; transform:translateX(-50%); border-radius:45% 45% 30% 30%; background:#d9b49a; opacity:.85; }
+  .tall .face { width:46%; top:20%; }
+  .strip { position:absolute; left:6%; bottom:20%; border-left:6px solid var(--brand); }
+  .strip b { display:block; background:#fff; padding:4px 10px; font-weight:800; font-size:clamp(11px,1.9vw,22px); }
+  .strip span { display:inline-block; background:#fff; padding:2px 10px; margin-top:4px; font-size:clamp(9px,1.1vw,13px); color:#4a463e; }
+  /* wide end card */
+  .card-w { position:absolute; left:8%; right:8%; top:14%; bottom:14%; background:#fff; border-radius:18px; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:5%; padding:0 6%; }
+  .photo { width:clamp(50px,12vw,150px); aspect-ratio:1; border-radius:50%; background:linear-gradient(135deg,#e7c9b0,#b98d70); }
+  .name { font-weight:800; font-size:clamp(14px,3vw,36px); line-height:1.1; }
+  .sub { color:var(--muted); font-weight:600; font-size:clamp(9px,1.5vw,18px); margin:6px 0 10px; }
+  .line { font-weight:600; font-size:clamp(9px,1.6vw,19px); margin:4px 0; }
+  .qr { text-align:center; }
+  .qr i { display:block; width:clamp(56px,13vw,170px); aspect-ratio:1; background:repeating-linear-gradient(90deg,#111 0 8%,#fff 8% 14%),#111; background-blend-mode:difference; border:6px solid #fff; outline:1px solid #ddd; }
+  .qr small { display:block; color:var(--muted); font-weight:600; font-size:clamp(8px,1.1vw,13px); margin-top:8px; }
+  /* tall end card (today) */
+  .card-t { position:absolute; left:8%; right:8%; top:8%; bottom:8%; background:#fff; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:6%; }
+  .card-t .photo { width:34%; }
+  .card-t .name { font-size:18px; margin-top:8px; }
+  .card-t .sub { font-size:10px; }
+  .card-t .line { font-size:11px; }
+  .card-t .qr i { width:70px; border-width:4px; margin-top:8px; }
+  .card-t .qr small { font-size:9px; }
+  .cap { font-size:12.5px; color:#6B645B; margin-top:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Video Business Card · horizontal</h1>
+
+  <p class="label">Opening seconds · wide video</p>
+  <div class="row">
+    <div class="frame wide"><div class="scene"></div><div class="face"></div>
+      <div class="strip"><b>Carmella Thompson</b><span>AI Certified Agent and Trainer · SparkReels.ai</span></div>
+    </div>
+    <div>
+      <div class="frame tall"><div class="scene"></div><div class="face"></div>
+        <div class="strip"><b style="font-size:13px">Carmella Thompson</b><span style="font-size:9px">AI Certified Agent and Trainer</span></div>
+      </div>
+      <p class="cap">Tall (today, unchanged)</p>
+    </div>
+  </div>
+
+  <p class="label">End card · wide video</p>
+  <div class="row">
+    <div class="frame wide">
+      <div class="card-w">
+        <div class="photo"></div>
+        <div>
+          <div class="name">Carmella Thompson</div>
+          <div class="sub">AI Certified Agent and Trainer · SparkReels.ai</div>
+          <div class="line">610-457-8698</div>
+          <div class="line">support@sparkreels.ai</div>
+          <div class="line">sparkreels.ai</div>
+        </div>
+        <div class="qr"><i></i><small>Scan to save my contact</small></div>
+      </div>
+    </div>
+    <div>
+      <div class="frame tall">
+        <div class="card-t">
+          <div class="photo"></div>
+          <div class="name">Carmella Thompson</div>
+          <div class="sub">AI Certified Agent and Trainer</div>
+          <div class="line">610-457-8698</div>
+          <div class="line">support@sparkreels.ai</div>
+          <div class="line">sparkreels.ai</div>
+          <div class="qr"><i></i><small>Scan to save my contact</small></div>
+        </div>
+      </div>
+      <p class="cap">Tall (today, unchanged)</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

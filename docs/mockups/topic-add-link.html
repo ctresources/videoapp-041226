@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add a link, up front</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --paper:#F6F1E9; --ink:#1F1B16; --muted:#6B645B; --faint:#9A9289; --rule:#E7DFD3; --amber:#B9770E; --amber-tint:#FBF1DF; --green-bg:#EEF8F0; --green-rule:#BFE3C8; --green-ink:#22663A; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font-family:Inter, system-ui, sans-serif; padding:28px 16px 60px; }
+  h1 { font-size:15px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:0 auto 18px; max-width:1180px; }
+  .row { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:20px; max-width:1180px; margin:0 auto; }
+  @media (max-width:980px){ .row { grid-template-columns:1fr; } }
+  .label { font-size:13px; font-weight:700; color:var(--amber); margin:0 0 8px; }
+  .card { background:#fff; border:1px solid var(--rule); border-radius:22px; padding:22px 18px; }
+  .q { text-align:center; font-size:19px; font-weight:600; margin:0; }
+  .sub { text-align:center; font-size:13px; color:var(--muted); margin:4px 0 14px; }
+  .mic { width:84px; height:84px; border-radius:50%; margin:0 auto; background:linear-gradient(135deg,#B9770E,#1E5F86); display:flex; align-items:center; justify-content:center; color:#fff; font-size:30px; }
+  .talk { text-align:center; font-weight:600; font-size:15px; margin:10px 0 14px; }
+  .box { border:1px solid var(--rule); border-radius:14px; padding:14px; min-height:58px; color:var(--faint); font-size:15px; }
+  .box.filled { color:var(--ink); }
+  .link-chip { display:inline-flex; align-items:center; gap:7px; margin-top:10px; border:1.5px solid var(--amber); color:var(--amber); background:var(--amber-tint); border-radius:999px; padding:7px 14px; font-weight:700; font-size:14px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .chip { border:1px solid var(--rule); border-radius:999px; padding:7px 13px; font-size:13.5px; }
+  .chip.more { border-color:var(--amber); color:var(--amber); background:var(--amber-tint); font-weight:600; }
+  .url-row { display:flex; gap:8px; margin-top:10px; }
+  .url { flex:1; min-width:0; border:1.5px solid var(--amber); border-radius:12px; padding:10px 12px; font-size:14px; color:var(--ink); background:#fff; }
+  .use { border:0; border-radius:12px; background:var(--amber); color:#fff; font-weight:700; padding:0 16px; font-size:14px; }
+  .x { color:var(--faint); font-size:18px; padding:0 4px; align-self:center; }
+  .pill { display:flex; align-items:center; gap:8px; margin-top:10px; border:1px solid var(--green-rule); background:var(--green-bg); color:var(--green-ink); border-radius:12px; padding:10px 12px; font-size:14px; }
+  .pill span { flex:1; }
+  .make { display:block; margin:16px auto 0; border:0; border-radius:999px; background:#D9B57C; color:#fff; font-weight:700; font-size:15px; padding:11px 22px; }
+  .make.on { background:var(--amber); }
+  .note { font-size:12.5px; color:var(--muted); margin-top:10px; line-height:1.45; }
+</style>
+</head>
+<body>
+<h1>Topic card · Add a link</h1>
+<div class="row">
+
+  <div>
+    <p class="label">1 · Closed</p>
+    <div class="card">
+      <p class="q">What do you want to create?</p>
+      <p class="sub">Speak or type your idea, topic, or full request.</p>
+      <div class="mic">🎙</div>
+      <p class="talk">Tap and talk — like leaving a voicemail</p>
+      <div class="box">Try: "A day of content from one spoken sentence"</div>
+      <span class="link-chip">🔗 Add a link</span>
+      <div class="chips">
+        <span class="chip">How Sparklee plans your week</span>
+        <span class="chip">Your Digital Twin in 3 steps</span>
+        <span class="chip more">More ideas →</span>
+      </div>
+      <button class="make">✦ Sparklee, make it</button>
+    </div>
+  </div>
+
+  <div>
+    <p class="label">2 · Tapped</p>
+    <div class="card">
+      <p class="q">What do you want to create?</p>
+      <p class="sub">Speak or type your idea, topic, or full request.</p>
+      <div class="mic">🎙</div>
+      <p class="talk">Tap and talk — like leaving a voicemail</p>
+      <div class="box">Try: "A day of content from one spoken sentence"</div>
+      <div class="url-row">
+        <input class="url" value="https://www.realtor.com/news/spring-market…" readonly>
+        <button class="use">Use it</button>
+        <span class="x">✕</span>
+      </div>
+      <div class="chips">
+        <span class="chip">How Sparklee plans your week</span>
+        <span class="chip">Your Digital Twin in 3 steps</span>
+        <span class="chip more">More ideas →</span>
+      </div>
+      <button class="make">✦ Sparklee, make it</button>
+    </div>
+  </div>
+
+  <div>
+    <p class="label">3 · Read</p>
+    <div class="card">
+      <p class="q">What do you want to create?</p>
+      <p class="sub">Speak or type your idea, topic, or full request.</p>
+      <div class="mic">🎙</div>
+      <p class="talk">Tap and talk — like leaving a voicemail</p>
+      <div class="box">Try: "A day of content from one spoken sentence"</div>
+      <div class="pill">🔗 <span>Writing from: realtor.com</span> ✕</div>
+      <div class="chips">
+        <span class="chip">How Sparklee plans your week</span>
+        <span class="chip">Your Digital Twin in 3 steps</span>
+        <span class="chip more">More ideas →</span>
+      </div>
+      <button class="make on">✦ Sparklee, make it</button>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
