@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { countGemini, geminiDeleteFile, geminiJson, geminiKey, geminiUpload } from "@/lib/api/gemini";
+import { learnMyVoice } from "@/lib/api/my-voice";
 
 /**
  * Camera take tips (2026-11-15, the owner's approved plan, #4): after a take
@@ -40,7 +41,7 @@ export async function makeTakeTips(videoId: string, videoUrl: string, script: st
     if (!up) throw new Error("upload");
     fileName = up.name;
 
-    const out = await geminiJson<{ good?: string; tips?: { at?: string; tip?: string }[] }>({
+    const out = await geminiJson<{ good?: string; tips?: { at?: string; tip?: string }[]; said?: string }>({
       parts: [
         up.part,
         {
@@ -50,7 +51,8 @@ Coach them like a friendly video coach. Look at eye contact with the lens, pace,
 
 Return ONLY JSON:
 {"good": "one thing that went well, under 8 words",
- "tips": [{"at": "m:ss", "tip": "one fix, under 10 words"}]}
+ "tips": [{"at": "m:ss", "tip": "one fix, under 10 words"}],
+ "said": "up to 150 words of what they actually said, word for word, including any words of their own that are not in the script"}
 
 At most 3 tips, the most useful first, each with the time it happens. Plain words, kind, specific. If the take is strong, return fewer tips. Never comment on how the person looks.`,
         },
@@ -66,6 +68,12 @@ At most 3 tips, the most useful first, each with the time it happens. Plain word
       .slice(0, 3)
       .map((t) => ({ at: /^\d{1,2}:\d{2}$/.test(String(t.at ?? "").trim()) ? String(t.at).trim() : "", tip: String(t.tip).trim().slice(0, 80) }));
     await save({ good: typeof out.good === "string" ? out.good.trim().slice(0, 60) : undefined, tips, at: new Date().toISOString() });
+    // My voice (2026-11-18): what they really said on camera.
+    if (typeof out.said === "string" && out.said.trim()) {
+      const { data: v } = await admin.from("generated_videos").select("user_id").eq("id", videoId).single();
+      const userId = (v as { user_id: string } | null)?.user_id;
+      if (userId) await learnMyVoice(admin, userId, "recordings", { text: out.said });
+    }
   } catch (e) {
     console.error(`[take-tips] ${videoId}:`, e instanceof Error ? e.message : e);
     await save({ failed: true, at: new Date().toISOString() }).catch(() => null);

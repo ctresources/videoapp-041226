@@ -12,6 +12,8 @@ import {
 } from "@/lib/utils/video-length";
 import { closingLineWords, shortScriptBudget } from "@/lib/utils/script-budget";
 import { scriptWithoutRepeats } from "@/lib/utils/script-assembly";
+import { myVoiceRuleFor } from "@/lib/api/my-voice";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isSparkreelsMode, sparkreelsFacts } from "@/lib/sparkreels-mode";
 
 const PERPLEXITY_API = "https://api.perplexity.ai";
@@ -105,7 +107,9 @@ export async function POST(req: NextRequest) {
 - End by inviting agents to try SparkReels free at SparkReels.ai.
 
 ${promo}` : null;
-  const systemPrompt = promoSystem ?? `You are a real estate video scriptwriter creating teleprompter-ready scripts for real estate agents. Write in a warm, conversational, first-person voice as the agent speaking directly to camera. Write ${lengthRule}. Getting close to that length matters — the agent is reading this off a teleprompter and expects it to run that long. No stage directions, no headers, no formatting — only the spoken words the agent will read.${briefGuidance ? `\n${briefGuidance}` : ""}
+  // My voice (2026-11-18): read off the teleprompter the way they talk.
+  const voiceRule = promo ? "" : await myVoiceRuleFor(createAdminClient(), user.id);
+  const systemPrompt = promoSystem ?? `You are a real estate video scriptwriter creating teleprompter-ready scripts for real estate agents. Write in a warm, conversational, first-person voice as the agent speaking directly to camera. Write ${lengthRule}. Getting close to that length matters — the agent is reading this off a teleprompter and expects it to run that long. No stage directions, no headers, no formatting — only the spoken words the agent will read.${briefGuidance ? `\n${briefGuidance}` : ""}${voiceRule ? `\n${voiceRule}` : ""}
 ${isUnbranded ? `
 This script is for an UNBRANDED video and must contain no agent identification of any kind: no names, no brokerage, no team, no licence number, no phone number, no email, no website, and no invitation to contact anyone. This is a compliance requirement, not a style preference — it outranks any instruction elsewhere in this request about how to close the script.
 ` : ""}

@@ -38,6 +38,8 @@ export type LocationVideoType =
 export interface LocationParams {
   city: string;
   state: string;
+  /** My voice (2026-11-18): the agent's "how I talk" rule, or empty. */
+  myVoice?: string;
   zip?: string;
   month?: string;
   year?: number;
@@ -746,7 +748,7 @@ export async function generateLocationScript(
         ? `Agent name: "${agentName}". The CALL TO ACTION must use "${agentName}" by name — e.g. "Contact ${agentName} today". Never use generic phrases like "contact a local agent".${preferenceGuidance}`
         : `The CALL TO ACTION must be specific and action-oriented. Never use generic phrases like "contact a local agent".${preferenceGuidance}`;
 
-    systemMsg.content += `\n\n${nameClause}${scriptBriefGuidance(params)}\n\nCRITICAL: Do NOT include any phone numbers in the narration script. Phone numbers appear only as a text overlay at the end of the video — never spoken aloud.`;
+    systemMsg.content += `\n\n${nameClause}${scriptBriefGuidance(params)}${params.myVoice && !params.promo ? `\n\n${params.myVoice}` : ""}\n\nCRITICAL: Do NOT include any phone numbers in the narration script. Phone numbers appear only as a text overlay at the end of the video — never spoken aloud.`;
 
     // Length control for the structured types (market_update, why_live_here,
     // community_events). The custom type states its own target inline, so it's

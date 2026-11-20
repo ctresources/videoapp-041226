@@ -4,6 +4,8 @@ import { ensureSparkFor } from "@/lib/utils/ensure-spark";
 import { freeTrialGateResponse } from "@/lib/utils/free-trial";
 import { topTerms } from "@/lib/utils/script-keywords";
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
+import { learnMyVoice } from "@/lib/api/my-voice";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -24,6 +26,8 @@ export async function POST(req: NextRequest) {
     audience?: string;
     tone?: string;
     purpose?: string;
+    /** Their own words, not a script AI wrote for them: My voice learns from it. */
+    ownWords?: boolean;
     /**
      * Make one like this (2026-11-16): the settings read from the video the
      * agent loves, so setup opens on them. Each can still be changed there.
@@ -160,6 +164,10 @@ export async function POST(req: NextRequest) {
   }
 
   await ensureSparkFor(admin, user.id, (project as { id: string }).id);
+
+  // My voice (2026-11-18): a script they wrote or brought in themselves is
+  // the clearest sample of how they talk. After the reply has gone.
+  if (body.ownWords === true) waitUntil(learnMyVoice(admin, user.id, "pasted", { text: script }));
 
   return NextResponse.json({ project });
 }

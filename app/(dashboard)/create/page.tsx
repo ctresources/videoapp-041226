@@ -23,7 +23,7 @@ import { fetchEmailArticle, type PickedEmailArticle } from "@/components/create/
 import { useForwardedEmails } from "@/components/create/forwarded-emails";
 import { resolveCta } from "@/lib/utils/default-cta";
 import { ScriptLengthPicker } from "@/components/create/script-length-picker";
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
@@ -38,6 +38,7 @@ import {
   substitutePlaceholders,
 } from "@/components/create/content-templates";
 import { VoiceBriefSession, type BriefMake, type BriefSlots } from "@/components/create/voice-brief-session";
+import { TopicChat, type ChatVersion } from "@/components/create/topic-chat";
 // The hero mic listens with the same recogniser as the brief panel and every
 // field mic. A second implementation is how one of them ends up lagging.
 import { usePublishCreateProgress } from "@/components/layout/create-progress";
@@ -370,6 +371,14 @@ function CreatePageInner() {
   const [sparkSeed, setSparkSeed] = useState({ text: "", n: 0 });
   // The Agent Intro panel (2026-10-23).
   const [introOpen, setIntroOpen] = useState(false);
+  // The topic box as a chat (2026-11-18): the first draft is saved, then two
+  // versions to pick from and changes asked for, before the video or blog.
+  const [topicChat, setTopicChat] = useState<{
+    projectId: string; topic: string; first: ChatVersion; asBlog: boolean; hadBlog: boolean;
+  } | null>(null);
+  const [chatReady, setChatReady] = useState<{ ready: boolean; changed: boolean }>({ ready: false, changed: false });
+  const onChatReady = useCallback((ready: boolean, changed: boolean) => setChatReady({ ready, changed }), []);
+  const [chatMaking, setChatMaking] = useState(false);
   // The shorter Create page (2026-10-26, usability sweep #6): the ideas and
   // the extra choices are folded away until wanted.
   const [showIdeas, setShowIdeas] = useState(false);
@@ -1229,9 +1238,19 @@ function CreatePageInner() {
       // to the Share Kit rather than through a setup step for a video nobody
       // asked for. The project is saved either way and shows in My Content
       // under Drafts, so the article is findable again later.
-      const projectId = (data.project as { id: string }).id;
-      toast.success(asBlog ? "Your article is ready." : "Sparked. Your script is ready to review.");
-      router.push(`/create/${projectId}?source=location${asBlog ? "&step=5" : ""}`);
+      const proj = data.project as { id: string; ai_script?: Record<string, unknown> | null };
+      const ai = proj.ai_script ?? {};
+      // Into the chat (2026-11-18, the owner's approved mockup): two versions
+      // to pick from, then changes, then Make my video / Make my blog. The
+      // draft is already saved, so leaving here loses nothing.
+      setTopicChat({
+        projectId: proj.id,
+        topic,
+        first: { title: String(ai.title ?? ""), hook: String(ai.hook ?? ""), script: String(ai.script ?? "") },
+        asBlog,
+        hadBlog: !!String(ai.blog_body ?? "").trim(),
+      });
+      setTimeout(() => document.getElementById("spark-composer")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -1931,6 +1950,8 @@ function CreatePageInner() {
           // 1,100-word pasted script landed on a 400-word format that would
           // trim it — the choice made on this screen reaching nothing.
           length: pasteScriptLength,
+          // Their own finished words (word for word): My voice learns from them.
+          ownWords: pasteSource === "own",
           ...briefFields(),
         }),
       });
@@ -2144,7 +2165,36 @@ function CreatePageInner() {
   }
 
   /** Next, from the button at the bottom or from saying "Spark it". */
+  /**
+   * Make my video / Make my blog, from the topic chat. A version other than
+   * the first means the article written with the first is out of date, so it
+   * is rewritten from the chosen script: waited for when the blog is what
+   * they asked for, in the background when it is the video.
+   */
+  async function makeFromChat(kind: "video" | "blog", changed: boolean) {
+    if (!topicChat || chatMaking) return;
+    const { projectId, hadBlog } = topicChat;
+    const rewrite = () => fetch("/api/ai/blog", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, force: true }), keepalive: true,
+    }).catch(() => null);
+    if (kind === "video") {
+      if (changed && hadBlog) void rewrite();
+      router.push(`/create/${projectId}?source=location`);
+      return;
+    }
+    setChatMaking(true);
+    // Not written yet, or written for a version they passed on. The Share Kit
+    // writes it on arrival when it is missing, so a refusal here is not fatal.
+    if (changed || !hadBlog) await rewrite();
+    router.push(`/create/${projectId}?source=location&step=5`);
+  }
+
   function goNext() {
+    if (topicChat) {
+      if (chatReady.ready) void makeFromChat(topicChat.asBlog ? "blog" : "video", chatReady.changed);
+      return;
+    }
     if (inputMode !== "script" || !canContinue) return;
     if (importingAsIs) { void handleImportArticleAsIs(); return; }
     // Which kind of video, where that is a question.
@@ -2885,6 +2935,18 @@ function CreatePageInner() {
                 The mic belongs to the session now rather than sitting above it
                 and handing a finished sentence down, so what is said shows in
                 the box and can be corrected before it is sent. */}
+            {topicChat ? (
+              <TopicChat
+                key={topicChat.projectId}
+                projectId={topicChat.projectId}
+                topic={topicChat.topic}
+                first={topicChat.first}
+                asBlog={topicChat.asBlog}
+                onReady={onChatReady}
+                onMake={(kind, changed) => void makeFromChat(kind, changed)}
+                onClose={() => { setTopicChat(null); setChatReady({ ready: false, changed: false }); }}
+              />
+            ) : (
             <VoiceBriefSession
               // The Try examples, inside the box now (2026-10-15).
               tryLines={account?.sparkreelsMode ? SPARKREELS_TRY : TRY_LINES}
@@ -3051,10 +3113,12 @@ function CreatePageInner() {
               command={voiceCommand}
               onReply={() => setCommandPending(false)}
             />
+            )}
             {/* The idea chips, straight under the box on one line, with More
                 ideas opening the full list below (2026-10-31, the owner's
-                mockup). They were under the card before. */}
-            {!tabPage && (
+                mockup). They were under the card before. Not while the topic
+                chat is open: it has its own quick changes. */}
+            {!tabPage && !topicChat && (
               <div className={`mt-2.5 flex flex-wrap gap-1.5 ${topicOffClass}`} {...topicOffProps}>
                 {quickIdeas.map((idea) => (
                   <button
@@ -3084,7 +3148,7 @@ function CreatePageInner() {
               </div>
             )}
             {/* Sparklee makes it herself (2026-10-26, usability sweep #11). */}
-            {!blogOnly && inputMode === "script" && (
+            {!blogOnly && inputMode === "script" && !topicChat && (
               <div className="mt-3">
                 <SparkleeAgent words={briefWords || locCustomTopic} userId={userId} disabled={locGenerating} />
               </div>
@@ -4124,7 +4188,9 @@ function CreatePageInner() {
           hint={
             // Nothing to run out of on the blog route, so the out-of-videos
             // warning does not belong on it.
-            outOfVideos && !blogOnly
+            topicChat
+              ? (chatReady.ready ? "" : "Pick a version, or tell Sparklee what to change.")
+              : outOfVideos && !blogOnly
               ? "You have no videos left this month. Filming it yourself is still free."
               : locGenerating
                 ? "Researching the area and writing. This takes about a minute."
@@ -4159,12 +4225,16 @@ function CreatePageInner() {
             // has to do what the panel above says, or the two disagree about
             // what pressing the big button means.
             onClick={goNext}
-            loading={locGenerating || blogImporting}
-            disabled={!canContinue}
+            loading={locGenerating || blogImporting || chatMaking}
+            disabled={topicChat ? !chatReady.ready : !canContinue}
             size="lg"
             className="gap-2"
           >
-            {locGenerating || blogImporting
+            {topicChat && !chatMaking
+              ? (topicChat.asBlog
+                  ? <>Make my blog <ArrowRight size={18} /></>
+                  : <>Next<span className="hidden sm:inline"> · video setup</span> <ArrowRight size={18} /></>)
+              : locGenerating || blogImporting
               ? <>Sparking<span className="hidden sm:inline"> your {blogOnly ? "article" : "script"}</span>…</>
               : importingAsIs
                 ? <>Save<span className="hidden sm:inline"> the article</span> <ArrowRight size={18} /></>

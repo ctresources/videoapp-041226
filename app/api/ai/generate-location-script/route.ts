@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isPlaceholderTitle } from "@/lib/utils/article-headline";
 import { closingLineWords, shortScriptBudget } from "@/lib/utils/script-budget";
 import { scriptWithoutRepeats } from "@/lib/utils/script-assembly";
+import { myVoiceRuleFor } from "@/lib/api/my-voice";
 import { isSparkreelsMode, sparkreelsFacts } from "@/lib/sparkreels-mode";
 import { noteProbe } from "@/lib/security/probe";
 
@@ -235,6 +236,8 @@ export async function POST(req: NextRequest) {
     promo,
     targetWords: words,
     maxWords: cap,
+    // My voice (2026-11-18): the draft is written the way this agent talks.
+    myVoice: await myVoiceRuleFor(createAdminClient(), user.id),
   };
   const agentName = (profile as { full_name?: string | null }).full_name || undefined;
 

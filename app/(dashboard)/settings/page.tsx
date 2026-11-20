@@ -14,6 +14,7 @@ import { SettingsSteps } from "@/components/settings/settings-steps";
 import { StudioChecklist } from "@/components/settings/studio-checklist";
 import { HomeScreenCard } from "@/components/settings/home-screen-card";
 import { AffiliateCard } from "@/components/settings/affiliate-card";
+import { MyVoiceCard } from "@/components/settings/my-voice-card";
 import { useHomeScreen } from "@/lib/hooks/use-home-screen";
 import { DEFAULT_CTA_TEMPLATE, MAX_CTA_WORDS, ctaWords, resolveCta } from "@/lib/utils/default-cta";
 import Link from "next/link";
@@ -513,6 +514,8 @@ export default function SettingsPage() {
             </button>
           </div>
         </form>
+        {/* My voice (2026-11-18): how every script sounds, beside the closing line. */}
+        <MyVoiceCard />
       </Card>
 
       {/* Import by email. (The Google review link moved to Social Accounts, 2026-10-30.) */}
