@@ -61,12 +61,17 @@ export async function learnMyVoice(
   try {
     const text = (sample.text ?? "").trim();
     const instruction = (sample.instruction ?? "").trim();
-    if (source === "edits" ? instruction.length < 8 : text.split(/\s+/).length < 30) return;
+    // An edit is either a change asked for in words, or a script changed by
+    // hand (the new words, with the version before as `rejected`).
+    const handEdit = source === "edits" && !instruction && !!text && !!sample.rejected;
+    if (source === "edits" && !handEdit ? instruction.length < 8 : text.split(/\s+/).length < 30) return;
     const voice = await getMyVoice(admin, userId);
     if (!voice.learning) return;
 
     const what = source === "picks"
       ? `They were shown two versions and PICKED this one:\n"""${text.slice(0, 3000)}"""\nThey passed on this one:\n"""${(sample.rejected ?? "").slice(0, 3000)}"""`
+      : handEdit
+        ? `They edited a script written for them, by hand. What it said before:\n"""${(sample.rejected ?? "").slice(0, 3000)}"""\nWhat they changed it to:\n"""${text.slice(0, 3000)}"""\nLearn from what they changed, not from the parts they left alone.`
       : source === "edits"
         ? `They asked for this change to a script written for them: "${instruction.slice(0, 500)}"`
         : source === "recordings"

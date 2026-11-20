@@ -535,6 +535,9 @@ export default function ProjectEditorPage() {
    */
   const blogOpenedRef = useRef<string | null>(null);
   const [editedScript, setEditedScript] = useState("");
+  // Whether the script was changed by their own hand (typed, or said into the
+  // box), not rewritten by AI: only that teaches My voice (2026-11-18).
+  const [scriptTyped, setScriptTyped] = useState(false);
   /** "Write an 8-minute script from the article" is running. */
   const [articleScriptWriting, setArticleScriptWriting] = useState(false);
   // Shorten to fit: Avatar video's 400 words, closing line included (2026-10-16).
@@ -1385,6 +1388,8 @@ export default function ProjectEditorPage() {
         body: JSON.stringify({
           projectId: project.id,
           script: editedScript,
+          // Changed by their own hand, so My voice may learn from it.
+          scriptTyped,
           cta: editedCta,
           ctaOff,
           ctaEdited,
@@ -1784,6 +1789,7 @@ export default function ProjectEditorPage() {
         throw new Error(data?.error || "Couldn't shorten the script.");
       }
       setEditedScript(data.script as string);
+      setScriptTyped(false);
       toast.success(`Script shortened to ${data.words} words.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't shorten the script.");
@@ -1915,7 +1921,7 @@ export default function ProjectEditorPage() {
       await fetch("/api/project/save-draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: project.id, script: editedScript, cta: editedCta, ctaOff, ctaEdited, hook: selectedHook }),
+        body: JSON.stringify({ projectId: project.id, script: editedScript, cta: editedCta, ctaOff, ctaEdited, hook: selectedHook, scriptTyped }),
       }).catch(() => null);
       // Build the full video script: hook → body → CTA. Contact info is
       // deliberately NOT included — it is display-only (the end-frame contact
@@ -2706,6 +2712,7 @@ export default function ProjectEditorPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't write the script. Try again.");
       setEditedScript(data.script as string);
+      setScriptTyped(false);
       // Long AI videos were retired on 2026-11-13: a long script is for reading
       // on camera, which is horizontal. Never back onto the old Longform.
       if (isLong || selectedVideoType === "youtube_long") setSelectedVideoType("youtube_16x9");
@@ -3644,7 +3651,7 @@ export default function ProjectEditorPage() {
               <>
                 <textarea
                   value={editedScript}
-                  onChange={(e) => setEditedScript(e.target.value)}
+                  onChange={(e) => { setEditedScript(e.target.value); setScriptTyped(true); }}
                   className="min-h-48 w-full resize-y rounded-lg border border-spark-rule bg-white p-4 text-[13px] leading-[1.7] text-spark-ink-soft focus:outline-none focus:ring-2 focus:ring-spark-amber"
                 />
                 <div className="mt-2 flex items-center justify-between gap-3 px-1">
