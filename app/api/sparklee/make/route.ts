@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { haloSession } from "@/lib/halo/session";
-import { sparkleeSetup, startSparkleeDraft } from "@/lib/halo/sparklee";
+import { sparkleeSetup, startSparkleeDraft, type SparkleeAsk } from "@/lib/halo/sparklee";
 import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
 import { hasAdminPerks } from "@/lib/utils/roles";
 import { isSparkreelsMode } from "@/lib/sparkreels-mode";
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     // Free plans: the page is filled in and they press Next, as before.
     return NextResponse.json({ fill: true, reason: "plan" });
   }
-  const body = (await req.json().catch(() => ({}))) as { words?: unknown; slots?: Slots; preview?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { words?: unknown; slots?: Slots; preview?: unknown; chat?: unknown };
   const words = typeof body.words === "string" ? body.words.slice(0, 2000) : "";
   const slots = body.slots ?? {};
   noteProbe({ text: words, source: "sparklee", userId: s.user.id, req });
@@ -96,10 +96,38 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const started = await startSparkleeDraft(s.admin, s.user, s.profile, {
+  const ask: SparkleeAsk = {
     words, topic, city, state, size, look: lookId ? "full" : look, lookId,
     audience: slots.audience ?? null, tone: slots.tone ?? null,
-  });
+  };
+
+  /**
+   * Into the topic chat first (2026-11-18, the owner's ask): the draft is
+   * written now and waited for, with no video yet, so the agent can pick
+   * between two versions and ask for changes. Make my video in the chat then
+   * starts it (/api/halo/approve with make), charged as before.
+   */
+  if (body.chat === true) {
+    const started = await startSparkleeDraft(s.admin, s.user, s.profile, ask, { makeVideo: false });
+    if (!started) return NextResponse.json({ error: "Couldn't start that. Try again." }, { status: 500 });
+    await started.work;
+    const { data: d } = await s.admin.from("autopilot_drafts").select("project_id, status").eq("id", started.draftId).single();
+    const projectId = (d as { project_id: string | null; status: string } | null)?.project_id;
+    if (!projectId) return NextResponse.json({ error: "Couldn't write that one. Try again." }, { status: 500 });
+    const { data: pr } = await s.admin.from("projects").select("ai_script").eq("id", projectId).single();
+    const ai = ((pr as { ai_script: Record<string, unknown> | null } | null)?.ai_script) ?? {};
+    return NextResponse.json({
+      chat: {
+        draftId: started.draftId,
+        projectId,
+        first: { title: String(ai.title ?? ""), hook: String(ai.hook ?? ""), script: String(ai.script ?? "") },
+        hadBlog: !!String(ai.blog_body ?? "").trim(),
+      },
+      slotAt: started.slotAt, platforms: started.platforms, topic,
+    });
+  }
+
+  const started = await startSparkleeDraft(s.admin, s.user, s.profile, ask);
   if (!started) return NextResponse.json({ error: "Couldn't start that. Try again." }, { status: 500 });
 
   waitUntil(started.work);

@@ -375,6 +375,8 @@ function CreatePageInner() {
   // versions to pick from and changes asked for, before the video or blog.
   const [topicChat, setTopicChat] = useState<{
     projectId: string; topic: string; first: ChatVersion; asBlog: boolean; hadBlog: boolean;
+    /** From Sparklee, make it: her draft, whose video Make my video starts. */
+    draftId?: string;
   } | null>(null);
   const [chatReady, setChatReady] = useState<{ ready: boolean; changed: boolean }>({ ready: false, changed: false });
   const onChatReady = useCallback((ready: boolean, changed: boolean) => setChatReady({ ready, changed }), []);
@@ -2178,6 +2180,28 @@ function CreatePageInner() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId, force: true }), keepalive: true,
     }).catch(() => null);
+    if (kind === "video" && topicChat.draftId) {
+      // Sparklee's draft: she makes the video herself, as before, from the
+      // version picked here. It comes back as a card to watch and approve.
+      setChatMaking(true);
+      try {
+        const res = await fetch("/api/halo/approve", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ draftId: topicChat.draftId, make: true }),
+        });
+        const out = await safeJson(res);
+        if (!res.ok) throw new Error((out.error as string) || "Couldn't start the video.");
+        if (changed && hadBlog) void rewrite();
+        toast.success("On it. I'm making the video now. It takes about 10–12 minutes, and I'll let you know. Watch it, then approve it to post.", { duration: 7000 });
+        setTopicChat(null);
+        setChatReady({ ready: false, changed: false });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Couldn't start the video.");
+      } finally {
+        setChatMaking(false);
+      }
+      return;
+    }
     if (kind === "video") {
       if (changed && hadBlog) void rewrite();
       router.push(`/create/${projectId}?source=location`);
@@ -3150,7 +3174,16 @@ function CreatePageInner() {
             {/* Sparklee makes it herself (2026-10-26, usability sweep #11). */}
             {!blogOnly && inputMode === "script" && !topicChat && (
               <div className="mt-3">
-                <SparkleeAgent words={briefWords || locCustomTopic} userId={userId} disabled={locGenerating} />
+                <SparkleeAgent
+                  words={briefWords || locCustomTopic}
+                  userId={userId}
+                  disabled={locGenerating}
+                  // Into the topic chat before she makes it (2026-11-18).
+                  onChat={(c) => {
+                    setTopicChat({ projectId: c.projectId, topic: c.topic, first: c.first, asBlog: false, hadBlog: c.hadBlog, draftId: c.draftId });
+                    setTimeout(() => document.getElementById("spark-composer")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+                  }}
+                />
               </div>
             )}
           </ComposerCard>
@@ -4231,8 +4264,8 @@ function CreatePageInner() {
             className="gap-2"
           >
             {topicChat && !chatMaking
-              ? (topicChat.asBlog
-                  ? <>Make my blog <ArrowRight size={18} /></>
+              ? (topicChat.asBlog || topicChat.draftId
+                  ? <>{topicChat.asBlog ? "Make my blog" : "Make my video"} <ArrowRight size={18} /></>
                   : <>Next<span className="hidden sm:inline"> · video setup</span> <ArrowRight size={18} /></>)
               : locGenerating || blogImporting
               ? <>Sparking<span className="hidden sm:inline"> your {blogOnly ? "article" : "script"}</span>…</>

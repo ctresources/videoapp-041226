@@ -35,9 +35,23 @@ interface Confirm {
  * On a free plan, or for a blog or a camera take, the page below is filled in
  * instead. Same look as Ask Sparklee on Home: "You asked" and a gold card.
  */
-export function SparkleeAgent({ words, userId, disabled = false, preview }: {
+export interface SparkleeChatStart {
+  draftId: string;
+  projectId: string;
+  topic: string;
+  first: { title: string; hook: string; script: string };
+  hadBlog: boolean;
+}
+
+export function SparkleeAgent({ words, userId, disabled = false, preview, onChat }: {
   /** A conversation to show as is (screenshots). */
   preview?: { me: string; her: string };
+  /**
+   * Into the topic chat (2026-11-18, the owner's ask): Create it writes the
+   * draft without the video, and the page opens the chat on it to pick a
+   * version and ask for changes. Make my video there starts it.
+   */
+  onChat?: (c: SparkleeChatStart) => void;
   /** What is in the topic box now. */
   words: string;
   userId: string | null;
@@ -50,15 +64,16 @@ export function SparkleeAgent({ words, userId, disabled = false, preview }: {
   /** Waiting on Create it: the words and what was read from them, sent again as they were. */
   const [confirm, setConfirm] = useState<{ me: string; slots: unknown; c: Confirm } | null>(null);
 
-  async function make(text: string, slots: unknown, previewOnly: boolean) {
+  async function make(text: string, slots: unknown, previewOnly: boolean, chat = false) {
     const r = await fetch("/api/sparklee/make", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ words: text, slots, preview: previewOnly }),
+      body: JSON.stringify({ words: text, slots, preview: previewOnly, ...(chat && { chat: true }) }),
     });
     return (await r.json().catch(() => ({}))) as {
       ask?: string; fill?: boolean; reason?: string; error?: string; confirm?: Confirm;
       draftId?: string; slotAt?: string; platforms?: string[];
+      chat?: Omit<SparkleeChatStart, "topic">;
     };
   }
 
@@ -103,9 +118,12 @@ export function SparkleeAgent({ words, userId, disabled = false, preview }: {
     const { me, slots } = confirm;
     setBusy(true);
     try {
-      const out = await make(me, slots, false);
+      const out = await make(me, slots, false, !!onChat);
       setConfirm(null);
-      if (out.draftId) {
+      if (out.chat && onChat) {
+        setSaid(null);
+        onChat({ ...out.chat, topic: me });
+      } else if (out.draftId) {
         const where = (out.platforms ?? []).map((p) => PLATFORM_NAMES[p] ?? p).join(", ");
         setSaid({
           me,
@@ -180,7 +198,7 @@ export function SparkleeAgent({ words, userId, disabled = false, preview }: {
                   <div className="mt-2.5 flex flex-wrap gap-2">
                     <button type="button" onClick={() => void createIt()} disabled={busy || confirm.c.outOfVideos}
                       className="flex items-center gap-1.5 rounded-xl bg-spark-amber px-4 py-2 text-[14.5px] font-bold text-white disabled:opacity-50">
-                      {busy && <Loader2 size={14} className="animate-spin" />} Create it
+                      {busy && <Loader2 size={14} className="animate-spin" />} {busy && onChat ? "Writing your script…" : "Create it"}
                     </button>
                     <button type="button" onClick={changeDetails} disabled={busy}
                       className="rounded-xl border border-spark-rule bg-white px-4 py-2 text-[14.5px] font-semibold text-spark-ink hover:border-spark-amber">
