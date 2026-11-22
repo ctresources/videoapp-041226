@@ -7,6 +7,7 @@ import { notifyNewUser } from "@/lib/email";
 import { attributeReferral } from "@/lib/affiliate-attribution";
 import { hasCapacityForNewUser, maybeNotifyCapacity } from "@/lib/capacity";
 import { screenSignup, canonicalEmail } from "@/lib/spam-guards";
+import { consentReturnPath } from "@/lib/utils/safe-next";
 
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
@@ -123,6 +124,10 @@ export async function GET(req: NextRequest) {
         .eq("id", user.id);
       await maybeNotifyCapacity(admin);
     }
+
+    // On the way to connect an AI app (2026-11-22): back to the consent page.
+    const consent = consentReturnPath(next);
+    if (consent && !isNew) return redirectTo(consent);
 
     const { data: profile } = await admin
       .from("profiles")

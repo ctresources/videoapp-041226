@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { bearerToken, type AuthProvider } from "@/lib/agent/auth";
 import { KEY_PREFIX } from "@/lib/agent/auth/personal-key";
 import { ALL_SCOPES, type AgentActor, type Scope } from "@/lib/agent/types";
+import { clientLabel } from "@/lib/agent/client-label";
 
 /**
  * Primary sign-in: access tokens issued by Supabase's OAuth 2.1 server
@@ -25,18 +26,8 @@ function claims(token: string): Record<string, unknown> | null {
   }
 }
 
-/** Friendly names for clients we know; anything else shows its registered name or id. */
-export function clientLabel(c: Record<string, unknown>): string {
-  const raw = String(c.client_name ?? c.client_id ?? "AI client");
-  if (/chatgpt|openai/i.test(raw)) return "ChatGPT";
-  if (/claude|anthropic/i.test(raw)) return "Claude";
-  // Both connect remote MCP servers over Streamable HTTP (2026-11-22, the owner's ask).
-  if (/gemini|google/i.test(raw)) return "Gemini";
-  if (/grok|xai|x\.ai/i.test(raw)) return "Grok";
-  // Muse (platform.muse.ai) lists approved connectors in its Settings > Connectors.
-  if (/\bmuse\b/i.test(raw)) return "Muse";
-  return raw.slice(0, 60);
-}
+/** Friendly client names live in one pure module, shared with the consent page. */
+export { clientLabel };
 
 export const supabaseOAuthProvider: AuthProvider = {
   async resolve(req: Request): Promise<AgentActor | null> {

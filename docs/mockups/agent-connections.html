@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Connections Mockup</title>
+<style>
+  :root { --ink:#1F1B16; --muted:#6B635A; --faint:#9A9188; --rule:#E7DFD4; --paper:#FBF8F3; --amber:#E39B2D; --amber-tint:#FBF0DD; --red:#B42318; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: Inter, system-ui, sans-serif; background: var(--paper); color: var(--ink); padding: 24px 16px 60px; }
+  h1.mk { font-size: 15px; color: var(--muted); font-weight: 600; margin: 32px auto 12px; max-width: 760px; text-transform: uppercase; letter-spacing: .06em; }
+  .card { max-width: 760px; margin: 0 auto; background: #fff; border: 1px solid var(--rule); border-radius: 18px; padding: 24px; }
+  .consent { max-width: 440px; text-align: left; }
+  .logo { display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; }
+  .spark { width:34px; height:34px; border-radius:10px; background: var(--amber); display:grid; place-items:center; color:#fff; font-size:18px; }
+  h2 { font-size: 22px; margin: 18px 0 4px; }
+  .sub { color: var(--muted); font-size: 15px; margin: 0 0 16px; }
+  ul.scopes { list-style: none; padding: 0; margin: 0 0 20px; border: 1px solid var(--rule); border-radius: 12px; }
+  ul.scopes li { padding: 12px 14px; border-top: 1px solid var(--rule); font-size: 15px; display:flex; gap:10px; }
+  ul.scopes li:first-child { border-top: 0; }
+  .ok { color: #2F7A4A; font-weight: 700; }
+  .btns { display:flex; gap:10px; }
+  .btn { padding: 13px 18px; border-radius: 12px; font-size: 16px; font-weight: 600; border: 1px solid var(--rule); background:#fff; color: var(--muted); cursor:pointer; }
+  .btn.primary { background: var(--amber); border-color: var(--amber); color:#fff; flex:1; }
+  .note { font-size: 13px; color: var(--faint); margin-top: 12px; }
+  .warn { background: var(--amber-tint); border-radius: 12px; padding: 14px; font-size: 15px; margin-bottom: 16px; }
+  .section-title { display:flex; justify-content:space-between; align-items:baseline; }
+  .section-title h3 { font-size: 19px; margin: 0; }
+  .row { display:grid; grid-template-columns: 1fr auto; gap: 12px; align-items:center; padding: 14px 0; border-top: 1px solid var(--rule); }
+  .row:first-of-type { border-top: 0; }
+  .name { font-weight: 700; font-size: 16px; }
+  .meta { color: var(--faint); font-size: 13px; margin-top: 3px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top: 8px; }
+  .chip { font-size: 12px; background: var(--paper); border: 1px solid var(--rule); border-radius: 999px; padding: 3px 9px; color: var(--muted); }
+  .danger { color: var(--red); border-color: #F1C8C3; background:#fff; padding: 9px 14px; font-size: 14px; }
+  details { margin-top: 20px; border-top: 1px solid var(--rule); padding-top: 14px; }
+  summary { cursor:pointer; font-weight: 600; color: var(--muted); }
+  .form { display:grid; gap: 12px; margin-top: 14px; padding: 16px; border: 1px solid var(--rule); border-radius: 12px; }
+  label.f { font-size: 13px; font-weight: 600; color: var(--muted); display:block; }
+  input[type=text], select { width:100%; margin-top:6px; padding: 11px 12px; font-size: 15px; border:1px solid var(--rule); border-radius:10px; }
+  .checks { display:grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; font-size: 14px; margin-top: 6px; }
+  .reveal { background: #1F1B16; color: #fff; border-radius: 12px; padding: 14px; font-family: ui-monospace, monospace; font-size: 14px; word-break: break-all; }
+  .reveal small { display:block; font-family: Inter, system-ui, sans-serif; color: #E7DFD4; margin-top: 8px; }
+  @media (max-width: 560px) { .checks { grid-template-columns: 1fr; } .row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1 class="mk">1 · Consent page (opens when you connect ChatGPT or Claude)</h1>
+<div class="card consent">
+  <div class="logo"><span class="spark">✦</span> SparkReels</div>
+  <h2>Connect Claude to SparkReels?</h2>
+  <p class="sub">Signed in as Carmella Thompson</p>
+  <ul class="scopes">
+    <li><span class="ok">✓</span> See your plan, videos left and connected accounts</li>
+    <li><span class="ok">✓</span> Plan Sparks (creates nothing)</li>
+    <li><span class="ok">✓</span> Write scripts, blogs and social copy</li>
+    <li><span class="ok">✓</span> Make videos (uses your plan's videos)</li>
+    <li><span class="ok">✓</span> Check videos and drafts</li>
+    <li><span class="ok">✓</span> Ask to publish or schedule (you confirm each one)</li>
+  </ul>
+  <div class="btns">
+    <button class="btn">Cancel</button>
+    <button class="btn primary">Allow</button>
+  </div>
+  <p class="note">Nothing is made until you approve a plan. Nothing posts until you confirm it. Disconnect any time in Settings.</p>
+</div>
+
+<h1 class="mk">1b · Same page, free account</h1>
+<div class="card consent">
+  <div class="logo"><span class="spark">✦</span> SparkReels</div>
+  <h2>Connect Claude to SparkReels?</h2>
+  <div class="warn">AI connections come with a SparkReels plan.</div>
+  <div class="btns">
+    <button class="btn">Cancel</button>
+    <button class="btn primary">See plans</button>
+  </div>
+</div>
+
+<h1 class="mk">2 · Settings → Connections (new section)</h1>
+<div class="card">
+  <div class="section-title"><h3>AI connections</h3></div>
+
+  <div class="row">
+    <div>
+      <div class="name">Claude</div>
+      <div class="meta">Connected Nov 22 · Last used 5 min ago</div>
+      <div class="chips"><span class="chip">Plan</span><span class="chip">Write</span><span class="chip">Make videos</span><span class="chip">Check videos</span><span class="chip">Publish (you confirm)</span></div>
+    </div>
+    <button class="btn danger">Disconnect</button>
+  </div>
+  <div class="row">
+    <div>
+      <div class="name">ChatGPT</div>
+      <div class="meta">Connected Nov 20 · Last used yesterday</div>
+      <div class="chips"><span class="chip">Plan</span><span class="chip">Write</span><span class="chip">Check videos</span></div>
+    </div>
+    <button class="btn danger">Disconnect</button>
+  </div>
+
+  <details open>
+    <summary>Advanced · Personal access keys</summary>
+    <div class="row">
+      <div>
+        <div class="name">Zapier</div>
+        <div class="meta">sr_pat_ab12… · Created Nov 21 · Last used never · Expires Feb 19</div>
+        <div class="chips"><span class="chip">Plan</span><span class="chip">Check videos</span></div>
+      </div>
+      <button class="btn danger">Revoke</button>
+    </div>
+
+    <div class="form">
+      <label class="f">Name<input type="text" placeholder="e.g. Zapier"></label>
+      <div>
+        <label class="f">Can</label>
+        <div class="checks">
+          <label><input type="checkbox" checked> See plan and accounts</label>
+          <label><input type="checkbox" checked> Plan Sparks</label>
+          <label><input type="checkbox"> Write scripts and copy</label>
+          <label><input type="checkbox"> Make videos</label>
+          <label><input type="checkbox" checked> Check videos</label>
+          <label><input type="checkbox"> Ask to publish</label>
+        </div>
+      </div>
+      <label class="f">Expires
+        <select><option>In 90 days</option><option>In 30 days</option><option>In 1 year</option><option>Never</option></select>
+      </label>
+      <button class="btn primary" style="flex:none">Create key</button>
+    </div>
+
+    <p class="note" style="margin-top:16px">After Create key (shown once):</p>
+    <div class="reveal">sr_pat_Xk2pQ9…full key…7Lm<small>Copy it now. You won't see it again.</small></div>
+  </details>
+</div>
+
+</body>
+</html>

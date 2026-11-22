@@ -15,6 +15,7 @@ import { StudioChecklist } from "@/components/settings/studio-checklist";
 import { HomeScreenCard } from "@/components/settings/home-screen-card";
 import { AffiliateCard } from "@/components/settings/affiliate-card";
 import { MyVoiceCard } from "@/components/settings/my-voice-card";
+import { AiConnectionsCard } from "@/components/settings/ai-connections-card";
 import { useHomeScreen } from "@/lib/hooks/use-home-screen";
 import { DEFAULT_CTA_TEMPLATE, MAX_CTA_WORDS, ctaWords, resolveCta } from "@/lib/utils/default-cta";
 import Link from "next/link";
@@ -543,6 +544,10 @@ export default function SettingsPage() {
 
       {/* Share and earn (2026-10-17): optional, so not a numbered step. */}
       <AffiliateCard />
+
+      {/* AI connections (2026-11-22): ChatGPT, Claude, Gemini, Grok, Muse and keys.
+          Optional, so not a numbered step. */}
+      <AiConnectionsCard />
 
       {/* Change Password */}
       <Card id="account" className="scroll-mt-28">

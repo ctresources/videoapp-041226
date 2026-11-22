@@ -5,6 +5,7 @@ import { aiCrawlerName } from "@/lib/security/ai-crawlers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPublicMarketingPath } from "@/lib/seo/public-pages";
 import { getAccessLevel, isPaidLevel } from "@/lib/access";
+import { consentReturnPath } from "@/lib/utils/safe-next";
 
 // "/auth/reset-password" is the route handler the reset EMAIL links to, and it
 // is not the same path as "/reset-password", the page. Only the page was
@@ -254,7 +255,10 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
 
   // Unauthenticated users on protected routes → login
   if (!user && !isPublic(pathname)) {
-    return applyRef(NextResponse.redirect(new URL("/login", request.url)));
+    // Connecting an AI app (2026-11-22): come back to the consent page after signing in.
+    const back = consentReturnPath(`${pathname}${request.nextUrl.search}`);
+    const login = back ? `/login?next=${encodeURIComponent(back)}` : "/login";
+    return applyRef(NextResponse.redirect(new URL(login, request.url)));
   }
 
   return applyRef(supabaseResponse);

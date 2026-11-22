@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { consentReturnPath } from "@/lib/utils/safe-next";
 
 /**
  * Messages for the `?error=` codes /auth/callback redirects here with.
@@ -92,6 +93,14 @@ export default function LoginPage() {
 
     toast.success("Welcome back!");
 
+    // On the way to connect an AI app (2026-11-22): back to the consent page.
+    const back = consentReturnPath(new URLSearchParams(window.location.search).get("next"));
+    if (back) {
+      router.push(back);
+      router.refresh();
+      return;
+    }
+
     // Route based on subscription and credits — same logic as auth callback
     const { data: { user } } = await supabase.auth.getUser();
     let destination = "/home";
@@ -138,7 +147,12 @@ export default function LoginPage() {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: (() => {
+          const back = consentReturnPath(new URLSearchParams(window.location.search).get("next"));
+          return `${window.location.origin}/auth/callback${back ? `?next=${encodeURIComponent(back)}` : ""}`;
+        })(),
+      },
     });
   }
 
