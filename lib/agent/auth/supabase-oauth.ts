@@ -26,10 +26,13 @@ function claims(token: string): Record<string, unknown> | null {
 }
 
 /** Friendly names for clients we know; anything else shows its registered name or id. */
-function clientLabel(c: Record<string, unknown>): string {
+export function clientLabel(c: Record<string, unknown>): string {
   const raw = String(c.client_name ?? c.client_id ?? "AI client");
   if (/chatgpt|openai/i.test(raw)) return "ChatGPT";
   if (/claude|anthropic/i.test(raw)) return "Claude";
+  // Both connect remote MCP servers over Streamable HTTP (2026-11-22, the owner's ask).
+  if (/gemini|google/i.test(raw)) return "Gemini";
+  if (/grok|xai|x\.ai/i.test(raw)) return "Grok";
   return raw.slice(0, 60);
 }
 
