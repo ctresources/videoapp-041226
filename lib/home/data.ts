@@ -6,6 +6,7 @@ import { getProfile, profileUsername, uploadPostConfigured } from "@/lib/api/upl
 import { partnerPlatform } from "@/lib/utils/social-platforms";
 import { DEFAULT_TIME_ZONE, addDays, dayKey, isValidTimeZone, weekdayOf } from "@/lib/utils/time-zone";
 import { whatsNewItems } from "@/lib/data/whats-new";
+import { videosPerMonth } from "@/lib/plan-limits";
 
 /**
  * Everything the Home dashboard shows (2026-10-29, the owner's agentic
@@ -22,7 +23,6 @@ type Admin = ReturnType<typeof createAdminClient>;
 const DAY = 86_400_000;
 /** The draft sources Approve on Home can act on (as /api/halo/approve). */
 const APPROVABLE = ["halo", "halo_promo", "email", "sparklee"];
-const SHORT_PER_MONTH: Record<string, number> = { starter: 4, agent: 4, pro: 4 };
 
 export const platformLabel = (p: string) => (p === "youtube" ? "YouTube" : partnerPlatform(p)?.label ?? p);
 
@@ -263,7 +263,7 @@ export async function loadHome(admin: Admin, userId: string): Promise<HomeData> 
 
   const usage = {
     shortLeft: availableFor(p as never, "short"),
-    perMonth: SHORT_PER_MONTH[p.subscription_tier ?? ""] ?? 0,
+    perMonth: videosPerMonth(p.subscription_tier),
     bought: Number(p.purchased_short_videos ?? 0),
     unlimited: isAdmin,
     renewsAt: p.current_period_end,

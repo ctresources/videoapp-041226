@@ -1,158 +1,21 @@
-import { hasAdminPerks } from "@/lib/utils/roles";
-import { getAccessLevel, isAffiliateEligible } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
-import { ALLOWANCE_SELECT, availableFor } from "@/lib/utils/video-allowance";
-import {
-  FREE_BLOGS_BEFORE_VIDEO, FREE_IMAGES_BEFORE_VIDEO, FREE_RECORDINGS_BEFORE_VIDEO, FREE_RUNS_BEFORE_VIDEO,
-  freeBlogsUsed, freeRecordingsUsed, freeRunsUsed, freeTrialLocked, isPreVideoAccount,
-} from "@/lib/utils/free-trial";
-import { CAMPAIGN_CALENDAR, hasFeature } from "@/lib/utils/feature-access";
-import { IMAGE_MONTHLY_LIMIT, aiImagesUsedThisMonth } from "@/lib/utils/image-allowance";
+import { getAllowance } from "@/lib/usage/allowance";
 
 /**
- * Short videos each plan gets a month, as in PLANS (lib/stripe.ts). Copied
- * rather than imported: that module starts the payment client on load.
- */
-const SHORT_PER_MONTH: Record<string, number> = { starter: 4, agent: 4, pro: 4 };
-
-/**
- * The caller's remaining short/long videos.
+ * The caller's remaining videos, plan and access.
  *
  * Lets the create screen say "you're out" BEFORE someone fills in a topic,
  * records audio and picks a style — rather than only after they press
  * Generate and get a 402 back.
+ *
+ * The logic lives in lib/usage/allowance.ts (2026-11-22), shared with the
+ * agent layer's get_account, so both always read the same numbers. Same
+ * response as before; read through the caller's session as before.
  */
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { data } = await supabase
-    .from("profiles")
-    .select(`${ALLOWANCE_SELECT}, subscription_tier, role, first_video_generated_at, last_seen_whats_new, current_period_end, last_active_at`)
-    .eq("id", user.id)
-    .single();
-
-  const profile = (data ?? {}) as Record<string, number | string | null>;
-
-  // Opening the app counts as being back (2026-10-29): read by the account
-  // cleanup job. Written at most once a day.
-  const seen = Date.parse(String(profile.last_active_at ?? "")) || 0;
-  if (Date.now() - seen > 86_400_000) {
-    await createAdminClient().from("profiles").update({ last_active_at: new Date().toISOString() }).eq("id", user.id).then(() => {}, () => {});
-  }
-  const isAdmin = hasAdminPerks(profile.role as string | null);
-  /** The owner: Admin panel and owner-only tools. Staff get perks, not this. */
-  const isRealAdmin = profile.role === "admin";
-  const preVideo = isPreVideoAccount(profile as never);
-
-  /**
-   * Whether this account can open the Spark Calendar yet.
-   *
-   * Reported here so the sidebar can point its Spark Calendar entry at the new
-   * page for the people who have it and leave everyone else on the old one.
-   * Without it the nav would have to guess, and guessing wrong means a working
-   * menu item that returns 404 — which is what pointing it unconditionally
-   * would have done to every account except the two holding the grant.
-   *
-   * Its own lookup rather than part of the profiles select above: grants live
-   * in feature_access and are readable only by the service role, so hasFeature
-   * uses the admin client while this route uses the caller's session.
-   */
-  const [campaignCalendar, sparkPodcast, sparkreelsMode] = await Promise.all([
-    hasFeature(user.id, CAMPAIGN_CALENDAR),
-    // Spark Podcast's switch (2026-10-30).
-    hasFeature(user.id, "spark_podcast"),
-    // SparkReels mode (2026-11-01, lib/sparkreels-mode.ts).
-    hasFeature(user.id, "sparkreels_mode"),
-  ]);
-  // Quick Reels Templates: open to everyone since 2026-11-03.
-  const videoTemplates = true;
-
-  // Read through the caller's session: generated_images lets a user read their
-  // own rows, which is all a count needs.
-  const imagesUsed = await aiImagesUsedThisMonth(supabase, user.id);
-
-  // Admins are genuinely uncapped (create-blog neither refuses nor charges
-  // them), so report that as a flag rather than inventing a big number — a
-  // fake 999 is just a different way of showing something untrue.
-  return NextResponse.json({
-    unlimited: isAdmin,
-    short: availableFor(profile as never, "short"),
-    long: availableFor(profile as never, "long"),
-    // For "Videos left this month: 2 of 4 · 1 bought" on AutoSparks (2026-10-24).
-    shortPlanLeft: Number(profile.credits_remaining ?? 0),
-    shortBought: Number(profile.purchased_short_videos ?? 0),
-    shortPerMonth: SHORT_PER_MONTH[(profile.subscription_tier as string) ?? ""] ?? 0,
-    tier: (profile.subscription_tier as string) ?? "free",
-    isAdmin,
-    isRealAdmin,
-    isStaff: profile.role === "staff",
-    // Free vs paid for the menu (lib/access.ts); the pages check again on the server.
-    level: getAccessLevel({ subscription_tier: profile.subscription_tier as string | null, role: profile.role as string | null }),
-    // May use the Affiliate Program (paid, or canceled but paid through the period).
-    affiliateEligible: isAffiliateEligible({
-      subscription_tier: profile.subscription_tier as string | null,
-      role: profile.role as string | null,
-      current_period_end: profile.current_period_end as string | null,
-    }),
-    // The newest What's New item this account has seen, for the menu's NEW dot.
-    whatsNewSeen: (profile.last_seen_whats_new as string | null) ?? null,
-    campaignCalendar,
-    // Producer and up only (2026-10-30, the owner's call).
-    sparkreelsMode,
-    videoTemplates,
-    sparkPodcast: sparkPodcast && ["producer", "influencer", "admin"].includes(getAccessLevel({ subscription_tier: profile.subscription_tier as string | null, role: profile.role as string | null })),
-    // AI images made this calendar month, for the image generator's counter.
-    // Two before the free video, a hundred after it — the same ceiling the
-    // image route enforces, so the counter on the page and the refusal from
-    // the server can never disagree.
-    images: {
-      used: imagesUsed,
-      // Any paid plan has the hundred too (2026-11-06), as the image route does.
-      limit: profile.first_video_generated_at || isAdmin || (!!profile.subscription_tier && profile.subscription_tier !== "free")
-        ? IMAGE_MONTHLY_LIMIT
-        : FREE_IMAGES_BEFORE_VIDEO,
-    },
-    // So the Create screen can mark the Blog post tile locked BEFORE someone
-    // picks it, waits a minute for a script, and lands on a Share Kit with no
-    // article in it and nothing saying why.
-    trialLocked: !isAdmin && freeTrialLocked(
-      profile.first_video_generated_at as string | null,
-      profile.subscription_tier as string | null,
-    ),
-    /**
-     * WHICH lock it is, which `trialLocked` alone could never say.
-     *
-     * One boolean covered two opposite situations: an account whose 30 days
-     * have run out, and one that has not started them yet. Every screen read
-     * it as the first, so somebody who signed up ten minutes ago was told
-     * their free trial had ended and sent to billing — while the thing that
-     * unlocks it, the free video, sat one click away and cost nothing.
-     *
-     * false when it has not begun, true when it has and has run out.
-     */
-    trialStarted: !!profile.first_video_generated_at,
-    /**
-     * Free tries left before the video. Null once the video exists, or for an
-     * admin — there is nothing to count down to.
-     */
-    freeRunsLeft: isAdmin || profile.first_video_generated_at
-      ? null
-      : Math.max(0, FREE_RUNS_BEFORE_VIDEO - (await freeRunsUsed(user.id))),
-    /**
-     * The one free blog and the one free camera recording an account has
-     * before its free video. Null where they do not apply (a paid plan, an
-     * admin, or once the video exists), so the Create page can tell "none
-     * left" from "not counted".
-     */
-    freeBlogLeft: preVideo
-      ? Math.max(0, FREE_BLOGS_BEFORE_VIDEO - (await freeBlogsUsed(user.id)))
-      : null,
-    freeRecordingLeft: preVideo
-      ? Math.max(0, FREE_RECORDINGS_BEFORE_VIDEO - (await freeRecordingsUsed(user.id)))
-      : null,
-  });
+  return NextResponse.json(await getAllowance(supabase, user.id, { touchLastActive: true }));
 }

@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { VIDEOS_PER_MONTH } from "@/lib/plan-limits";
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-03-25.dahlia",
@@ -34,8 +35,8 @@ export const PLANS = {
     // 500-word cap that was $80.28 of HeyGen against $79 of revenue — before
     // Stripe. $99 against a 400-word cap leaves ~30%. See standardMaxWords.
     price: 99,
-    videos: 4,
-    shortVideos: 4,
+    videos: VIDEOS_PER_MONTH.starter,
+    shortVideos: VIDEOS_PER_MONTH.starter,
     longVideos: 0,
     blurb: "4 videos",
     tier: "starter" as const,
@@ -46,8 +47,8 @@ export const PLANS = {
     priceId: (process.env.STRIPE_PRICE_PRODUCER || process.env.STRIPE_PRICE_AGENT)!,
     price: 149,
     // 4 short + 2 long until 2026-11-13; 7 videos now (worst case ~41% before bills).
-    videos: 7,
-    shortVideos: 7,
+    videos: VIDEOS_PER_MONTH.agent,
+    shortVideos: VIDEOS_PER_MONTH.agent,
     longVideos: 0,
     blurb: "7 videos",
     tier: "agent" as const,
@@ -58,8 +59,8 @@ export const PLANS = {
     priceId: (process.env.STRIPE_PRICE_INFLUENCER || process.env.STRIPE_PRICE_PRO)!,
     price: 199,
     // 4 short + 4 long until 2026-11-13; 10 videos now (worst case ~37% before bills).
-    videos: 10,
-    shortVideos: 10,
+    videos: VIDEOS_PER_MONTH.pro,
+    shortVideos: VIDEOS_PER_MONTH.pro,
     longVideos: 0,
     blurb: "10 videos",
     tier: "pro" as const,
