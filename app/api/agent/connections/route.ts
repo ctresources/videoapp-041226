@@ -4,14 +4,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccessLevel, isPaidLevel } from "@/lib/access";
 import { createPersonalKey } from "@/lib/agent/auth/personal-key";
 import { ALL_SCOPES, type Scope } from "@/lib/agent/types";
+import { clientLabel } from "@/lib/agent/client-label";
 
 /**
  * Settings → Connections (2026-11-22, the owner's approved mockup).
  *
  * GET     the AI apps connected and the personal access keys, active only.
  * POST    { action: "create_key", name, scopes, expiresInDays } → the key, shown once.
- *         { action: "reconnect", clientId } → clears a Disconnect when the
- *         person approves that app again on the consent page.
+ *         { action: "grant", clientId, clientName, scopes } → Allow on the
+ *         consent page: what the app may do (clears an earlier Disconnect).
  * DELETE  { id } → Disconnect an AI app (also revokes its OAuth grant) or revoke a key.
  *
  * Connecting is for paid plans; disconnecting and revoking always work.
@@ -44,16 +45,23 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const { supabase, user } = await signedIn();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const b = (await req.json().catch(() => ({}))) as { action?: string; name?: string; scopes?: string[]; expiresInDays?: number | null; clientId?: string };
+  const b = (await req.json().catch(() => ({}))) as { action?: string; name?: string; scopes?: string[]; expiresInDays?: number | null; clientId?: string; clientName?: string };
   const admin = createAdminClient();
 
   const { data: prof } = await supabase.from("profiles").select("subscription_tier, role").eq("id", user.id).single();
   const paid = isPaidLevel(getAccessLevel((prof as { subscription_tier: string | null; role: string | null } | null) ?? {}));
 
-  if (b.action === "reconnect") {
-    if (!paid || !b.clientId) return NextResponse.json({ ok: false });
-    await admin.from("agent_connections").update({ revoked_at: null }).eq("user_id", user.id).eq("client_id", b.clientId).eq("kind", "oauth");
-    return NextResponse.json({ ok: true });
+  // Allow on the consent page: records what this AI app may do. Supabase's
+  // OAuth tokens carry only its standard scopes, so SparkReels' permissions
+  // live here. Clears an earlier Disconnect.
+  if (b.action === "grant") {
+    if (!paid || !b.clientId) return NextResponse.json({ ok: false, code: "paid_plan_required" }, { status: 403 });
+    const scopes = (b.scopes ?? ALL_SCOPES).filter((s): s is Scope => ALL_SCOPES.includes(s as Scope));
+    const { error } = await admin.from("agent_connections").upsert(
+      { user_id: user.id, kind: "oauth", client_id: b.clientId, client_name: clientLabel({ name: b.clientName ?? "", client_id: b.clientId }), scopes, revoked_at: null },
+      { onConflict: "user_id,client_id" },
+    );
+    return NextResponse.json({ ok: !error });
   }
 
   if (b.action === "create_key") {

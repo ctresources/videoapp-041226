@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { ALL_SCOPES } from "@/lib/agent/types";
 
 /**
  * OAuth protected-resource metadata for the MCP server (RFC 9728). AI
@@ -15,7 +14,10 @@ export function GET() {
   return NextResponse.json({
     resource: `${SITE}/api/mcp`,
     authorization_servers: [`${supabase}/auth/v1`],
-    scopes_supported: ALL_SCOPES,
+    // Only the scopes Supabase's OAuth server issues (tested 2026-11-22: it
+    // refuses others). SparkReels' own permissions are chosen on the consent
+    // page and kept on agent_connections, not carried in the token.
+    scopes_supported: ["openid", "email", "profile", "offline_access"],
     bearer_methods_supported: ["header"],
     resource_name: "SparkReels",
     resource_documentation: `${SITE}/how-it-works`,

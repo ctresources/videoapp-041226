@@ -42,6 +42,24 @@ describe("personal access keys", () => {
   });
 });
 
+describe("Allow on the consent page", () => {
+  it("records the app's SparkReels permissions for paid accounts", async () => {
+    profile = { subscription_tier: "agent", role: null };
+    db = fakeDb();
+    const { POST } = await import("@/app/api/agent/connections/route");
+    const r = await POST(req("POST", { action: "grant", clientId: "client-1", clientName: "Claude", scopes: ["account:read", "make:money"] }));
+    expect(r.status).toBe(200);
+    const up = db.calls.find((c) => c.op === "upsert");
+    expect(up?.payload).toMatchObject({ user_id: "u1", client_id: "client-1", client_name: "Claude", scopes: ["account:read"], revoked_at: null });
+  });
+
+  it("free accounts can't grant", async () => {
+    profile = { subscription_tier: "free", role: null };
+    const { POST } = await import("@/app/api/agent/connections/route");
+    expect((await POST(req("POST", { action: "grant", clientId: "client-1" }))).status).toBe(403);
+  });
+});
+
 describe("disconnect / revoke", () => {
   it("only touches the caller's own connection, and ends an app's OAuth grant", async () => {
     db = fakeDb({ agent_connections: { kind: "oauth", client_id: "client-9" } });

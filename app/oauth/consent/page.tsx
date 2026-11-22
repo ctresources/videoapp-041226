@@ -18,8 +18,6 @@ import { ALL_SCOPES, SCOPE_LABELS, type Scope } from "@/lib/agent/types";
 
 type Details = { authorization_id: string; client: { id: string; name: string }; scope: string; user: { email: string } };
 
-const DEFAULT_SCOPES: Scope[] = ["account:read", "sparks:plan", "videos:read"];
-
 export default function ConsentPage() {
   const [details, setDetails] = useState<Details | null>(null);
   const [paid, setPaid] = useState<boolean | null>(null);
@@ -49,19 +47,21 @@ export default function ConsentPage() {
   }, []);
 
   const label = details ? clientLabel({ name: details.client.name, client_id: details.client.id }) : "";
-  const asked = (details?.scope ?? "").split(/\s+/).filter((s): s is Scope => ALL_SCOPES.includes(s as Scope));
-  const scopes = asked.length ? asked : DEFAULT_SCOPES;
+  // SparkReels' own permissions. The token carries only Supabase's standard
+  // scopes; what the app may do here is recorded on Allow (agent_connections).
+  const scopes: Scope[] = ALL_SCOPES;
 
   async function decide(approve: boolean) {
     if (!details) return;
     setBusy(true);
     const supabase = createClient();
     if (approve) {
-      // Connecting again after a Disconnect in Settings clears the old block.
-      await fetch("/api/agent/connections", {
+      // Record what this app may do (and clear any earlier Disconnect) first.
+      const g = await fetch("/api/agent/connections", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reconnect", clientId: details.client.id }),
-      }).catch(() => {});
+        body: JSON.stringify({ action: "grant", clientId: details.client.id, clientName: details.client.name, scopes }),
+      }).catch(() => null);
+      if (!g?.ok) { setError("Couldn't connect. Try again from your AI app."); setBusy(false); return; }
       const { error: err } = await supabase.auth.oauth.approveAuthorization(details.authorization_id);
       if (err) { setError("Couldn't connect. Try again from your AI app."); setBusy(false); }
     } else {

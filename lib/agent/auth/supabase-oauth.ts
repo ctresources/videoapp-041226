@@ -44,24 +44,31 @@ export const supabaseOAuthProvider: AuthProvider = {
     if (error || !data.user) return null;
     const userId = data.user.id;
 
-    const granted = String(c?.scope ?? "")
-      .split(/\s+/)
-      .filter((s): s is Scope => ALL_SCOPES.includes(s as Scope));
-    // A client that asked for no SparkReels scopes gets read-only access.
-    const scopes: Scope[] = granted.length ? granted : ["account:read", "videos:read", "sparks:plan"];
-
-    const { data: conn } = await admin
+    // SparkReels' permissions come from the connection the person approved on
+    // the consent page (agent_connections), not from the token: Supabase's
+    // OAuth server only issues its own standard scopes (tested 2026-11-22).
+    const { data: existing } = await admin
       .from("agent_connections")
-      .upsert(
-        { user_id: userId, kind: "oauth", client_id: clientId, client_name: clientLabel(c ?? {}), scopes, last_used_at: new Date().toISOString() },
-        { onConflict: "user_id,client_id" },
-      )
-      .select("id, revoked_at, client_name")
-      .single();
-    const row = conn as { id: string; revoked_at: string | null; client_name: string } | null;
+      .select("id, revoked_at, client_name, scopes")
+      .eq("user_id", userId)
+      .eq("client_id", clientId)
+      .eq("kind", "oauth")
+      .maybeSingle();
+    let row = existing as { id: string; revoked_at: string | null; client_name: string; scopes: string[] } | null;
+    if (!row) {
+      // Approved somewhere the consent page didn't record: read-only until reconnected.
+      const { data: made } = await admin
+        .from("agent_connections")
+        .insert({ user_id: userId, kind: "oauth", client_id: clientId, client_name: clientLabel(c ?? {}), scopes: ["account:read", "videos:read", "sparks:plan"] })
+        .select("id, revoked_at, client_name, scopes")
+        .single();
+      row = made as typeof row;
+    }
     // Disconnected in Settings: refused until they connect again.
     if (!row || row.revoked_at) return null;
+    await admin.from("agent_connections").update({ last_used_at: new Date().toISOString() }).eq("id", row.id);
 
+    const scopes = row.scopes.filter((s): s is Scope => ALL_SCOPES.includes(s as Scope));
     return { userId, connectionId: row.id, source: row.client_name, adapter: "mcp", scopes };
   },
 };
