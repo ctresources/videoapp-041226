@@ -69,6 +69,8 @@ export async function POST(req: NextRequest) {
       email_canonical: canonicalEmail(email),
       ...(paidOnly && { credits_remaining: 0 }),
       mobile_phone: mobile,
+      // They just saw the consent box, so the one-time prompt isn't for them.
+      sms_prompted_at: new Date().toISOString(),
       ...(consented && {
         sms_consent_at: new Date().toISOString(),
         sms_consent_source: "register",

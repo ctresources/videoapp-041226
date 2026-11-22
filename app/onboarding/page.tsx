@@ -121,6 +121,8 @@ export default function OnboardingPage() {
         // number to text. Withdrawing consent has to be as easy as giving it.
         sms_consent_at: smsConsent && mobilePhone.trim() ? new Date().toISOString() : null,
         sms_consent_source: smsConsent && mobilePhone.trim() ? "onboarding" : null,
+        // The consent box was right here, so the one-time prompt isn't for them.
+        sms_prompted_at: new Date().toISOString(),
         // The flag this whole page exists to set honestly.
         ...(opts?.later ? { onboarding_skipped_at: new Date().toISOString() } : { onboarding_done: true }),
       })

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Text Consent Prompt</title>
+<style>
+  :root { --ink:#1F1B16; --muted:#6B635A; --faint:#9A9188; --rule:#E7DFD4; --paper:#FBF8F3; --amber:#E39B2D; --amber-dark:#A3660F; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: Inter, system-ui, sans-serif; background: var(--paper); color: var(--ink); }
+  .app { min-height: 100vh; padding: 24px; filter: blur(2px); opacity: .55; }
+  .app h1 { font-size: 28px; margin: 0 0 16px; }
+  .app .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .app .box { height: 180px; border-radius: 16px; background: #fff; border: 1px solid var(--rule); }
+  .scrim { position: fixed; inset: 0; background: rgba(31,27,22,.45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .card { width: 100%; max-width: 420px; background: #fff; border-radius: 18px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  .card h2 { margin: 0; font-size: 21px; }
+  label.f { display: block; margin-top: 18px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  input[type=tel] { width: 100%; margin-top: 6px; padding: 12px 14px; font-size: 16px; border: 1px solid var(--rule); border-radius: 10px; }
+  .hint { margin-top: 6px; font-size: 12.5px; color: var(--faint); }
+  .consent { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; padding: 12px; border: 1px solid var(--rule); border-radius: 12px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .consent input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--amber); flex-shrink: 0; }
+  .btns { display: flex; gap: 10px; margin-top: 20px; }
+  .save { flex: 1; padding: 13px; font-size: 16px; font-weight: 600; color: #fff; background: var(--amber); border: 0; border-radius: 12px; }
+  .later { padding: 13px 16px; font-size: 15px; font-weight: 600; color: var(--muted); background: #fff; border: 1px solid var(--rule); border-radius: 12px; }
+  .note { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 8px 12px; font-size: 13px; color: var(--muted); max-width: calc(100% - 32px); }
+</style>
+</head>
+<body>
+  <div class="note">Mockup: shows once at next sign-in to existing users who haven't agreed to texts.</div>
+  <div class="app">
+    <h1>Spark Studio</h1>
+    <div class="row"><div class="box"></div><div class="box"></div></div>
+  </div>
+  <div class="scrim">
+    <div class="card">
+      <h2>Get SparkReels tips by text</h2>
+      <label class="f">Mobile Number
+        <input type="tel" placeholder="(215) 555-0142">
+      </label>
+      <div class="hint">Never shown on your videos. Outside the US, start with +.</div>
+      <label class="consent">
+        <input type="checkbox">
+        <span>Text me occasional tips and updates about SparkReels at this number. Message and data rates may apply, frequency varies, and you can reply STOP at any time.</span>
+      </label>
+      <div class="btns">
+        <button class="later">Not now</button>
+        <button class="save">Save</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

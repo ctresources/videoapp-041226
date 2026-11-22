@@ -7,6 +7,7 @@ import { GlobalVoiceShortcut } from "@/components/layout/global-voice-shortcut";
 import { CreateProgressProvider } from "@/components/layout/create-progress";
 import { VideoReadyPopup } from "@/components/layout/video-ready-popup";
 import { AppHeartbeat } from "@/components/layout/app-heartbeat";
+import { TextConsentPrompt } from "@/components/layout/text-consent-prompt";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
@@ -64,6 +65,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <VideoReadyPopup />
       {/* Time in the app, for Admin (2026-10-30). */}
       <AppHeartbeat />
+      {/* Asked once: mobile + texting consent, for users from before the box (2026-11-22). */}
+      <TextConsentPrompt />
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
