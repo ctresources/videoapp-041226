@@ -28,6 +28,7 @@ import { FieldMic } from "@/components/ui/field-mic";
 import { toStateAbbr } from "@/lib/utils/us-states";
 import { Check, ArrowRight, ArrowLeft, Camera, MapPin, Mic } from "lucide-react";
 import toast from "react-hot-toast";
+import { isValidMobile } from "@/lib/utils/format-phone";
 
 type StepKey = "photo" | "market" | "voice";
 
@@ -54,6 +55,7 @@ export default function OnboardingPage() {
   const [phone, setPhone] = useState("");
   /** The agent's own mobile, and whether they agreed to be texted on it. */
   const [mobilePhone, setMobilePhone] = useState("");
+  const [mobileError, setMobileError] = useState(false);
   const [smsConsent, setSmsConsent] = useState(false);
   // Step 3
   const [voiceId, setVoiceId] = useState<string | null>(null);
@@ -97,6 +99,14 @@ export default function OnboardingPage() {
    */
   const finish = useCallback(async (opts?: { silent?: boolean; later?: boolean }) => {
     if (!userId) return;
+    // The mobile is required since 2026-11-22. Email signups give it on the
+    // form; Google signups give it here, and none of the ways out skip it.
+    if (!isValidMobile(mobilePhone)) {
+      setMobileError(true);
+      setStep("market");
+      toast.error("Add your mobile number first.");
+      return;
+    }
     setSaving(true);
     const supabase = createClient();
     const { error } = await supabase
@@ -126,6 +136,10 @@ export default function OnboardingPage() {
   }, [userId, fullName, city, state, phone, mobilePhone, smsConsent, router]);
 
   async function saveMarketAndContinue() {
+    if (!isValidMobile(mobilePhone)) {
+      setMobileError(true);
+      return;
+    }
     setStep("voice");
   }
 
@@ -288,11 +302,14 @@ export default function OnboardingPage() {
                 <input
                   type="tel"
                   value={mobilePhone}
-                  onChange={(e) => setMobilePhone(e.target.value)}
+                  onChange={(e) => { setMobilePhone(e.target.value); setMobileError(false); }}
                   placeholder="(215) 555-0199"
                   autoComplete="tel"
-                  className="rounded-lg border border-spark-rule px-3 py-2 text-[13.5px] text-spark-ink outline-none focus:border-spark-amber"
+                  className={`rounded-lg border px-3 py-2 text-[13.5px] text-spark-ink outline-none focus:border-spark-amber ${mobileError ? "border-red-400" : "border-spark-rule"}`}
                 />
+                {mobileError && (
+                  <span className="text-[11.5px] text-red-600">Enter a valid mobile number. Outside the US, start with +.</span>
+                )}
               </label>
 
               <label className="flex cursor-pointer items-start gap-2">
@@ -319,7 +336,7 @@ export default function OnboardingPage() {
                 </Button>
                 <button
                   type="button"
-                  onClick={() => setStep("voice")}
+                  onClick={saveMarketAndContinue}
                   className="text-[12.5px] font-medium text-spark-ink-muted underline underline-offset-2 hover:text-spark-ink"
                 >
                   Do this later

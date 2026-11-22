@@ -5,12 +5,26 @@ import { notifyNewUser } from "@/lib/email";
 import { screenSignup, canonicalEmail } from "@/lib/spam-guards";
 import { attributeReferral } from "@/lib/affiliate-attribution";
 import { getCapacity, maybeNotifyCapacity } from "@/lib/capacity";
+import { verifyTurnstile } from "@/lib/turnstile";
+import { isValidMobile } from "@/lib/utils/format-phone";
 
 export async function POST(req: NextRequest) {
-  const { email, password, fullName, refCode, mobilePhone, smsConsent } = await req.json();
+  const { email, password, fullName, refCode, mobilePhone, smsConsent, captchaToken } = await req.json();
 
   if (!email || !password || !fullName) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  // Required since 2026-11-22, checked here as well as on the form: bots post
+  // straight to this route.
+  if (!isValidMobile(mobilePhone)) {
+    return NextResponse.json({ error: "Please enter a valid mobile number." }, { status: 400 });
+  }
+
+  // The bot check. Skipped until TURNSTILE_SECRET_KEY is set in Vercel.
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+  if (!(await verifyTurnstile(captchaToken, ip))) {
+    return NextResponse.json({ error: "Please confirm you're not a robot and try again." }, { status: 400 });
   }
 
   const admin = createAdminClient();
@@ -54,7 +68,7 @@ export async function POST(req: NextRequest) {
     .update({
       email_canonical: canonicalEmail(email),
       ...(paidOnly && { credits_remaining: 0 }),
-      ...(mobile && { mobile_phone: mobile }),
+      mobile_phone: mobile,
       ...(consented && {
         sms_consent_at: new Date().toISOString(),
         sms_consent_source: "register",

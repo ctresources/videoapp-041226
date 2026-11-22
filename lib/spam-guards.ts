@@ -43,7 +43,24 @@ export function looksLikeRandomString(name: string): boolean {
   const upperRatio = upper / letters;
   if (upperRatio < 0.2 || upperRatio > 0.8) return false;
   const vowels = (trimmed.match(/[aeiouAEIOU]/g) || []).length;
-  return vowels / letters < 0.25;
+  if (vowels / letters < 0.25) return true;
+  // 2026-11-22: "uTmzisYUYnAdfDEc" had 31% vowels and walked past the line
+  // above. What gives it away is case flipping back and forth inside one
+  // word. Real names flip once or twice ("McDonald", "DeShawn"); this one
+  // goes lower-to-upper four times. A name typed without spaces
+  // ("MaryKateMcDonald") flips as often, but starts with a capital and never
+  // has two capitals in a row; the bot did both ("u…", "YUY", "DE").
+  if (caseFlips(trimmed) < 3) return false;
+  return /^[a-z]/.test(trimmed) || /[A-Z]{2}/.test(trimmed.slice(1));
+}
+
+/** How many times a word goes from a lowercase letter straight to an uppercase one. */
+function caseFlips(word: string): number {
+  let flips = 0;
+  for (let i = 1; i < word.length; i++) {
+    if (/[a-z]/.test(word[i - 1]) && /[A-Z]/.test(word[i])) flips++;
+  }
+  return flips;
 }
 
 /**
@@ -55,6 +72,14 @@ export function isGmailDotsTrick(email: string): boolean {
   const [local, domain] = email.toLowerCase().split("@");
   if (!domain || !["gmail.com", "googlemail.com"].includes(domain)) return false;
   const parts = local.split(".");
+  // 2026-11-22, "r.atafoq.av43": only three pieces, but one is a lone letter
+  // and another mixes letters with numbers. People who use dots in Gmail write
+  // "jane.smith" or "jane.m.smith", not that.
+  if (parts.length === 3) {
+    const loneLetter = parts.some((p) => p.length === 1);
+    const mixed = parts.some((p) => /[a-z]/.test(p) && /\d/.test(p) && p.length <= 6);
+    return loneLetter && mixed;
+  }
   if (parts.length < 4) return false;
   const shortParts = parts.filter((p) => p.length <= 2).length;
   return shortParts / parts.length >= 0.5;
@@ -101,6 +126,8 @@ export function canonicalEmail(email: string): string {
  */
 export function looksLikeThrowawayLocal(email: string): boolean {
   const local = (email.toLowerCase().split("@")[0] ?? "").replace(/[.+_-]/g, "");
+  // Tried 10 on 2026-11-22: it blocked "chris.j.smith". Short addresses are
+  // left to the Gmail dots rule and the CAPTCHA.
   if (local.length < 12) return false;
 
   const digits = (local.match(/\d/g) || []).length;

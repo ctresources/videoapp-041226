@@ -35,6 +35,22 @@ export function formatPhone(raw: string | null | undefined): string {
   return text;
 }
 
+/**
+ * Whether a signup's mobile number looks real (2026-11-22, when it became
+ * required). A US number: 10 digits (or 11 with a leading 1), area code and
+ * exchange not starting with 0 or 1, not one digit repeated. Outside the US:
+ * starts with "+" and has 8 to 15 digits; several signups are international.
+ */
+export function isValidMobile(raw: string | null | undefined): boolean {
+  const text = (raw ?? "").trim();
+  if (!text) return false;
+  const digits = text.replace(/\D/g, "");
+  if (/^(\d)\1+$/.test(digits)) return false;
+  if (text.startsWith("+") && !text.startsWith("+1")) return digits.length >= 8 && digits.length <= 15;
+  const ten = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  return /^[2-9]\d{2}[2-9]\d{6}$/.test(ten);
+}
+
 /** formatPhone over a list, dropping anything empty. */
 export function formatPhones(raws: (string | null | undefined)[]): string[] {
   return raws.map(formatPhone).filter(Boolean);

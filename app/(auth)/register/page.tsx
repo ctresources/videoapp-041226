@@ -9,6 +9,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import toast from "react-hot-toast";
 import { Gift } from "lucide-react";
+import { TurnstileWidget, TURNSTILE_SITE_KEY } from "@/components/auth/turnstile-widget";
+import { isValidMobile } from "@/lib/utils/format-phone";
 
 function RegisterForm() {
   const router = useRouter();
@@ -19,6 +21,9 @@ function RegisterForm() {
   const [smsConsent, setSmsConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // The bot check's token (one use each), and a counter that asks for a new one.
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
 
   // The beta cap. This page previously ignored ?error=full entirely, so a
   // rejected signup landed on a blank form with no explanation — and then
@@ -46,7 +51,13 @@ function RegisterForm() {
     if (!form.fullName.trim()) newErrors.fullName = "Full name is required";
     if (!form.email.trim()) newErrors.email = "Email is required";
     if (form.password.length < 8) newErrors.password = "Password must be at least 8 characters";
-    if (Object.keys(newErrors).length) return setErrors(newErrors);
+    if (!isValidMobile(form.mobilePhone)) newErrors.mobilePhone = "Enter a valid mobile number";
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length) return;
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      toast.error("One moment, checking you're not a robot. Try again in a second.");
+      return;
+    }
 
     setLoading(true);
 
@@ -65,6 +76,7 @@ function RegisterForm() {
         mobilePhone: form.mobilePhone,
         // Only meaningful with a number to text.
         smsConsent: smsConsent && !!form.mobilePhone.trim(),
+        captchaToken,
       }),
     });
     const body = await res.json();
@@ -72,6 +84,8 @@ function RegisterForm() {
     if (!res.ok) {
       toast.error(body.error || "Registration failed");
       setLoading(false);
+      // The token was spent on this try.
+      setCaptchaReset((n) => n + 1);
       return;
     }
 
@@ -186,13 +200,14 @@ function RegisterForm() {
             videos. That one is asked for in onboarding, where it says so. */}
         <div>
           <Input
-            label="Mobile Number (optional)"
+            label="Mobile Number"
             type="tel"
             placeholder="(215) 555-0142"
             value={form.mobilePhone}
             onChange={(e) => set("mobilePhone", e.target.value)}
+            error={errors.mobilePhone}
             autoComplete="tel"
-            hint="Yours, for account help. It never appears on your videos."
+            hint="Yours, for account help. Never shown on your videos. Outside the US, start with +."
           />
           <label className="mt-2 flex items-start gap-2 cursor-pointer">
             <input
@@ -227,6 +242,8 @@ function RegisterForm() {
             }`}
           />
         </div>
+
+        <TurnstileWidget onToken={setCaptchaToken} resetKey={captchaReset} />
 
         <Button type="submit" loading={loading} size="lg" className={`w-full mt-1 ${hasBetaCode ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}>
           {hasBetaCode ? "Activate Beta Access" : "Create Free Account"}
