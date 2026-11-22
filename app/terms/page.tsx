@@ -18,7 +18,7 @@ export default function TermsPage() {
             ← Back to SparkReels
           </Link>
           <h1 className="text-4xl font-bold text-white mb-3">Terms of Service</h1>
-          <p className="text-slate-400 text-sm">Effective date: June 14, 2026</p>
+          <p className="text-slate-400 text-sm">Effective date: June 14, 2026 · Last updated: November 22, 2026</p>
         </div>
 
         <div className="space-y-10 text-slate-300 leading-relaxed">
@@ -54,6 +54,11 @@ export default function TermsPage() {
               <li>Upload or generate content that is illegal, defamatory, or infringes on third-party rights.</li>
               <li>Use the platform to spam, harass, or mislead others.</li>
               <li>Attempt to reverse-engineer, scrape, or disrupt the service.</li>
+              {/* Added 2026-11-22, the owner's ask. */}
+              <li>
+                Access or use SparkReels to build, train, benchmark, or improve a competing product or
+                service, or copy its features, design, workflows, or content for that purpose.
+              </li>
               <li>Share your account credentials with others.</li>
               <li>Use AI-generated content in ways that violate the terms of connected social platforms.</li>
             </ul>
