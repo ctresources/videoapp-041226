@@ -16,16 +16,25 @@ export async function GET(req: NextRequest) {
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Clarity answers in UTC for the 24 hours before the call: that's yesterday.
+  const day = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const admin = createAdminClient();
   const got = await fetchClarityDay();
   if (!got.ok) {
     console.warn(`[clarity-daily] skipped: ${got.reason}`);
+    // Saved for the Monday email (2026-11-22), unless this day already has
+    // numbers from an earlier run.
+    const { data: had } = await admin.from("clarity_snapshots").select("data").eq("day", day).maybeSingle();
+    if (!(had as { data: unknown } | null)?.data) {
+      await admin.from("clarity_snapshots").upsert({
+        day, data: null, error: got.reason.slice(0, 500), fetched_at: new Date().toISOString(),
+      });
+    }
     return NextResponse.json({ saved: false, reason: got.reason });
   }
-  // Clarity answers in UTC for the 24 hours before the call: that's yesterday.
-  const day = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
-  const { error } = await createAdminClient()
+  const { error } = await admin
     .from("clarity_snapshots")
-    .upsert({ day, data: got.data, fetched_at: new Date().toISOString() });
+    .upsert({ day, data: got.data, error: null, fetched_at: new Date().toISOString() });
   if (error) {
     console.error("[clarity-daily] couldn't save:", error.message);
     return NextResponse.json({ saved: false, reason: error.message }, { status: 500 });

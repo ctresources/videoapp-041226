@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     admin.from("projects").select("user_id").gte("created_at", baselineFrom).lt("created_at", since).limit(20000),
     admin.rpc("security_shared_signups", { since }),
     // Clarity, saved each morning by /api/cron/clarity-daily (2026-11-12).
-    admin.from("clarity_snapshots").select("data").gte("day", since.slice(0, 10)).order("day"),
+    admin.from("clarity_snapshots").select("day, data, error").gte("day", since.slice(0, 10)).order("day"),
     // AI crawler visits, counted in middleware.ts (2026-11-12).
     admin.from("ai_crawler_daily").select("bot, path, hits").gte("day", since.slice(0, 10)).limit(20000),
   ]);
@@ -122,14 +122,22 @@ export async function GET(req: NextRequest) {
     : "Nothing unusual in the last 7 days.";
 
   // ── Clarity: where people got stuck (not counted in the subject) ─────────
-  const snaps = ((clarityRows.data ?? []) as { data: unknown }[]).map((r) => r.data);
+  const clarityAll = (clarityRows.data ?? []) as { day: string; data: unknown; error: string | null }[];
+  const snaps = clarityAll.filter((r) => r.data != null).map((r) => r.data);
+  // Failed mornings, saved by /api/cron/clarity-daily (2026-11-22). The old
+  // "No Clarity days saved yet" line hid 10 days of failures.
+  const failed = clarityAll.filter((r) => r.data == null && r.error);
   const cw = summarizeWeek(snaps);
   const clarityLines: string[] = [];
+  if (failed.length) {
+    const lastFail = failed[failed.length - 1];
+    clarityLines.push(`Clarity failed ${failed.length} of the last 7 mornings. Last reason (${lastFail.day}): ${lastFail.error}`);
+  }
   if (!snaps.length) {
-    clarityLines.push(clarityToken()
-      ? "No Clarity days saved yet. They start the morning after the token was added."
-      : "Not connected yet: add CLARITY_API_TOKEN in Vercel to see this.");
+    if (!clarityToken()) clarityLines.push("Not connected yet: add CLARITY_API_TOKEN in Vercel to see this.");
+    else if (!failed.length) clarityLines.push("No Clarity days saved this week, and no failure recorded. Check that the daily job is running.");
   } else {
+    const before = clarityLines.length;
     clarityLines.push(`${cw.sessions.toLocaleString("en-US")} visits over ${cw.days} day${cw.days === 1 ? "" : "s"}` +
       (cw.botSessions ? ` (${cw.botSessions.toLocaleString("en-US")} were bots)` : ""));
     const pages = (rows: { path: string; count: number }[]) => rows.map((r) => `${r.path} ${r.count}`).join(", ");
@@ -141,7 +149,7 @@ export async function GET(req: NextRequest) {
     add("Quick backs (left a page right away)", "quickback");
     add("Clicks that hit an error", "errorClick");
     add("Page errors", "scriptError");
-    if (clarityLines.length === 1) clarityLines.push("No rage clicks, dead clicks, quick backs or errors.");
+    if (clarityLines.length === before + 1) clarityLines.push("No rage clicks, dead clicks, quick backs or errors.");
   }
   const clarityTitle = "Where people got stuck (Clarity)";
 
