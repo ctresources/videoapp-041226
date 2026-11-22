@@ -3,7 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchClarityDay } from "@/lib/security/clarity";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// Two tries of up to 55 s each (lib/security/clarity.ts).
+export const maxDuration = 130;
 
 /**
  * GET /api/cron/clarity-daily — every morning (vercel.json). Saves the last

@@ -23,15 +23,35 @@ export function clarityToken(): string | undefined {
 export async function fetchClarityDay(): Promise<{ ok: true; data: unknown } | { ok: false; reason: string }> {
   const token = clarityToken();
   if (!token) return { ok: false, reason: "CLARITY_API_TOKEN is not set" };
-  const res = await fetch(`${EXPORT_URL}?numOfDays=1&dimension1=URL`, {
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(30_000),
-  }).catch(() => null);
-  if (!res) return { ok: false, reason: "Clarity didn't answer" };
-  if (!res.ok) return { ok: false, reason: `Clarity ${res.status}` };
-  const data = await res.json().catch(() => null);
-  if (!Array.isArray(data)) return { ok: false, reason: "Clarity sent something unexpected" };
-  return { ok: true, data };
+  // 2026-11-22: every run since this started logged "Clarity didn't answer"
+  // after the old 30 s limit, and the real error was thrown away. Now it waits
+  // longer, tries twice (2 of the 10 requests a day allowed), and says why.
+  let last = "";
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const started = Date.now();
+    try {
+      const res = await fetch(`${EXPORT_URL}?numOfDays=1&dimension1=URL`, {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(55_000),
+      });
+      if (!res.ok) {
+        const body = (await res.text().catch(() => "")).slice(0, 200);
+        last = `Clarity ${res.status}${body ? `: ${body}` : ""}`;
+        // A refused token or a used-up daily allowance won't change on a retry.
+        if (res.status === 401 || res.status === 403 || res.status === 429) break;
+        continue;
+      }
+      const data = await res.json().catch(() => null);
+      if (!Array.isArray(data)) return { ok: false, reason: "Clarity sent something unexpected" };
+      return { ok: true, data };
+    } catch (e) {
+      const err = e as { name?: string; message?: string; cause?: { code?: string; message?: string } };
+      const secs = Math.round((Date.now() - started) / 1000);
+      last = `Clarity didn't answer (try ${attempt}, ${secs}s): ${err?.name ?? "Error"} ${err?.message ?? ""}${err?.cause ? ` / ${err.cause.code ?? ""} ${err.cause.message ?? ""}` : ""}`.trim();
+      console.warn(`[clarity] ${last}`);
+    }
+  }
+  return { ok: false, reason: last || "Clarity didn't answer" };
 }
 
 const KEYS = {
