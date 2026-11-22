@@ -12,6 +12,9 @@ describe("clientLabel", () => {
     expect(clientLabel({ client_name: "Google AI" })).toBe("Gemini");
     expect(clientLabel({ client_name: "Grok Connectors" })).toBe("Grok");
     expect(clientLabel({ client_name: "xAI" })).toBe("Grok");
+    expect(clientLabel({ client_name: "Grok Bot" })).toBe("Grok");
+    expect(clientLabel({ client_name: "Muse" })).toBe("Muse");
+    expect(clientLabel({ client_name: "Muse Connectors" })).toBe("Muse");
   });
   it("shows anything else by its own name", async () => {
     const { clientLabel } = await import("@/lib/agent/auth/supabase-oauth");
