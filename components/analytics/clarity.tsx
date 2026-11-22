@@ -49,6 +49,24 @@ async function myRole(): Promise<string | null> {
   }
   return knownRole;
 }
+/**
+ * The signed-in account's ID, for tagging the recording (2026-11-22, the
+ * owner's ask: "what did this user do for 5 minutes?"). Only the ID goes to
+ * Clarity, never a name or email; Admin shows the ID to copy into Clarity's
+ * filters. Remembered once found; not signed in is asked again.
+ */
+let knownUserId: string | null = null;
+async function myUserId(): Promise<string | null> {
+  if (knownUserId) return knownUserId;
+  try {
+    const { data } = await createClient().auth.getSession();
+    knownUserId = data.session?.user.id ?? null;
+  } catch {
+    /* not signed in */
+  }
+  return knownUserId;
+}
+
 function skippedDevice(): boolean {
   try { return localStorage.getItem(SKIP_KEY) === "1"; } catch { return false; }
 }
@@ -66,7 +84,16 @@ export function Clarity() {
         (window as unknown as { clarity?: ClarityFn }).clarity?.("pause");
         return;
       }
-      if (!cancelled) record();
+      if (cancelled) return;
+      record();
+      // Tag every page view, as Clarity asks: "identify" links the sessions to
+      // one person, and the "account" tag can be typed into Recordings filters.
+      const uid = await myUserId();
+      const w = window as unknown as { clarity?: ClarityFn };
+      if (uid && w.clarity && !cancelled) {
+        w.clarity("identify", uid);
+        w.clarity("set", "account", uid);
+      }
     })();
     return () => { cancelled = true; };
   }, [pathname]);

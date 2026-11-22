@@ -982,6 +982,19 @@ export default function AdminPage() {
                         <div>
                           <p className="font-medium text-brand-text">{user.full_name || "—"}</p>
                           <p className="text-xs text-slate-400">{user.email}</p>
+                          {/* Their recordings are tagged with this ID (2026-11-22). */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(user.id);
+                              toast.success("Copied. In Clarity: Recordings → Filters → Custom tags → account");
+                            }}
+                            className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-blue-500"
+                            title="Copy this user's Clarity ID"
+                          >
+                            <Copy size={10} /> Clarity ID
+                          </button>
                         </div>
                       </td>
                       <td className="px-4 py-3">
