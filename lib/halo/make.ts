@@ -8,28 +8,28 @@ import type { HaloSetup } from "@/lib/halo";
 type Admin = ReturnType<typeof createAdminClient>;
 
 /**
- * Makes the video for one draft, as the editor's Spark Video button does
- * (lib/video/start-render), with the draft's setup. Charged like any video.
- * The draft stays a draft: nothing posts until it is approved.
+ * Makes the video for a saved Spark from its script and a setup, as the
+ * editor's Spark Video button does (lib/video/start-render). Charged like any
+ * video, through the same render queue and plan limits.
  *
- * Moved out of /api/halo/approve (2026-10-26) so a Sparklee draft can be made
- * in the background right after it's written.
+ * Shared by drafts (makeDraftVideo below) and the agent layer's make_video
+ * (2026-11-22): one way to turn a saved Spark into a render.
  */
-export async function makeDraftVideo(
+export async function renderSparkVideo(
   admin: Admin,
   user: { id: string; email: string | null },
-  d: { id: string; setup: HaloSetup; project_id: string },
+  projectId: string,
+  setup: HaloSetup,
   /** The Remake button: lets a second video past the one-per-draft rule. */
   opts: { remake?: boolean } = {},
 ): Promise<{ status: number; out: Record<string, unknown> }> {
-  const { data: proj } = await admin.from("projects").select("ai_script").eq("id", d.project_id).single();
+  const { data: proj } = await admin.from("projects").select("ai_script").eq("id", projectId).eq("user_id", user.id).single();
   const ai = ((proj as { ai_script: Record<string, unknown> | null } | null)?.ai_script) ?? {};
   const hook = String(ai.hook ?? "");
   const script = joinHookAndScript(hook, String(ai.script ?? ""));
   const cta = String(ai.cta ?? "");
   if (!script.trim()) return { status: 400, out: { error: "This draft has no script. Open it to write one." } };
 
-  const setup = d.setup;
   // A draft with no size saved is horizontal (2026-11-12, was vertical).
   const vertical = setup.size === "vertical";
   const voiceOnly = setup.voiceOnly === true;
@@ -52,7 +52,7 @@ export async function makeDraftVideo(
   }
 
   const res = await startRender(user, {
-    projectId: d.project_id,
+    projectId,
     videoType: vertical ? "reel_9x16" : "youtube_16x9",
     longForm: false,
     captions: setup.captions !== false,
@@ -71,7 +71,24 @@ export async function makeDraftVideo(
 
   const out = await res.json().catch(() => ({})) as Record<string, unknown>;
   if (res.status >= 400) return { status: res.status, out };
+  return { status: 200, out: { ok: true, made: true, ready: false, queued: res.status === 202, ...out } };
+}
 
+/**
+ * Makes the video for one draft with the draft's setup. The draft stays a
+ * draft: nothing posts until it is approved.
+ *
+ * Moved out of /api/halo/approve (2026-10-26) so a Sparklee draft can be made
+ * in the background right after it's written.
+ */
+export async function makeDraftVideo(
+  admin: Admin,
+  user: { id: string; email: string | null },
+  d: { id: string; setup: HaloSetup; project_id: string },
+  opts: { remake?: boolean } = {},
+): Promise<{ status: number; out: Record<string, unknown> }> {
+  const r = await renderSparkVideo(admin, user, d.project_id, d.setup, opts);
+  if (r.status >= 400) return r;
   await admin.from("autopilot_drafts").update({ post_error: null }).eq("id", d.id);
-  return { status: 200, out: { ok: true, made: true, ready: false, queued: res.status === 202 } };
+  return { status: 200, out: { ok: true, made: true, ready: false, queued: r.out.queued === true } };
 }
