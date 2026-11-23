@@ -97,6 +97,31 @@ describe("plan_spark builds only what the account can run", () => {
     expect(p.totals.platforms).toEqual(["youtube"]);
     expect(p.totals.notConnected).toEqual(["tiktok"]);
   });
+  it("the town in the goal wins over the saved market", async () => {
+    const { buildPlan } = await import("@/lib/agent/planner");
+    const p = buildPlan({ ...intent, city: "Ambler", state: "PA" }, ctx());
+    expect(p.steps[0].input).toMatchObject({ city: "Ambler", state: "PA" });
+  });
+  it("falls back to the saved market when the goal names no town", async () => {
+    const { buildPlan } = await import("@/lib/agent/planner");
+    expect(buildPlan(intent, ctx()).steps[0].input).toMatchObject({ city: "Blue Bell", state: "PA" });
+  });
+  it("no town anywhere: a customer must be asked before approving", async () => {
+    const { placeFor, needsPlace } = await import("@/lib/agent/planner");
+    const noMarket = ctx({ market: { city: null, state: null } });
+    expect(placeFor({ city: null, state: null }, noMarket)).toBeNull();
+    expect(needsPlace(noMarket)).toBe(true);
+  });
+  it("a town with no state isn't guessed, unless it's their own market", async () => {
+    const { placeFor } = await import("@/lib/agent/planner");
+    expect(placeFor({ city: "Springfield", state: null }, ctx())).toBeNull();
+    expect(placeFor({ city: "blue bell", state: null }, ctx())).toEqual({ city: "blue bell", state: "PA" });
+  });
+  it("the owner's admin account and SparkReels mode can plan with no town", async () => {
+    const { needsPlace } = await import("@/lib/agent/planner");
+    expect(needsPlace(ctx({ allowance: { isRealAdmin: true } as never }))).toBe(false);
+    expect(needsPlace(ctx({ allowance: { sparkreelsMode: true } as never }))).toBe(false);
+  });
   it("a named time becomes a schedule step; CRM follow-up is coming soon (V1.1)", async () => {
     const { buildPlan } = await import("@/lib/agent/planner");
     const p = buildPlan({ ...intent, when: "2030-01-04T09:00", crmFollowUp: true }, ctx());

@@ -11,7 +11,7 @@ import { formatWhen, isValidTimeZone, zonedToUtc } from "@/lib/utils/time-zone";
 import type { ServiceResult } from "@/lib/content/service-result";
 import type { HaloSetup } from "@/lib/halo";
 import { type AgentContext, videosLeft } from "@/lib/agent/context";
-import { buildPlan, readIntent, savePlan, summarize } from "@/lib/agent/planner";
+import { buildPlan, needsPlace, placeFor, readIntent, savePlan, summarize } from "@/lib/agent/planner";
 import { decidePlan, getPlan, maybeCompletePlan, planAuthorizes, PUBLISH_CONFIRM_MINUTES, type PlanStep } from "@/lib/agent/approvals";
 import { claimAction, finishAction, requestIdFor } from "@/lib/agent/idempotency";
 import { failed, needsInput, ok, type AgentActor, type AgentResult, type Scope } from "@/lib/agent/types";
@@ -217,6 +217,10 @@ export const TOOLS: ToolDef[] = [
       if (!goal) return needsInput("What would you like to make or get done?", "goal_required");
       const intent = await readIntent(goal, ctx);
       if (intent.clarify && intent.topic.length < 8) return needsInput(intent.clarify, "clarify");
+      // Asked now, not after approval: the script writer refuses without a place.
+      if (needsPlace(ctx) && !placeFor(intent, ctx)) {
+        return needsInput("What town and state is this for? Ask the user, then call plan_spark again with it in the goal.", "town_required");
+      }
       const { steps, totals, upgrade, notes } = buildPlan(intent, ctx);
       const summary = summarize(steps, totals, notes, upgrade);
       const planId = await savePlan(actor, { goal, steps, totals, summary, upgrade, version });
@@ -246,10 +250,19 @@ export const TOOLS: ToolDef[] = [
     description: "Writes the script for an approved plan step (planId + step) and saves it as a Spark draft in My Voice. Without a planId it returns a one-step plan to approve first.",
     input: {
       type: "object",
-      properties: { planId: { type: "string" }, step: { type: "number" }, topic: { type: "string", description: "Only without a plan." } },
+      properties: {
+        planId: { type: "string" }, step: { type: "number" },
+        topic: { type: "string", description: "Only without a plan." },
+        city: { type: "string", description: "Only without a plan: the town it's about." },
+        state: { type: "string", description: "Only without a plan: 2-letter state." },
+      },
     },
     async run(actor, ctx, input) {
-      const direct = { videoType: "custom", customTopic: str(input.topic), city: ctx.market.city ?? "", state: ctx.market.state ?? "" };
+      const place = placeFor({ city: str(input.city) || null, state: str(input.state).toUpperCase() || null }, ctx);
+      if (!str(input.planId) && needsPlace(ctx) && !place) {
+        return needsInput("What town and state is this for?", "town_required");
+      }
+      const direct = { videoType: "custom", customTopic: str(input.topic), city: place?.city ?? "", state: place?.state ?? "" };
       return runCreationStep(actor, ctx, "write_script", str(input.planId) ? input : { ...input, ...direct }, async (step) => {
         const r = await createSparkScript(actor.userId, step.input as unknown as CreateSparkBody, { fromAutopilot: false });
         const project = (r.body as { project?: { id: string; title: string; ai_script: Record<string, unknown> } }).project;
@@ -319,10 +332,15 @@ export const TOOLS: ToolDef[] = [
       const n = Math.min(25, Math.max(1, Number(input.limit) || 10));
       const admin = createAdminClient();
       const [{ data: vids }, { data: drafts }] = await Promise.all([
-        admin.from("generated_videos").select("id, project_id, render_status, video_url, created_at").eq("user_id", actor.userId).order("created_at", { ascending: false }).limit(n),
+        // The title lives on the video's Spark (2026-11-22).
+        admin.from("generated_videos").select("id, project_id, render_status, video_url, created_at, projects(title)").eq("user_id", actor.userId).order("created_at", { ascending: false }).limit(n),
         admin.from("projects").select("id, title, status, created_at").eq("user_id", actor.userId).eq("status", "draft").order("created_at", { ascending: false }).limit(n),
       ]);
-      return ok("Your recent videos and drafts.", { videos: vids ?? [], drafts: drafts ?? [] });
+      const videos = ((vids ?? []) as unknown as (Record<string, unknown> & { projects?: { title?: string | null } | { title?: string | null }[] | null })[]).map(({ projects, ...v }) => {
+        const p = Array.isArray(projects) ? projects[0] : projects;
+        return { ...v, title: p?.title ?? null };
+      });
+      return ok("Your recent videos and drafts.", { videos, drafts: drafts ?? [] });
     },
   },
   {

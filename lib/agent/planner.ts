@@ -26,6 +26,9 @@ import type { AgentActor } from "@/lib/agent/types";
 
 export interface Intent {
   topic: string;
+  /** The town the goal names, if any. It wins over the saved market. */
+  city?: string | null;
+  state?: string | null;
   kind: "video" | "blog_only";
   wantsBlog: boolean;
   wantsSocialCopy: boolean;
@@ -39,8 +42,9 @@ export interface Intent {
 }
 
 const INTENT_SYSTEM = `You read a real estate agent's goal and return what content they want. You do not write the content.
-Return ONLY JSON: {"topic": "...", "kind": "video" | "blog_only", "wantsBlog": bool, "wantsSocialCopy": bool, "shape": "vertical" | "wide", "presenter": "avatar" | "voice_only", "platforms": ["youtube","instagram","facebook","linkedin","tiktok","x","threads","google_business"], "when": "YYYY-MM-DDTHH:mm" | null, "crmFollowUp": bool, "clarify": "one short question" | null}
+Return ONLY JSON: {"topic": "...", "city": "town named in the goal" | null, "state": "2-letter state" | null, "kind": "video" | "blog_only", "wantsBlog": bool, "wantsSocialCopy": bool, "shape": "vertical" | "wide", "presenter": "avatar" | "voice_only", "platforms": ["youtube","instagram","facebook","linkedin","tiktok","x","threads","google_business"], "when": "YYYY-MM-DDTHH:mm" | null, "crmFollowUp": bool, "clarify": "one short question" | null}
 - topic: a specific video topic in plain words, including the town if given. For "market my listing", the listing's address or description if given.
+- city, state: only a place named in the goal itself, never the agent's market. Give the state only if the goal says it or the town is unmistakable; otherwise null.
 - Default kind "video", shape "vertical" unless YouTube-only or "landscape", presenter "avatar".
 - wantsSocialCopy true unless they say otherwise. wantsBlog true for market updates, guides and listings.
 - platforms: only ones they named; [] means "where they're connected".
@@ -62,6 +66,8 @@ export async function readIntent(goal: string, ctx: AgentContext): Promise<Inten
   const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
   return {
     topic: str(o.topic) || goal.slice(0, 200),
+    city: str(o.city) || null,
+    state: /^[A-Za-z]{2}$/.test(str(o.state)) ? str(o.state).toUpperCase() : null,
     kind: o.kind === "blog_only" ? "blog_only" : "video",
     wantsBlog: o.wantsBlog === true,
     wantsSocialCopy: o.wantsSocialCopy !== false,
@@ -75,6 +81,27 @@ export async function readIntent(goal: string, ctx: AgentContext): Promise<Inten
 }
 
 const label = (p: string) => (p === "youtube" ? "YouTube" : partnerPlatform(p)?.label ?? p);
+
+/**
+ * The place a Spark is about: the town in the goal, else the saved market
+ * (the topic decides the place; the market is only a fallback). Null when
+ * neither gives a full city and state.
+ */
+export function placeFor(intent: Pick<Intent, "city" | "state">, ctx: AgentContext): { city: string; state: string } | null {
+  const m = ctx.market;
+  if (intent.city) {
+    const state = intent.state ?? (m.city?.toLowerCase() === intent.city.toLowerCase() ? m.state : null);
+    return state ? { city: intent.city, state } : null;
+  }
+  return m.city && m.state ? { city: m.city, state: m.state } : null;
+}
+
+/**
+ * Whether a script can be written with no place. The script writer allows it
+ * only for the owner's admin account and SparkReels mode, so a plan for
+ * anyone else must have a town before it can be approved.
+ */
+export const needsPlace = (ctx: AgentContext) => !ctx.allowance.isRealAdmin && !ctx.allowance.sparkreelsMode;
 
 /** Builds the steps from the intent and what this account can actually run. */
 export function buildPlan(intent: Intent, ctx: AgentContext) {
@@ -98,8 +125,8 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
     input: {
       videoType: "custom",
       customTopic: intent.topic,
-      city: ctx.market.city ?? "",
-      state: ctx.market.state ?? "",
+      city: placeFor(intent, ctx)?.city ?? "",
+      state: placeFor(intent, ctx)?.state ?? "",
       shortScript: intent.shape === "vertical",
       videoPlatform: intent.shape === "vertical" ? "reel" : "youtube",
       blogOnly: !makeVideo && intent.kind === "blog_only",
