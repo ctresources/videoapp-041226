@@ -12,7 +12,7 @@ import type { ServiceResult } from "@/lib/content/service-result";
 import type { HaloSetup } from "@/lib/halo";
 import { type AgentContext, videosLeft } from "@/lib/agent/context";
 import {
-  asPresenter, asShape, asStyle, buildPlan, CAMERA_READY_NOTE, needsPlace, placeFor, presenterOptions, questionsFor,
+  asPresenter, asShape, asStyle, buildPlan, CAMERA_READY_NOTE, labeledAnswers, needsPlace, placeFor, presenterOptions, questionsFor,
   readIntent, recordLink, savePlan, styleOptions, summarize, videoLabel, type Presenter, type Shape, type VideoStyle,
 } from "@/lib/agent/planner";
 import { getAvatarLooks } from "@/lib/api/heygen";
@@ -246,21 +246,24 @@ export const TOOLS: ToolDef[] = [
       if (!goal) return needsInput("What would you like to make or get done?", "goal_required");
       const read = await readIntent(goal, ctx);
       if (read.clarify && read.topic.length < 8) return needsInput(read.clarify, "clarify");
-      // The person's answers win, then an edited plan's earlier choices.
+      // The person's answers win (as fields, or in the exact labeled format),
+      // then an edited plan's earlier choices. On an edit only the new change
+      // is read for labels: the old goal's could undo a later answer.
+      const labeled = labeledAnswers(str(input.planId) ? str(input.change) : goal);
       const intent = {
         ...read,
         city: str(input.city) || read.city,
         state: str(input.state).toUpperCase() || read.state,
-        // Only real answers count, never the goal's wording (see Intent).
-        shape: asShape(input.shape) ?? asShape(prev.shape),
-        presenter: asPresenter(input.presenter) ?? asPresenter(prev.presenter),
-        style: asStyle(input.style) ?? asStyle(prev.style),
+        // Only real answers count, never the goal's loose wording (see Intent).
+        shape: asShape(input.shape) ?? labeled.shape ?? asShape(prev.shape),
+        presenter: asPresenter(input.presenter) ?? labeled.presenter ?? asPresenter(prev.presenter),
+        style: asStyle(input.style) ?? labeled.style ?? asStyle(prev.style),
       };
       // Asked now, never guessed, and before anything can be approved.
       const { questions, style } = questionsFor(intent, ctx);
       if (questions.length) {
         return needsInput(
-          `Ask the user: ${questions.map((q) => q.options ? `${q.question} (${q.options.map((o) => o.label).join(" / ")})` : q.question).join(" ")} Then call plan_spark again with the same goal plus their answers.`,
+          `Ask the user: ${questions.map((q) => q.options ? `${q.question} (${q.options.map((o) => o.label).join(" / ")})` : q.question).join(" ")} Wait for their answers; don't answer for them. Then call plan_spark again with the same goal and their answers in the shape, presenter and style fields. If you don't have those fields, end the goal with their answers in exactly this format: Shape: Wide. Presenter: Digital Twin. Style: Full.`,
           "choices_needed",
           { questions },
         );

@@ -74,6 +74,31 @@ export const asPresenter = (v: unknown): Presenter | null =>
 export const asStyle = (v: unknown): VideoStyle | null => (v === "full" || v === "circle" ? v : null);
 
 /**
+ * The backup for AI apps still holding an old copy of the tool list, which
+ * can't send the shape / presenter / style fields (2026-11-22). Only this
+ * exact labeled format counts: "Shape: Wide. Presenter: Digital Twin. Style:
+ * Full". Loose wording like "short video" never does. The last one given wins.
+ */
+export function labeledAnswers(text: string): { shape: Shape | null; presenter: Presenter | null; style: VideoStyle | null } {
+  const last = (re: RegExp) => {
+    const all = Array.from(text.matchAll(re));
+    return all.length ? all[all.length - 1][1].toLowerCase().replace(/\s+/g, " ") : null;
+  };
+  const shape = last(/\bshape\s*:\s*(vertical|wide)\b/gi);
+  const who = last(/\bpresenter\s*:\s*(digital twin|twin|headshot avatar|headshot|voice only|yourself on camera|on camera|camera)\b/gi);
+  const how = last(/\bstyle\s*:\s*(full video with b-roll|full video|full|corner circle over scenes|corner circle|circle)(?![\w-])/gi);
+  return {
+    shape: asShape(shape),
+    presenter: !who ? null
+      : who.includes("twin") ? "twin"
+      : who.includes("headshot") ? "headshot"
+      : who.includes("voice") ? "voice_only"
+      : "camera",
+    style: !how ? null : how.includes("circle") ? "circle" : "full",
+  };
+}
+
+/**
  * Only the subject goes into the script and title. An AI client can pass its
  * own working notes in the goal ("…; plan for approval only", seen in the
  * first live test, 2026-11-22). Narrow on purpose: "don't overprice your

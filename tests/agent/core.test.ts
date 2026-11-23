@@ -105,6 +105,33 @@ describe("what counts as the person's choice", () => {
   });
 });
 
+describe("labeled answers (backup for AI apps with an old tool list)", () => {
+  it("reads the exact format", async () => {
+    const { labeledAnswers } = await import("@/lib/agent/planner");
+    expect(labeledAnswers("Closing costs in Ambler. Shape: Wide. Presenter: Digital Twin. Style: Full"))
+      .toEqual({ shape: "wide", presenter: "twin", style: "full" });
+    expect(labeledAnswers("Topic. Shape: Vertical. Presenter: Headshot avatar. Style: Corner circle over scenes"))
+      .toEqual({ shape: "vertical", presenter: "headshot", style: "circle" });
+    expect(labeledAnswers("Topic. Shape: Wide. Presenter: Voice only")).toEqual({ shape: "wide", presenter: "voice_only", style: null });
+    expect(labeledAnswers("Topic. Presenter: Yourself on camera").presenter).toBe("camera");
+    expect(labeledAnswers("Style: Full video with b-roll.").style).toBe("full");
+  });
+  it("loose wording never counts", async () => {
+    const { labeledAnswers } = await import("@/lib/agent/planner");
+    expect(labeledAnswers("Create a short vertical video with my digital twin, full video with b-roll"))
+      .toEqual({ shape: null, presenter: null, style: null });
+    expect(labeledAnswers("Shape: short. Presenter: me. Style: fancy")).toEqual({ shape: null, presenter: null, style: null });
+  });
+  it("the last answer wins", async () => {
+    const { labeledAnswers } = await import("@/lib/agent/planner");
+    expect(labeledAnswers("Shape: Wide. Later: Shape: Vertical").shape).toBe("vertical");
+  });
+  it("the labels never reach the script's topic", async () => {
+    const { cleanTopic } = await import("@/lib/agent/planner");
+    expect(cleanTopic("Closing costs in Ambler. Shape: Wide. Presenter: Digital Twin. Style: Full")).toBe("Closing costs in Ambler");
+  });
+});
+
 describe("plan hash", () => {
   it("survives the database reordering a plan's keys, so approvals work", async () => {
     const { planHash } = await import("@/lib/agent/approvals");
