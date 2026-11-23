@@ -734,8 +734,8 @@ function FullGuide() {
                 she shows <strong>I&apos;ll create:</strong> with what she&apos;ll make (who&apos;s on
                 screen and the voice, the town, the size, the length and the ending) and waits.{" "}
                 <strong>Change details</strong> takes you to the choices below the box instead. Press{" "}
-                <strong>Create it</strong> and she writes the script, blog, title and thumbnail and makes the video, which takes about
-                10 to 12 minutes. It comes back as a card under the box, and on AutoSparks under{" "}
+                <strong>Create it</strong> and she writes the script, blog, title and thumbnail and makes the video, which usually takes
+                5 to 15 minutes for AI Avatar in Circle or 15 to 30 for Full AI Avatar. It comes back as a card under the box, and on AutoSparks under{" "}
                 <strong>From Sparklee</strong>: <strong>Watch</strong>, <strong>Edit thumbnail</strong>,{" "}
                 <strong>Edit title and caption</strong>, then <strong>Approve to post</strong>. Nothing
                 posts until you approve it. It posts to the accounts you used last time, on the day you
@@ -857,8 +857,8 @@ function FullGuide() {
                 The first three use one video from your plan. Attach photos or documents as b-roll,
                 and hit <strong>Spark Video</strong>. How long it takes follows the length of the{" "}
                 <em>script</em>, not the format: Voice over only is usually ready in{" "}
-                <strong>2 to 10 minutes</strong>, a Full AI Avatar video in about <strong>10 to 12</strong>, and a
-                long one can take up to an hour. You can close the page: when it&apos;s done, Sparklee pops
+                <strong>2 to 10 minutes</strong>, AI Avatar in Circle in <strong>5 to 15</strong>, and Full AI
+                Avatar in <strong>15 to 30</strong>. You can close the page: when it&apos;s done, Sparklee pops
                 up on whatever page you&apos;re on with <strong>Watch</strong> and{" "}
                 <strong>Edit thumbnail</strong>, and if you&apos;ve left the app you get a{" "}
                 <strong>Your video is ready</strong> email instead.
@@ -986,7 +986,7 @@ function FullGuide() {
                 the week&apos;s numbers (last week&apos;s show in grey; all optional) and what buyers said, then
                 press <strong>Write it &amp; make video</strong>, <strong>Email only</strong>,{" "}
                 <strong>Record it myself · unlimited</strong> or <strong>Skip this week</strong>. When the video
-                is done (about 5 to 10 minutes), <strong>Watch</strong> it, <strong>Preview email</strong>,
+                is done (about 5 to 15 minutes), <strong>Watch</strong> it, <strong>Preview email</strong>,
                 and press <strong>Approve to send</strong>: it emails each seller through BoldTrail on its day,
                 video included. <strong>Don&apos;t send it yourself</strong> from Spark Tools, or they get it
                 twice. The AI Avatar in Circle video uses 1 video per listing each week; Email only uses
@@ -1035,7 +1035,7 @@ function FullGuide() {
                 Each lead gets a card under <strong>Halo leads</strong> on AutoSparks. Nothing is written or made
                 until you press <strong>Write it</strong>: it writes the email and the video script (a welcome
                 for a buyer or seller, a spotlight for a business). Change the script by typing, or tap the mic
-                and say it. Then pick who says it: <strong>Full AI Avatar</strong> (about 5 to 10 minutes),{" "}
+                and say it. Then pick who says it: <strong>AI Avatar in Circle</strong> (about 5 to 15 minutes; for a business, <strong>AI Avatar</strong> in your usual look, up to 30),{" "}
                 <strong>Me on camera · unlimited</strong> (the camera opens with the script in the teleprompter;
                 come back to AutoSparks and your recording is on the card), <strong>Saved video</strong> (pick
                 one of your finished videos, so one video can answer every lead it fits; the one you used last is
@@ -1048,7 +1048,7 @@ function FullGuide() {
                 connected (added there as a contact), otherwise from you via SparkReels with replies coming to
                 you. An approved avatar spotlight also goes in your Halo drafts to post. Two forms from the same person
                 within an hour become one card. Calling, texting and the lead&apos;s status stay in Halo:{" "}
-                <strong>Open in Halo</strong> on each card. A Full AI Avatar video uses 1 video; Saved video, Email only
+                <strong>Open in Halo</strong> on each card. An AI Avatar video uses 1 video; Saved video, Email only
                 and Me on camera use none. A saved video isn&apos;t added to your Halo drafts. Your own notes on a lead in Halo never come to SparkReels.
               </span>
               {/* Two accounts, two webhooks (2026-11-10, the owner's ask; Halo confirmed it). */}

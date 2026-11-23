@@ -2192,7 +2192,7 @@ function CreatePageInner() {
         const out = await safeJson(res);
         if (!res.ok) throw new Error((out.error as string) || "Couldn't start the video.");
         if (changed && hadBlog) void rewrite();
-        toast.success("On it. I'm making the video now. It takes about 10–12 minutes, and I'll let you know. Watch it, then approve it to post.", { duration: 7000 });
+        toast.success("On it. I'm making the video now. It takes about 5 to 30 minutes, depending on the style, and I'll let you know. Watch it, then approve it to post.", { duration: 7000 });
         setTopicChat(null);
         setChatReady({ ready: false, changed: false });
       } catch (err) {

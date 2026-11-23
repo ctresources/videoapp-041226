@@ -143,7 +143,7 @@ function Card({ c, listing, settings, reload }: { c: CardData; listing?: Listing
 
       {c.status === "making" && (
         <p className="mt-3 flex items-center gap-1.5 text-[13px] font-medium text-spark-ink-muted">
-          <Loader2 size={13} className="animate-spin" /> Making your video, about 5–10 minutes. Watch it here when it&apos;s done.
+          <Loader2 size={13} className="animate-spin" /> Making your video, about 5–15 minutes. Watch it here when it&apos;s done.
         </p>
       )}
 

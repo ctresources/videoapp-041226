@@ -91,12 +91,6 @@ interface GeneratedVideo {
   translation_language?: string | null;
 }
 
-interface RenderProgress {
-  progressPct: number;   // 0–100
-  status: string;
-  url?: string | null;
-}
-
 /**
  * How many videos the library loads.
  *
@@ -126,25 +120,15 @@ const typeLabel: Record<string, string> = {
   short_1x1:    "Square",
 };
 
-const ESTIMATED_SECS: Record<string, number> = {
-  reel_9x16:    900,
-  short_1x1:    900,
-  blog_long:    1200,
-  youtube_16x9: 1500,
+/**
+ * How long a render usually takes, from real finished videos (2026-11-23, last
+ * 45 days): Full AI Avatar's middle was 21 minutes and 9 in 10 finished within
+ * 30; AI Avatar in Circle's 7 and 13. Other kinds have no figure to quote.
+ */
+const USUAL_MINUTES: Record<string, string> = {
+  heygen_agent: "15 to 30",
+  heygen_v3_direct: "5 to 15",
 };
-
-function useElapsedSeconds(startedAt: string, active: boolean) {
-  const [elapsed, setElapsed] = useState(0);
-  useEffect(() => {
-    if (!active) { setElapsed(0); return; }
-    const start = new Date(startedAt).getTime();
-    const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [startedAt, active]);
-  return elapsed;
-}
 
 /**
  * The still on a video card.
@@ -212,24 +196,8 @@ function CardPoster({ video, alt }: { video: GeneratedVideo; alt: string }) {
 }
 
 function RenderProgressBar({ video }: { video: GeneratedVideo }) {
-  const [progress, setProgress] = useState<RenderProgress>({ progressPct: 0, status: video.render_status });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const elapsed = useElapsedSeconds(video.created_at, progress.status === "rendering" || progress.status === "pending");
-  const estimated = ESTIMATED_SECS[video.video_type] || 180;
-
-  // Time-based fallback progress (fills over estimated duration)
-  const timePct = Math.min(99, Math.round((elapsed / estimated) * 100));
-  /**
-   * Never goes backwards.
-   *
-   * The status route returns a constant 50% for anything mid-render, and this
-   * preferred the reported figure whenever it was above zero — so the bar
-   * filled toward 99% on the time estimate, the first poll landed, and it
-   * snapped back to 50 and sat there for the rest of the render under the
-   * words "AI is creating your video". Taking the higher of the two keeps the
-   * reported value useful when it is genuinely ahead, without ever rewinding.
-   */
-  const displayPct = Math.max(progress.progressPct || 0, timePct);
+  const usual = USUAL_MINUTES[video.render_provider];
 
   useEffect(() => {
     if (!video.render_job_id) return;
@@ -239,8 +207,7 @@ function RenderProgressBar({ video }: { video: GeneratedVideo }) {
       try {
         const res = await fetch(`/api/video/status?renderId=${video.render_job_id}`);
         if (!res.ok) return;
-        const data = await res.json() as RenderProgress;
-        setProgress(data);
+        const data = await res.json() as { status?: string };
         if (data.status === "completed" || data.status === "failed") {
           if (intervalRef.current) clearInterval(intervalRef.current);
           // Skip reload if user is mid-delete — would dismiss the confirm modal
@@ -260,13 +227,11 @@ function RenderProgressBar({ video }: { video: GeneratedVideo }) {
     <div className="mt-3 space-y-1.5">
       <span className="flex items-center gap-1 text-xs text-slate-500">
         <RefreshCw size={11} className="animate-spin text-primary-500" />
-        AI is creating your video…
+        AI is creating your video…{usual ? ` Usually ${usual} minutes.` : ""}
       </span>
-      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full animate-pulse"
-          style={{ width: `${displayPct}%` }}
-        />
+      {/* Moves without measuring: the renderer reports no real percent. */}
+      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden" role="progressbar" aria-label="Video is rendering">
+        <div className="spark-indeterminate h-full w-1/3 bg-gradient-to-r from-primary-400 to-primary-600 rounded-full" />
       </div>
     </div>
   );

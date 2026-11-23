@@ -217,7 +217,7 @@ function LeadCard({ l, boldtrail, reload }: { l: Lead; boldtrail: boolean; reloa
             onBlur={() => { if (script !== (l.script ?? "")) void post({ leadId: l.id, action: "script", script }); }}
             className={field} />
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Button size="sm" className="gap-1.5" loading={busy === "video"} onClick={() => then(act("video", { script }))}><UserRound size={13} /> Full AI Avatar</Button>
+            <Button size="sm" className="gap-1.5" loading={busy === "video"} onClick={() => then(act("video", { script }))}><UserRound size={13} /> {business ? "AI Avatar" : "AI Avatar in Circle"}</Button>
             <Button size="sm" variant="outline" className="gap-1.5" loading={busy === "camera"} onClick={() => void onCamera()}><Camera size={13} /> Me on camera · unlimited</Button>
             <Button size="sm" variant="outline" className="gap-1.5" aria-pressed={picking} onClick={() => setPicking((x) => !x)}><Film size={13} /> Saved video</Button>
             <Button size="sm" variant="outline" loading={busy === "email"} onClick={() => then(act("email", { script }))}>Email only</Button>
@@ -228,13 +228,13 @@ function LeadCard({ l, boldtrail, reload }: { l: Lead; boldtrail: boolean; reloa
               onUse={(videoId) => then(act("saved", { videoId }).then((o) => { if (o) setPicking(false); return o; }))} />
           )}
           <p className="mt-2 text-[12.5px] text-spark-ink-faint">
-            Full AI Avatar uses 1 short video. Saved video uses none.{business ? " An approved avatar spotlight also goes in your Halo drafts to post." : ""}
+            {business ? "AI Avatar" : "AI Avatar in Circle"} uses 1 short video. Saved video uses none.{business ? " An approved avatar spotlight also goes in your Halo drafts to post." : ""}
           </p>
         </div>
       )}
 
       {l.status === "making" && (
-        <p className="mt-3 flex items-center gap-1.5 text-[13px] font-medium text-spark-ink-muted"><Loader2 size={13} className="animate-spin" /> Making your video, about 5–10 minutes. Watch it here when it&apos;s done.</p>
+        <p className="mt-3 flex items-center gap-1.5 text-[13px] font-medium text-spark-ink-muted"><Loader2 size={13} className="animate-spin" /> Making your video, about {business ? "5–30" : "5–15"} minutes. Watch it here when it&apos;s done.</p>
       )}
 
       {l.status === "camera" && (

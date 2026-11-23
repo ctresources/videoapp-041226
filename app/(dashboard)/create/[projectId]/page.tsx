@@ -235,8 +235,8 @@ function renderEta(opts: { pastedScript: boolean; longForm: boolean; photoCount?
     // they uploaded does not appear.
     const photos = opts.photoCount ?? 0;
     return {
-      // The owner's timing from her own videos (2026-10-26).
-      range: "10–12 minutes",
+      // From real finished renders, 2026-11-23: middle 21 minutes, 9 in 10 within 30.
+      range: "15–30 minutes",
       why: photos > 0
         ? `The AI builds the scenes around your ${photos} photo${photos === 1 ? "" : "s"}, which takes longer than a straight read.`
         : "The AI plans the scenes and chooses the visuals, which takes longer than a straight read.",
@@ -244,7 +244,7 @@ function renderEta(opts: { pastedScript: boolean; longForm: boolean; photoCount?
   }
   return opts.longForm
     ? { range: "10–20 minutes", why: "Long videos read your full script start to finish." }
-    : { range: "5–10 minutes", why: "" };
+    : { range: "5–15 minutes", why: "" };
 }
 
 /**

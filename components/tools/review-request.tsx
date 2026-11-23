@@ -217,7 +217,7 @@ export function ReviewRequestTool() {
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { setMaking(false); if (showTrialLock(d)) return; toast.error(d?.error || "Couldn't start the video."); return; }
     setAvatarProject(d.projectId);
-    toast.success("Making your avatar video. About 5 to 10 minutes.");
+    toast.success("Making your avatar video. About 5 to 15 minutes.");
   }
 
   async function addPhotos(files: FileList | null) {
@@ -433,7 +433,7 @@ export function ReviewRequestTool() {
                 <Button size="sm" onClick={() => void makeAvatar()} loading={making} disabled={words > MAX_AVATAR_WORDS}>
                   {making ? "Making your video…" : "Make my avatar video"}
                 </Button>
-                {making && <p className="mt-1.5 text-[12px] text-spark-ink-muted">About 5 to 10 minutes. You can stay here or come back; it&apos;s in My Sparks too.</p>}
+                {making && <p className="mt-1.5 text-[12px] text-spark-ink-muted">About 5 to 15 minutes. You can stay here or come back; it&apos;s in My Sparks too.</p>}
               </div>
             )}
             {way === "reel" && !video && (

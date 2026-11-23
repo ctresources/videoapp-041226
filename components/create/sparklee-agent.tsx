@@ -127,7 +127,7 @@ export function SparkleeAgent({ words, userId, disabled = false, preview, onChat
         const where = (out.platforms ?? []).map((p) => PLATFORM_NAMES[p] ?? p).join(", ");
         setSaid({
           me,
-          her: `On it. I'm writing the script and making the video now. It takes about 10–12 minutes, and I'll let you know. Watch it, then approve it to post${where ? ` to ${where}` : ""}${out.slotAt ? ` on ${whenText(out.slotAt)}` : ""}.`,
+          her: `On it. I'm writing the script and making the video now. It takes about 5 to 30 minutes, depending on the style, and I'll let you know. Watch it, then approve it to post${where ? ` to ${where}` : ""}${out.slotAt ? ` on ${whenText(out.slotAt)}` : ""}.`,
         });
         await halo.reloadDrafts();
       } else if (out.ask) {

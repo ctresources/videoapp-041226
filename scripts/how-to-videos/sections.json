@@ -1049,7 +1049,7 @@
     ]
    },
    {
-    "say": "Press Create it, and in about ten minutes your video comes back as a card.",
+    "say": "Press Create it, and when your video is ready it comes back as a card.",
     "do": [
      {
       "hover": "btn:Sparklee, make it"

@@ -188,6 +188,18 @@
   .sparklee-badge::after, .sparklee-badge.sparklee-live::after { animation: none; }
 }
 
+/* A render's bar: shows it's working without claiming a percent. */
+@keyframes spark-indeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+.spark-indeterminate {
+  animation: spark-indeterminate 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spark-indeterminate { animation: none; width: 100%; opacity: 0.6; }
+}
+
 /* Infinite horizontal marquee */
 @keyframes marquee {
   0%   { transform: translateX(0); }
