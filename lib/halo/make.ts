@@ -21,7 +21,7 @@ export async function renderSparkVideo(
   projectId: string,
   setup: HaloSetup,
   /** The Remake button: lets a second video past the one-per-draft rule. */
-  opts: { remake?: boolean } = {},
+  opts: { remake?: boolean; visualDirection?: string } = {},
 ): Promise<{ status: number; out: Record<string, unknown> }> {
   const { data: proj } = await admin.from("projects").select("ai_script").eq("id", projectId).eq("user_id", user.id).single();
   const ai = ((proj as { ai_script: Record<string, unknown> | null } | null)?.ai_script) ?? {};
@@ -67,6 +67,7 @@ export async function renderSparkVideo(
     ...(lookId && !voiceOnly && { lookId }),
     ...(setup.onScreen === "post" && setup.photos?.length && { extraPhotoUrls: setup.photos }),
     ...(opts.remake && { remake: true }),
+    ...(opts.visualDirection && { visualDirection: opts.visualDirection }),
   });
 
   const out = await res.json().catch(() => ({})) as Record<string, unknown>;

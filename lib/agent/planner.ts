@@ -7,6 +7,7 @@ import { type AgentContext, videosLeft } from "@/lib/agent/context";
 import { planHash, type PlanStep } from "@/lib/agent/approvals";
 import { canUseDigitalTwin, canUseTwinInFullVideo } from "@/lib/utils/plan-features";
 import type { AgentActor } from "@/lib/agent/types";
+import type { PlanVisuals } from "@/lib/agent/plan-visuals";
 
 /**
  * plan_spark: the brain (plan revision 5). A goal ("Market my listing",
@@ -53,6 +54,8 @@ export interface Intent {
   when: string | null;
   crmFollowUp: boolean;
   clarify: string | null;
+  /** What to show on screen, and the agent's own images (copies in their storage). */
+  visuals?: PlanVisuals;
 }
 
 const INTENT_SYSTEM = `You read a real estate agent's goal and return what content they want. You do not write the content.
@@ -292,6 +295,19 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
     notes.push("Recording happens in SparkReels: when the script and Share Kit are ready, you'll get a link to the teleprompter. Once it's recorded, you can come back here to post it.");
   }
 
+  // Direction goes to the renderer that directs the video. A circle video's
+  // scenes are planned from the script, so only its images can be chosen.
+  const direction = makeVideo && intent.style !== "circle" ? intent.visuals?.direction ?? "" : "";
+  const images = makeVideo ? (intent.visuals?.images ?? []).map((i) => i.url) : [];
+  if (direction) notes.push(`On screen: ${direction}`);
+  if (images.length) notes.push(`Uses your ${images.length === 1 ? "image" : `${images.length} images`} in the video.`);
+  if (intent.visuals?.direction && !direction && makeVideo) {
+    notes.push("On-screen direction works with Full AI Avatar. An AI Avatar in Circle video can still use your images.");
+  }
+  if (direction && !images.length) {
+    notes.push("Real website or app screens appear only from images you provide. Without one, the video uses a text card instead.");
+  }
+
   let n = 1;
   steps.push({
     n: n++, tool: "write_script", title: `Write the script: "${shortTopic(intent.topic)}"`, usesVideo: false, needsConfirm: false,
@@ -312,7 +328,11 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
       n: n++, tool: "make_video",
       title: `Make the video: ${videoLabel(shape, presenter, intent.style)}`,
       usesVideo: !circleFree, needsConfirm: false,
-      input: { sparkFromStep: scriptStep, size: shape, voiceOnly: presenter === "voice_only", presenter, style: intent.style },
+      input: {
+        sparkFromStep: scriptStep, size: shape, voiceOnly: presenter === "voice_only", presenter, style: intent.style,
+        ...(direction && { visualDirection: direction }),
+        ...(images.length && { images }),
+      },
     });
   }
   if (intent.wantsBlog || intent.kind === "blog_only") {
@@ -363,6 +383,7 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
     features: Array.from(new Set(steps.filter((s) => !s.comingSoon && !s.manual).map((s) => s.tool))),
     // Kept so editing a plan doesn't ask these again.
     choices: { shape, presenter, style: intent.style },
+    ...(intent.visuals && (intent.visuals.direction || intent.visuals.images.length) && { visuals: intent.visuals }),
   };
   return { steps, totals, upgrade, notes };
 }

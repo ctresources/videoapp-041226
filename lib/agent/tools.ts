@@ -17,6 +17,8 @@ import {
 } from "@/lib/agent/planner";
 import { getAvatarLooks } from "@/lib/api/heygen";
 import { pictureForPlan, type PlanPicture } from "@/lib/agent/plan-picture";
+import { imageLinks, imagesForPlan, labeledVisuals, MAX_PLAN_IMAGES, visualsFrom, withoutVisualLabels, type PlanVisuals } from "@/lib/agent/plan-visuals";
+import { cleanVisualDirection } from "@/lib/utils/visual-direction";
 import { decidePlan, getPlan, maybeCompletePlan, planAuthorizes, PUBLISH_CONFIRM_MINUTES, type PlanStep } from "@/lib/agent/approvals";
 import { claimAction, finishAction, requestIdFor } from "@/lib/agent/idempotency";
 import { failed, needsInput, ok, type AgentActor, type AgentResult, type Scope } from "@/lib/agent/types";
@@ -124,6 +126,13 @@ async function lookFor(ctx: AgentContext, presenter: Presenter | null, shape: Sh
   return (looks.find((l) => l.status === "completed") ?? looks[0])?.id ?? null;
 }
 
+/**
+ * From real finished renders (2026-11-23, last 45 days): the Video Agent's
+ * middle was 21 minutes and 9 in 10 finished within 30; Direct Video 7 and 13.
+ */
+export const renderingMessage = (provider: string | null) =>
+  `Still rendering. This kind of video usually takes ${provider === "heygen_agent" ? "15 to 30" : "5 to 15"} minutes. There is no percent complete, so don't give one.`;
+
 /** Builds publish targets for connected platforms, the same shape the Publish window sends. */
 function targetsFor(platforms: string[]) {
   return platforms.map((p) =>
@@ -214,7 +223,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "plan_spark",
     scope: "sparks:plan",
-    description: "START HERE. Turns a goal (\"Market my listing\", \"Keep me visible to sellers in Blue Bell this week\") into a recommended Spark plan. Creates no script, video or post and uses no credits. Pass the user's goal word for word: do not rewrite it or add format, length, tone or who is on screen. Shape, presenter and style count only as these fields, and only when the user actually said them; never choose for them. If it returns questions, ask the user exactly those and wait, then call again with the same goal plus their answers. To edit a plan, pass planId and change. Show the plan with Approve / Edit / Cancel. If the result has a picture, show that one; never add images or photos from the web.",
+    description: "START HERE. Turns a goal (\"Market my listing\", \"Keep me visible to sellers in Blue Bell this week\") into a recommended Spark plan. Creates no script, video or post and uses no credits. Pass the user's goal word for word: do not rewrite it or add format, length, tone or who is on screen. Shape, presenter and style count only as these fields, and only when the user actually said them; never choose for them. If it returns questions, ask the user exactly those and wait, then call again with the same goal plus their answers. To edit a plan, pass planId and change. Show the plan with Approve / Edit / Cancel. If the result has a picture, show that one; never add images or photos from the web. If the user says what should appear in the video, pass it as showOnScreen, and pass only image links they gave you as images. Without those fields, end the goal with: On screen: <what to show>. Images: <links>. An image attached in this chat has no link: ask for a public https link. Never promise real website or app screens unless the plan uses an image of them.",
     input: {
       type: "object",
       properties: {
@@ -222,6 +231,8 @@ export const TOOLS: ToolDef[] = [
         shape: { type: "string", enum: ["vertical", "wide"], description: "Only if the user chose it." },
         presenter: { type: "string", enum: ["twin", "headshot", "voice_only", "camera"], description: "Who's on screen, only if the user chose it. camera = they record themselves in SparkReels." },
         style: { type: "string", enum: ["full", "circle"], description: "For an avatar, only if the user chose it." },
+        showOnScreen: { type: "string", maxLength: 280, description: "What the user wants to see in the video, in their words. Visuals only; it never changes the script." },
+        images: { type: "array", maxItems: MAX_PLAN_IMAGES, items: { type: "string" }, description: "Public https links to the user's own screenshots or photos, only links they gave you." },
         city: { type: "string", description: "The town, if the user gave it." },
         state: { type: "string", description: "2-letter state, if the user gave it." },
         planId: { type: "string", description: "Only to edit an existing plan." },
@@ -233,18 +244,22 @@ export const TOOLS: ToolDef[] = [
       let version = 1;
       let prev: { shape?: unknown; presenter?: unknown; style?: unknown } = {};
       let prevPicture: PlanPicture | null = null;
+      let prevVisuals: PlanVisuals = { direction: "", images: [] };
       if (str(input.planId)) {
         const old = await getPlan(actor.userId, str(input.planId));
         if (!old) return failed("That plan isn't there. Ask for a new one.", "not_found");
         prev = ((old.totals as { choices?: typeof prev }).choices) ?? {};
         prevPicture = ((old.totals as { picture?: PlanPicture }).picture) ?? null;
+        prevVisuals = visualsFrom(old.totals);
         const { data } = await createAdminClient().from("agent_plans").select("goal").eq("id", old.id).single();
         goal = `${(data as { goal: string | null } | null)?.goal ?? ""}\nChange: ${str(input.change)}`.trim();
         version = old.version + 1;
         await createAdminClient().from("agent_plans").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", old.id).eq("status", "proposed");
       }
       if (!goal) return needsInput("What would you like to make or get done?", "goal_required");
-      const read = await readIntent(goal, ctx);
+      // Read before the goal is cleaned; on an edit only the new change counts.
+      const visualLabels = labeledVisuals(str(input.planId) ? str(input.change) : goal);
+      const read = await readIntent(withoutVisualLabels(goal), ctx);
       if (read.clarify && read.topic.length < 8) return needsInput(read.clarify, "clarify");
       // The person's answers win (as fields, or in the exact labeled format),
       // then an edited plan's earlier choices. On an edit only the new change
@@ -269,7 +284,20 @@ export const TOOLS: ToolDef[] = [
         );
       }
       intent.style = style;
-      const { steps, totals, upgrade, notes } = buildPlan(intent, ctx);
+      // A new answer replaces the old one; an edit that doesn't mention them keeps them.
+      const askedLinks = imageLinks(input.images);
+      const links = askedLinks.length ? askedLinks : visualLabels.images.length ? visualLabels.images : prevVisuals.images.map((i) => i.source);
+      const { images, failed: badImages } = links.length && intent.kind === "video" && intent.presenter !== "camera"
+        ? await imagesForPlan(actor.userId, links, prevVisuals.images)
+        : { images: [], failed: [] as string[] };
+      const visuals: PlanVisuals = {
+        direction: cleanVisualDirection(input.showOnScreen) || visualLabels.direction || prevVisuals.direction,
+        images,
+      };
+      const { steps, totals, upgrade, notes } = buildPlan({ ...intent, visuals }, ctx);
+      if (badImages.length) {
+        notes.push(`Couldn't use ${badImages.length === 1 ? "1 image link" : `${badImages.length} image links`} (up to ${MAX_PLAN_IMAGES} public https JPG, PNG or WebP images): ${badImages.join(", ")}`);
+      }
       const summary = summarize(steps, totals, notes, upgrade);
       const place = placeFor(intent, ctx);
       const picture = await pictureForPlan(actor.userId, {
@@ -398,14 +426,19 @@ export const TOOLS: ToolDef[] = [
         if (presenter && presenter !== "voice_only" && !lookId) {
           return failed(presenter === "twin" ? "Your Digital Twin isn't ready. Check it in Settings." : "Add a headshot in Settings first.", "look_missing");
         }
+        // Only from the approved plan, where each image is already a copy in their storage.
+        const images = Array.isArray(step.input.images) ? (step.input.images as unknown[]).filter((u): u is string => typeof u === "string") : [];
         const setup = {
           size: shape === "vertical" ? "vertical" : "horizontal",
           voiceOnly: step.input.voiceOnly === true,
           look: (step.input.style as VideoStyle | null) === "circle" ? "circle" : "full",
           lookId,
           captions: true,
+          ...(images.length && { onScreen: "post", photos: images }),
         } as unknown as HaloSetup;
-        const r = await renderSparkVideo(createAdminClient(), { id: actor.userId, email: await userEmail(actor.userId) }, sparkId, setup);
+        const r = await renderSparkVideo(createAdminClient(), { id: actor.userId, email: await userEmail(actor.userId) }, sparkId, setup, {
+          visualDirection: cleanVisualDirection(step.input.visualDirection) || undefined,
+        });
         if (r.status >= 400) return failed(String(r.out.error ?? "Couldn't start the video."), String(r.out.code ?? `http_${r.status}`));
         return { ...ok(r.out.queued ? "The video is in line to render. Check video_status in a few minutes." : "The video is rendering. Check video_status in a few minutes.", { sparkId, queued: r.out.queued === true }), sparkId };
       }, { title, usesVideo: true });
@@ -418,14 +451,20 @@ export const TOOLS: ToolDef[] = [
     input: { type: "object", properties: { sparkId: { type: "string" }, videoId: { type: "string" } } },
     async run(actor, _ctx, input) {
       const admin = createAdminClient();
-      let q = admin.from("generated_videos").select("id, render_job_id, project_id").eq("user_id", actor.userId);
+      let q = admin.from("generated_videos").select("id, render_job_id, project_id, render_provider, metadata").eq("user_id", actor.userId);
       q = str(input.videoId) ? q.eq("id", str(input.videoId)) : q.eq("project_id", str(input.sparkId));
       const { data } = await q.order("created_at", { ascending: false }).limit(1).maybeSingle();
-      const v = data as { id: string; render_job_id: string | null; project_id: string | null } | null;
+      const v = data as { id: string; render_job_id: string | null; project_id: string | null; render_provider: string | null; metadata: { visual_direction_note?: string } | null } | null;
       if (!v?.render_job_id) return failed("No video found for that Spark yet.", "not_found");
       const r = await getRenderStatus(actor.userId, v.render_job_id);
-      const b = (r.body ?? {}) as { status?: string; url?: string; error?: string };
-      return { ...ok(b.status === "completed" ? "The video is ready." : b.status === "failed" ? `The video failed: ${b.error ?? "unknown reason"}.` : "Still rendering.", { videoId: v.id, sparkId: v.project_id, ...b }), audit: { videoId: v.id, sparkId: v.project_id } };
+      // The service's progress is a fixed 50% while rendering (the app's bar
+      // builds on it), so an AI client must never be handed it as a real number.
+      const { progress: _progress, progressPct: _pct, ...b } = (r.body ?? {}) as { status?: string; url?: string; error?: string; progress?: unknown; progressPct?: unknown };
+      const note = v.metadata?.visual_direction_note;
+      const directionNote = note === "left_out" ? " Your on-screen direction was left out because the script needed the room."
+        : note === "shortened" ? " Only part of your on-screen direction fit beside the script." : "";
+      const message = b.status === "completed" ? "The video is ready." : b.status === "failed" ? `The video failed: ${b.error ?? "unknown reason"}.` : renderingMessage(v.render_provider);
+      return { ...ok(`${message}${directionNote}`, { videoId: v.id, sparkId: v.project_id, ...b }), audit: { videoId: v.id, sparkId: v.project_id } };
     },
   },
   {

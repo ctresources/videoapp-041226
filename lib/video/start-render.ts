@@ -33,6 +33,7 @@ import { notifyRenderBalanceLow } from "@/lib/email";
 import { registerFormatLooks } from "@/lib/utils/avatar-crops";
 import { dropDuplicateCta, dropRepeatedLines, dropRepeatsOfOpening } from "@/lib/utils/script-assembly";
 import { AGENT_PHOTO_LIMIT, DIRECT_PHOTO_LIMIT } from "@/lib/utils/render-limits";
+import { cleanVisualDirection, fitVisualDirection, visualDirectionBlock } from "@/lib/utils/visual-direction";
 import { NextResponse } from "next/server";
 import { joinLineIfBusy, joinLine } from "@/lib/video/render-queue";
 import { parseChoice, resolveTwinBackdrop, twinFootageLayout } from "@/lib/twin-backgrounds";
@@ -263,6 +264,8 @@ export function buildVideoAgentPrompt(params: {
   /** An upright Digital Twin in a widescreen video: corner inset over full-screen b-roll (2026-10-29). */
   uprightTwinInset?: boolean;
   pdfContent?: string;
+  /** What the agent asked to see on screen, from an AI assistant's plan (2026-11-23). */
+  visualDirection?: string;
   /**
    * Whether an avatar is actually being placed on screen.
    *
@@ -452,6 +455,13 @@ Calm, premium, editorial. Photos fill the frame in true natural colour, no grade
 - Not enough footage of the place itself? Use varied footage of the TOPIC (for stucco: home exteriors, stucco close-ups, an inspector at work; for a market: homes for sale, neighbourhood streets, interiors) in the region's style. A new relevant clip always beats a repeat; only a shot naming the place must be the place.${propertyPhotos ? `
 - PROPERTY: the ${totalPhotos} attached photos${params.listingAddress ? ` of ${params.listingAddress}` : ""} are the ONLY property visuals. Never stock, generated or invented rooms, yards or exteriors. Use every photo, each with the sentence that describes it.` : ""}`;
 
+  /**
+   * Sits above the compliance block, which overrides everything. The last line
+   * matters: asked to "show the website", the agent would otherwise draw a
+   * made-up one, which misrepresents a real product.
+   */
+  const directionBlock = params.visualDirection ? visualDirectionBlock(params.visualDirection, totalPhotos > 0) : "";
+
   const head = `You are producing a professional real estate marketing video.
 
 ${orientationBlock}
@@ -496,7 +506,7 @@ ${propertyPhotos
 
 ${matchBlock}
 
-LOCATION ACCURACY — ${locationOr}, ${monthName}
+${directionBlock}LOCATION ACCURACY —${locationOr}, ${monthName}
 - Any establishing shot, aerial or street scene must be OF ${locationOr}, never another town or a generic stand-in, and must be believable there during ${monthName}: correct season, foliage, weather, daylight, architecture, materials and terrain. Nothing the area does not genuinely have.
 - Unsure whether something fits? Use a neutral interior or an ordinary residential street — never invent dramatic or exotic scenery.
 
@@ -1336,6 +1346,8 @@ export async function startRender(
     // 9,800 sits just under HeyGen's ~10k ceiling: at 8,500 a normal 500-word
     // script left room for only ~17% of the refinement rules.
     const HEYGEN_PROMPT_LIMIT = 9800;
+    let visualDirectionUsed: string | null = null;
+    let visualDirectionNote: "left_out" | "shortened" | null = null;
     const promptParams = {
       script: safeScript,
       city,
@@ -1379,7 +1391,19 @@ export async function startRender(
     // itself is attached as a file where the files list is built.
     const musicPrefix = typeof musicUrl === "string" && musicUrl.trim() ? MUSIC_PROMPT_INSTRUCTION : "";
 
-    let { head, tail } = buildVideoAgentPrompt({ ...promptParams, pdfContent: pdfForPrompt });
+    const plainPrompt = buildVideoAgentPrompt({ ...promptParams, pdfContent: pdfForPrompt });
+    // The script always comes first: on-screen direction gets only the room
+    // left beside it and is never the reason a word gets cut. What didn't fit
+    // is recorded, so video_status can say so.
+    const asked = cleanVisualDirection(body.visualDirection);
+    const hasPhotos = promptParams.listingPhotoCount + promptParams.extraPhotoCount > 0;
+    const fitted = asked
+      ? fitVisualDirection(asked, HEYGEN_PROMPT_LIMIT - musicPrefix.length - plainPrompt.head.length - visualDirectionBlock("", hasPhotos).length)
+      : "";
+    visualDirectionUsed = fitted || null;
+    visualDirectionNote = !asked ? null : !fitted ? "left_out" : fitted !== asked ? "shortened" : null;
+    if (visualDirectionNote) console.warn(`[create-blog] project=${projectId} on-screen direction ${visualDirectionNote}: the script needs the room`);
+    let { head, tail } = fitted ? buildVideoAgentPrompt({ ...promptParams, pdfContent: pdfForPrompt, visualDirection: fitted }) : plainPrompt;
 
     // If the script is so long that the head alone blows the budget (long-form),
     // shorten the SCRIPT at a sentence boundary and rebuild. The agent carries the
@@ -1850,6 +1874,8 @@ export async function startRender(
           // captions sat on its graphics. The store step makes the SRT and
           // burns it into the bottom strip.
           captions_by_agent: false,
+          ...(visualDirectionUsed && { visual_direction: visualDirectionUsed }),
+          ...(visualDirectionNote && { visual_direction_note: visualDirectionNote }),
         },
       })
       .select()
