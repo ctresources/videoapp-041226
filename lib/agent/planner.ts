@@ -38,7 +38,13 @@ export interface Intent {
   kind: "video" | "blog_only";
   wantsBlog: boolean;
   wantsSocialCopy: boolean;
-  /** Null until the person has said: these are asked, never guessed. */
+  /** About one specific property: its picture must be a real photo of it. */
+  isListing?: boolean;
+  /**
+   * Null until the person has answered. Only ever set from the tool's own
+   * answer fields, never read out of the goal: an AI client rewrites the goal
+   * ("short video") and that wording isn't the person's choice (2026-11-22).
+   */
   shape: Shape | null;
   presenter: Presenter | null;
   style: VideoStyle | null;
@@ -50,13 +56,11 @@ export interface Intent {
 }
 
 const INTENT_SYSTEM = `You read a real estate agent's goal and return what content they want. You do not write the content.
-Return ONLY JSON: {"topic": "...", "city": "town named in the goal" | null, "state": "2-letter state" | null, "kind": "video" | "blog_only", "wantsBlog": bool, "wantsSocialCopy": bool, "shape": "vertical" | "wide" | null, "presenter": "twin" | "headshot" | "voice_only" | "camera" | null, "style": "full" | "circle" | null, "platforms": ["youtube","instagram","facebook","linkedin","tiktok","x","threads","google_business"], "when": "YYYY-MM-DDTHH:mm" | null, "crmFollowUp": bool, "clarify": "one short question" | null}
+Return ONLY JSON: {"topic": "...", "city": "town named in the goal" | null, "state": "2-letter state" | null, "kind": "video" | "blog_only", "wantsBlog": bool, "wantsSocialCopy": bool, "isListing": bool, "platforms": ["youtube","instagram","facebook","linkedin","tiktok","x","threads","google_business"], "when": "YYYY-MM-DDTHH:mm" | null, "crmFollowUp": bool, "clarify": "one short question" | null}
 - topic: ONLY the subject of the video in plain words, including the town if given. For "market my listing", the listing's address or description if given. Leave out instructions about planning, approval, format, length, tone or who is on screen.
 - city, state: only a place named in the goal itself, never the agent's market. Give the state only if the goal says it or the town is unmistakable; otherwise null.
 - Default kind "video".
-- shape: only if they said it. "vertical", "reel", "short", "TikTok" = vertical; "wide", "landscape", "horizontal" = wide. Otherwise null. Never guess.
-- presenter: only if they said it. "digital twin" / "my twin" = twin; "headshot" / "photo avatar" = headshot; "voice only" / "nobody on screen" = voice_only; "record myself", "on camera", "teleprompter" = camera. The word "avatar" alone = null. Otherwise null. Never guess.
-- style: only if they said it. "full video" / "b-roll" = full; "circle" / "corner" = circle. Otherwise null.
+- isListing: true only if it's about one specific property for sale (a listing, an address, "my listing").
 - wantsSocialCopy true unless they say otherwise. wantsBlog true for market updates, guides and listings.
 - platforms: only ones they named; [] means "where they're connected".
 - when: only if they named a day or time. Today is {today} in {tz}.
@@ -77,14 +81,23 @@ export const asStyle = (v: unknown): VideoStyle | null => (v === "full" || v ===
  */
 export function cleanTopic(raw: string): string {
   const t = raw
-    .replace(/\s*[,;:–—-]?\s*\b(?:plan\s+(?:it\s+)?)?for approval(?: only)?\b.*$/i, "")
-    .replace(/\s*[,;:–—-]?\s*\b(?:do not|don'?t)\s+(?:create|make|publish|post)\s+(?:anything|it|this|yet)\b.*$/i, "")
+    .replace(/\s*[,;:.–—-]?\s*\b(?:show\s+(?:the\s+)?)?(?:plan\s+(?:it\s+)?)?for approval(?: only)?\b.*$/i, "")
+    .replace(/\s*[,;:.–—-]?\s*\b(?:do not|don'?t)\s+(?:create|make|publish|post)\s+(?:anything|it|this|yet)\b.*$/i, "")
+    // Choices a client wrote into the goal ("Style: Full video. Presenter: …").
+    .replace(/\s*[,;.]?\s*\b(?:style|presenter|format|shape|tone)\s*:\s*[^.;]*[.;]?/gi, " ")
     .replace(/^\s*(?:please\s+)?plan\s+(?:a|an|me a)\s+(?:new\s+)?/i, "")
+    .replace(/\s{2,}/g, " ")
     .replace(/[\s,;:.–—-]+$/, "")
     .trim();
-  if (t.length <= 160) return t;
-  const cut = t.slice(0, 160);
-  return cut.slice(0, cut.lastIndexOf(" ") > 80 ? cut.lastIndexOf(" ") : 160).trim();
+  // The script gets the whole subject; only a runaway paste is limited.
+  return t.length <= 500 ? t : t.slice(0, t.lastIndexOf(" ", 500) > 300 ? t.lastIndexOf(" ", 500) : 500).trim();
+}
+
+/** The topic as shown in a plan's step title. The script still gets all of it. */
+export function shortTopic(topic: string, max = 90): string {
+  if (topic.length <= max) return topic;
+  const cut = topic.slice(0, max);
+  return `${cut.slice(0, cut.lastIndexOf(" ") > 40 ? cut.lastIndexOf(" ") : max).trim()}…`;
 }
 
 /** What this account can pick, using the same plan rules the render enforces. */
@@ -196,9 +209,11 @@ export async function readIntent(goal: string, ctx: AgentContext): Promise<Inten
     kind: o.kind === "blog_only" ? "blog_only" : "video",
     wantsBlog: o.wantsBlog === true,
     wantsSocialCopy: o.wantsSocialCopy !== false,
-    shape: asShape(o.shape),
-    presenter: asPresenter(o.presenter),
-    style: asStyle(o.style),
+    isListing: o.isListing === true,
+    // Never from the goal's wording: see Intent. The person's answers fill these.
+    shape: null,
+    presenter: null,
+    style: null,
     platforms: Array.isArray(o.platforms) ? (o.platforms as unknown[]).map(String) : [],
     when: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(str(o.when)) ? str(o.when) : null,
     crmFollowUp: o.crmFollowUp === true,
@@ -250,7 +265,7 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
 
   let n = 1;
   steps.push({
-    n: n++, tool: "write_script", title: `Write the script: "${intent.topic}"`, usesVideo: false, needsConfirm: false,
+    n: n++, tool: "write_script", title: `Write the script: "${shortTopic(intent.topic)}"`, usesVideo: false, needsConfirm: false,
     input: {
       videoType: "custom",
       customTopic: intent.topic,
@@ -329,7 +344,7 @@ export function summarize(steps: PlanStep[], totals: { videosNeeded: number; vid
   lines.push(totals.videosNeeded
     ? `Uses ${totals.videosNeeded} of your ${totals.videosLeft === "unlimited" ? "unlimited" : totals.videosLeft} videos left.`
     : "Uses none of your videos.");
-  lines.push("Nothing is created until you approve. Posting always needs its own confirmation.");
+  lines.push("No script, video or post is created until you approve. Posting always needs its own confirmation.");
   if (notes.length) lines.push(...notes);
   if (upgrade.length) lines.push(`Upgrade opportunity: ${upgrade.join(" ")}`);
   lines.push("Approve Plan · Edit Plan · Cancel");

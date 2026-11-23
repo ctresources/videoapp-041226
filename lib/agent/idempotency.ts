@@ -14,8 +14,23 @@ import type { AgentActor } from "@/lib/agent/types";
 
 export type ActionKind = "create" | "publish" | "crm_send";
 
+/**
+ * The same data always gives the same text, whatever order its keys are in.
+ * Postgres jsonb reorders keys when it stores them, so a plain JSON.stringify
+ * of a saved plan never matched its hash and every approval would have been
+ * refused as "changed" (caught 2026-11-22).
+ */
+function canonical(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(canonical);
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    return Object.fromEntries(Object.keys(o).filter((k) => o[k] !== undefined).sort().map((k) => [k, canonical(o[k])]));
+  }
+  return v;
+}
+
 export const hashPayload = (p: unknown) =>
-  createHash("sha256").update(JSON.stringify(p ?? null)).digest("hex");
+  createHash("sha256").update(JSON.stringify(canonical(p ?? null))).digest("hex");
 
 /** The client's key, or one derived from the user, tool, inputs and a 10-minute window. */
 export function requestIdFor(actor: AgentActor, tool: string, payload: unknown, clientKey?: string | null): string {

@@ -81,6 +81,40 @@ const intent = {
   platforms: [] as string[], when: null as string | null, crmFollowUp: false, clarify: null,
 };
 
+describe("what counts as the person's choice", () => {
+  it("the goal's wording never sets shape, presenter or style", async () => {
+    const { openaiChatJson } = await import("@/lib/api/openai-chat");
+    (openaiChatJson as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      topic: "Closing costs", shape: "vertical", presenter: "twin", style: "full",
+    });
+    const { readIntent } = await import("@/lib/agent/planner");
+    const r = await readIntent("Create a short vertical video with my Digital Twin", ctx());
+    expect([r.shape, r.presenter, r.style]).toEqual([null, null, null]);
+  });
+  it("keeps the whole topic for the script and shortens only the display", async () => {
+    const { cleanTopic, shortTopic } = await import("@/lib/agent/planner");
+    const long = "Staying visible to buyers and sellers in Blue Bell using AI-powered websites for local content and AI search visibility, and SparkReels to turn local articles into video";
+    expect(cleanTopic(long)).toBe(long);
+    expect(shortTopic(long).length).toBeLessThanOrEqual(91);
+    expect(shortTopic(long).endsWith("…")).toBe(true);
+  });
+  it("strips what a client wrote into the goal", async () => {
+    const { cleanTopic } = await import("@/lib/agent/planner");
+    expect(cleanTopic("Closing costs in Ambler. Style: Full video with b-roll. Presenter: Digital Twin. Show plan for approval only; do not create anything yet."))
+      .toBe("Closing costs in Ambler");
+  });
+});
+
+describe("plan hash", () => {
+  it("survives the database reordering a plan's keys, so approvals work", async () => {
+    const { planHash } = await import("@/lib/agent/approvals");
+    const a = [{ n: 1, tool: "make_video", title: "T", input: { size: "wide", voiceOnly: false }, usesVideo: true, needsConfirm: false }];
+    const b = [{ needsConfirm: false, usesVideo: true, input: { voiceOnly: false, size: "wide" }, title: "T", tool: "make_video", n: 1 }];
+    expect(planHash(a as never, { x: 1, y: 2 })).toBe(planHash(b as never, { y: 2, x: 1 }));
+    expect(planHash(a as never, { x: 1 })).not.toBe(planHash(a as never, { x: 2 }));
+  });
+});
+
 describe("plan_spark asks instead of guessing", () => {
   it("asks shape and who's on screen when the goal didn't say", async () => {
     const { questionsFor } = await import("@/lib/agent/planner");

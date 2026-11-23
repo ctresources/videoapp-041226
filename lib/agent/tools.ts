@@ -16,6 +16,7 @@ import {
   readIntent, recordLink, savePlan, styleOptions, summarize, videoLabel, type Presenter, type Shape, type VideoStyle,
 } from "@/lib/agent/planner";
 import { getAvatarLooks } from "@/lib/api/heygen";
+import { pictureForPlan, type PlanPicture } from "@/lib/agent/plan-picture";
 import { decidePlan, getPlan, maybeCompletePlan, planAuthorizes, PUBLISH_CONFIRM_MINUTES, type PlanStep } from "@/lib/agent/approvals";
 import { claimAction, finishAction, requestIdFor } from "@/lib/agent/idempotency";
 import { failed, needsInput, ok, type AgentActor, type AgentResult, type Scope } from "@/lib/agent/types";
@@ -213,7 +214,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "plan_spark",
     scope: "sparks:plan",
-    description: "START HERE. Turns a goal (\"Market my listing\", \"Keep me visible to sellers in Blue Bell this week\") into a recommended Spark plan. Creates nothing and uses no credits. Pass the user's goal in their own words; never choose shape, presenter or style for them. If it returns questions, ask the user exactly those, then call again with the same goal plus their answers. To edit a plan, pass planId and change. Show the plan to the user with Approve / Edit / Cancel.",
+    description: "START HERE. Turns a goal (\"Market my listing\", \"Keep me visible to sellers in Blue Bell this week\") into a recommended Spark plan. Creates no script, video or post and uses no credits. Pass the user's goal word for word: do not rewrite it or add format, length, tone or who is on screen. Shape, presenter and style count only as these fields, and only when the user actually said them; never choose for them. If it returns questions, ask the user exactly those and wait, then call again with the same goal plus their answers. To edit a plan, pass planId and change. Show the plan with Approve / Edit / Cancel. If the result has a picture, show that one; never add images or photos from the web.",
     input: {
       type: "object",
       properties: {
@@ -231,10 +232,12 @@ export const TOOLS: ToolDef[] = [
       let goal = str(input.goal);
       let version = 1;
       let prev: { shape?: unknown; presenter?: unknown; style?: unknown } = {};
+      let prevPicture: PlanPicture | null = null;
       if (str(input.planId)) {
         const old = await getPlan(actor.userId, str(input.planId));
         if (!old) return failed("That plan isn't there. Ask for a new one.", "not_found");
         prev = ((old.totals as { choices?: typeof prev }).choices) ?? {};
+        prevPicture = ((old.totals as { picture?: PlanPicture }).picture) ?? null;
         const { data } = await createAdminClient().from("agent_plans").select("goal").eq("id", old.id).single();
         goal = `${(data as { goal: string | null } | null)?.goal ?? ""}\nChange: ${str(input.change)}`.trim();
         version = old.version + 1;
@@ -243,14 +246,15 @@ export const TOOLS: ToolDef[] = [
       if (!goal) return needsInput("What would you like to make or get done?", "goal_required");
       const read = await readIntent(goal, ctx);
       if (read.clarify && read.topic.length < 8) return needsInput(read.clarify, "clarify");
-      // The person's answers win, then what the goal said, then an edited plan's choices.
+      // The person's answers win, then an edited plan's earlier choices.
       const intent = {
         ...read,
         city: str(input.city) || read.city,
         state: str(input.state).toUpperCase() || read.state,
-        shape: asShape(input.shape) ?? read.shape ?? asShape(prev.shape),
-        presenter: asPresenter(input.presenter) ?? read.presenter ?? asPresenter(prev.presenter),
-        style: asStyle(input.style) ?? read.style ?? asStyle(prev.style),
+        // Only real answers count, never the goal's wording (see Intent).
+        shape: asShape(input.shape) ?? asShape(prev.shape),
+        presenter: asPresenter(input.presenter) ?? asPresenter(prev.presenter),
+        style: asStyle(input.style) ?? asStyle(prev.style),
       };
       // Asked now, never guessed, and before anything can be approved.
       const { questions, style } = questionsFor(intent, ctx);
@@ -264,8 +268,17 @@ export const TOOLS: ToolDef[] = [
       intent.style = style;
       const { steps, totals, upgrade, notes } = buildPlan(intent, ctx);
       const summary = summarize(steps, totals, notes, upgrade);
-      const planId = await savePlan(actor, { goal, steps, totals, summary, upgrade, version });
-      return { status: "needs_approval", message: summary, planId, data: { planId, version, steps, totals, upgrade, notes } };
+      const place = placeFor(intent, ctx);
+      const picture = await pictureForPlan(actor.userId, {
+        topic: intent.topic, goal, shape: intent.shape ?? "wide", city: place?.city, state: place?.state,
+        isListing: intent.isListing, previous: prevPicture,
+      });
+      const planTotals = { ...totals, ...(picture && { picture }) };
+      const planId = await savePlan(actor, { goal, steps, totals: planTotals, summary, upgrade, version });
+      return {
+        status: "needs_approval", message: summary, planId,
+        data: { planId, version, steps, totals, upgrade, notes, ...(picture && { picture: { url: picture.url, source: picture.source } }) },
+      };
     },
   },
   {

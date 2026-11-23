@@ -12,7 +12,9 @@ export const MCP_PROTOCOL_VERSION = "2025-06-18";
 
 const INSTRUCTIONS = [
   "SparkReels makes real estate videos, blogs and social posts in the agent's own voice.",
-  "Always start with plan_spark for any goal, show the plan, and wait for the user to Approve, Edit or Cancel.",
+  "Always start with plan_spark for any goal, passing the user's words as they said them. If it returns questions, ask the user exactly those and never answer for them.",
+  "Show the plan and wait for the user to Approve, Edit or Cancel.",
+  "Never add images or photos from the web to a SparkReels plan: show only the picture SparkReels returns, if any. SparkReels chooses the video's visuals.",
   "After approve_plan, run the creation steps in order with planId and step.",
   "Posting is two steps: publish_video or schedule_video prepares it; call confirm_publish only after the user confirms the exact video, destinations, date, time and time zone.",
 ].join(" ");
@@ -22,9 +24,28 @@ interface RpcRequest { jsonrpc: "2.0"; id?: string | number | null; method: stri
 const rpcResult = (id: RpcRequest["id"], result: unknown) => ({ jsonrpc: "2.0", id: id ?? null, result });
 const rpcError = (id: RpcRequest["id"], code: number, message: string) => ({ jsonrpc: "2.0", id: id ?? null, error: { code, message } });
 
-function asToolResult(r: AgentResult) {
+/** A plan's picture, sent as an image so the AI app shows it rather than finding its own. */
+async function pictureContent(r: AgentResult) {
+  const url = (r.data as { picture?: { url?: string } } | undefined)?.picture?.url;
+  if (!url) return [];
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(8_000) });
+    const mimeType = (res.headers.get("content-type") ?? "").split(";")[0];
+    if (!res.ok || !mimeType.startsWith("image/")) return [];
+    const bytes = Buffer.from(await res.arrayBuffer());
+    if (bytes.length > 1_500_000) return [];
+    return [{ type: "image", data: bytes.toString("base64"), mimeType }];
+  } catch {
+    return [];
+  }
+}
+
+async function asToolResult(r: AgentResult) {
   return {
-    content: [{ type: "text", text: r.message + (r.data !== undefined ? `\n\n${JSON.stringify(r.data, null, 2)}` : "") }],
+    content: [
+      { type: "text", text: r.message + (r.data !== undefined ? `\n\n${JSON.stringify(r.data, null, 2)}` : "") },
+      ...(await pictureContent(r)),
+    ],
     structuredContent: { status: r.status, message: r.message, code: r.code, planId: r.planId, actionId: r.actionId, data: r.data },
     isError: r.status === "error" || r.status === "denied",
   };
@@ -56,7 +77,7 @@ export async function handleMcpMessage(actor: AgentActor, msg: RpcRequest): Prom
       const name = String(msg.params?.name ?? "");
       const args = (msg.params?.arguments ?? {}) as Record<string, unknown>;
       const r = await runAgent({ actor, tool: name, input: args });
-      return rpcResult(msg.id, asToolResult(r));
+      return rpcResult(msg.id, await asToolResult(r));
     }
     default:
       return isNotification ? null : rpcError(msg.id, -32601, `Method not found: ${msg.method}`);
