@@ -25,6 +25,8 @@ export interface AgentContext {
   myVoice: string | null;
   connected: string[];
   ready: { photoAvatar: boolean; twin: boolean; clonedVoice: boolean };
+  /** Which look each presenter choice renders with. */
+  looks: { twin: string | null; wide: string | null; tall: string | null; photoGroup: string | null };
 }
 
 export async function loadContext(userId: string): Promise<AgentContext> {
@@ -33,7 +35,7 @@ export async function loadContext(userId: string): Promise<AgentContext> {
     getAllowance(admin, userId),
     admin
       .from("profiles")
-      .select("full_name, location_city, location_state, time_zone, youtube_channel_id, youtube_refresh_token, social_profile_created_at, heygen_photo_id, heygen_avatar_id, heygen_digital_twin_look_id, heygen_voice_id, voice_sample_url")
+      .select("full_name, location_city, location_state, time_zone, youtube_channel_id, youtube_refresh_token, social_profile_created_at, heygen_photo_id, heygen_avatar_id, heygen_digital_twin_look_id, heygen_look_wide, heygen_look_tall, heygen_voice_id, voice_sample_url")
       .eq("id", userId)
       .maybeSingle(),
     getMyVoice(admin, userId),
@@ -54,6 +56,12 @@ export async function loadContext(userId: string): Promise<AgentContext> {
       photoAvatar: !!(p.heygen_photo_id || p.heygen_avatar_id),
       twin: !!p.heygen_digital_twin_look_id,
       clonedVoice: !!(p.heygen_voice_id || p.voice_sample_url),
+    },
+    looks: {
+      twin: p.heygen_digital_twin_look_id ?? null,
+      wide: p.heygen_look_wide ?? null,
+      tall: p.heygen_look_tall ?? null,
+      photoGroup: p.heygen_photo_id ?? null,
     },
   };
 }

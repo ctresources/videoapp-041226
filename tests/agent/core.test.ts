@@ -16,6 +16,7 @@ const ctx = (over: Partial<AgentContext> = {}): AgentContext => ({
   allowance: { unlimited: false, short: 3, level: "producer", tier: "agent" } as never,
   paid: true, name: "Ann", market: { city: "Blue Bell", state: "PA" }, timeZone: "America/New_York",
   myVoice: null, connected: ["youtube", "instagram"], ready: { photoAvatar: true, twin: false, clonedVoice: true },
+  looks: { twin: null, wide: "look-wide", tall: "look-tall", photoGroup: "group-1" },
   ...over,
 });
 
@@ -73,9 +74,73 @@ describe("approval state machine", () => {
 });
 
 const intent = {
-  topic: "Closing costs in Blue Bell", kind: "video" as const, wantsBlog: true, wantsSocialCopy: true, shape: "vertical" as const,
-  presenter: "avatar" as const, platforms: [] as string[], when: null as string | null, crmFollowUp: false, clarify: null,
+  topic: "Closing costs in Blue Bell", kind: "video" as const, wantsBlog: true, wantsSocialCopy: true,
+  shape: "vertical" as "vertical" | "wide" | null,
+  presenter: "headshot" as "twin" | "headshot" | "voice_only" | "camera" | null,
+  style: "full" as "full" | "circle" | null,
+  platforms: [] as string[], when: null as string | null, crmFollowUp: false, clarify: null,
 };
+
+describe("plan_spark asks instead of guessing", () => {
+  it("asks shape and who's on screen when the goal didn't say", async () => {
+    const { questionsFor } = await import("@/lib/agent/planner");
+    const q = questionsFor({ ...intent, shape: null, presenter: null, style: null }, ctx()).questions;
+    expect(q.map((x) => x.field)).toEqual(["shape", "presenter"]);
+  });
+  it("only offers presenters this account has ready, and always voice and camera", async () => {
+    const { presenterOptions } = await import("@/lib/agent/planner");
+    expect(presenterOptions(ctx())).toEqual(["headshot", "voice_only", "camera"]);
+    expect(presenterOptions(ctx({ ready: { photoAvatar: false, twin: false, clonedVoice: false } }))).toEqual(["voice_only", "camera"]);
+    expect(presenterOptions(ctx({ ready: { photoAvatar: true, twin: true, clonedVoice: true } }))).toContain("twin");
+  });
+  it("a twin that isn't ready is asked again, not silently swapped", async () => {
+    const { questionsFor } = await import("@/lib/agent/planner");
+    expect(questionsFor({ ...intent, presenter: "twin" }, ctx()).questions.map((x) => x.field)).toEqual(["presenter"]);
+  });
+  it("asks the style for an avatar, never for voice only or camera", async () => {
+    const { questionsFor } = await import("@/lib/agent/planner");
+    expect(questionsFor({ ...intent, style: null }, ctx()).questions.map((x) => x.field)).toEqual(["style"]);
+    expect(questionsFor({ ...intent, presenter: "voice_only", style: null }, ctx()).questions).toEqual([]);
+    expect(questionsFor({ ...intent, presenter: "camera", style: null }, ctx()).questions).toEqual([]);
+  });
+  it("a blog needs no shape or presenter", async () => {
+    const { questionsFor } = await import("@/lib/agent/planner");
+    expect(questionsFor({ ...intent, kind: "blog_only", shape: null, presenter: null, style: null }, ctx()).questions).toEqual([]);
+  });
+  it("uses the real names in the plan", async () => {
+    const { videoLabel } = await import("@/lib/agent/planner");
+    expect(videoLabel("wide", "twin", "full")).toBe("Wide, your Digital Twin, full video with b-roll");
+    expect(videoLabel("vertical", "headshot", "circle")).toBe("Vertical, your headshot avatar, corner circle over scenes");
+    expect(videoLabel("wide", "voice_only", null)).toBe("Wide, voice only");
+  });
+  it("only the subject goes into the topic", async () => {
+    const { cleanTopic } = await import("@/lib/agent/planner");
+    expect(cleanTopic("Seller education in Blue Bell; plan for approval only")).toBe("Seller education in Blue Bell");
+    expect(cleanTopic("Closing costs in Ambler, do not create anything yet")).toBe("Closing costs in Ambler");
+    expect(cleanTopic("Why you shouldn't overprice: don't overprice your home")).toBe("Why you shouldn't overprice: don't overprice your home");
+  });
+});
+
+describe("Yourself on camera", () => {
+  it("writes the script and Share Kit, uses no video, and points back to SparkReels", async () => {
+    const { buildPlan } = await import("@/lib/agent/planner");
+    const p = buildPlan({ ...intent, presenter: "camera", style: null, wantsBlog: false, wantsSocialCopy: false }, ctx());
+    expect(p.steps.map((s) => s.tool)).toEqual(["write_script", "make_social_copy", "record_in_sparkreels"]);
+    expect(p.totals.videosNeeded).toBe(0);
+    expect(p.steps.find((s) => s.tool === "record_in_sparkreels")?.manual).toBe(true);
+    expect(p.steps.some((s) => s.tool === "publish_video" || s.tool === "make_video")).toBe(false);
+  });
+  it("still works with no videos left", async () => {
+    const { buildPlan } = await import("@/lib/agent/planner");
+    const p = buildPlan({ ...intent, presenter: "camera", style: null }, ctx({ allowance: { unlimited: false, short: 0, level: "creator" } as never }));
+    expect(p.upgrade).toEqual([]);
+    expect(p.steps.some((s) => s.tool === "make_social_copy")).toBe(true);
+  });
+  it("the link opens the draft ready to record", async () => {
+    const { recordLink } = await import("@/lib/agent/planner");
+    expect(recordLink("spark-1")).toMatch(/\/create\/spark-1\?record=1&onscreen=self$/);
+  });
+});
 
 describe("plan_spark builds only what the account can run", () => {
   it("a full plan: script, video, blog, social copy, then a post that needs its own confirmation", async () => {

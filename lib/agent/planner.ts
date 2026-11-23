@@ -5,6 +5,7 @@ import { partnerPlatform } from "@/lib/utils/social-platforms";
 import { formatWhen, zonedToUtc } from "@/lib/utils/time-zone";
 import { type AgentContext, videosLeft } from "@/lib/agent/context";
 import { planHash, type PlanStep } from "@/lib/agent/approvals";
+import { canUseDigitalTwin, canUseTwinInFullVideo } from "@/lib/utils/plan-features";
 import type { AgentActor } from "@/lib/agent/types";
 
 /**
@@ -24,6 +25,11 @@ import type { AgentActor } from "@/lib/agent/types";
  * plan never posts anything (approval condition B).
  */
 
+export type Shape = "vertical" | "wide";
+/** "camera" is the agent recording themselves, in SparkReels, on the teleprompter. */
+export type Presenter = "twin" | "headshot" | "voice_only" | "camera";
+export type VideoStyle = "full" | "circle";
+
 export interface Intent {
   topic: string;
   /** The town the goal names, if any. It wins over the saved market. */
@@ -32,8 +38,10 @@ export interface Intent {
   kind: "video" | "blog_only";
   wantsBlog: boolean;
   wantsSocialCopy: boolean;
-  shape: "vertical" | "wide";
-  presenter: "avatar" | "voice_only";
+  /** Null until the person has said: these are asked, never guessed. */
+  shape: Shape | null;
+  presenter: Presenter | null;
+  style: VideoStyle | null;
   platforms: string[];
   /** Local wall time, "YYYY-MM-DDTHH:mm", when the goal names one. */
   when: string | null;
@@ -42,16 +50,133 @@ export interface Intent {
 }
 
 const INTENT_SYSTEM = `You read a real estate agent's goal and return what content they want. You do not write the content.
-Return ONLY JSON: {"topic": "...", "city": "town named in the goal" | null, "state": "2-letter state" | null, "kind": "video" | "blog_only", "wantsBlog": bool, "wantsSocialCopy": bool, "shape": "vertical" | "wide", "presenter": "avatar" | "voice_only", "platforms": ["youtube","instagram","facebook","linkedin","tiktok","x","threads","google_business"], "when": "YYYY-MM-DDTHH:mm" | null, "crmFollowUp": bool, "clarify": "one short question" | null}
-- topic: a specific video topic in plain words, including the town if given. For "market my listing", the listing's address or description if given.
+Return ONLY JSON: {"topic": "...", "city": "town named in the goal" | null, "state": "2-letter state" | null, "kind": "video" | "blog_only", "wantsBlog": bool, "wantsSocialCopy": bool, "shape": "vertical" | "wide" | null, "presenter": "twin" | "headshot" | "voice_only" | "camera" | null, "style": "full" | "circle" | null, "platforms": ["youtube","instagram","facebook","linkedin","tiktok","x","threads","google_business"], "when": "YYYY-MM-DDTHH:mm" | null, "crmFollowUp": bool, "clarify": "one short question" | null}
+- topic: ONLY the subject of the video in plain words, including the town if given. For "market my listing", the listing's address or description if given. Leave out instructions about planning, approval, format, length, tone or who is on screen.
 - city, state: only a place named in the goal itself, never the agent's market. Give the state only if the goal says it or the town is unmistakable; otherwise null.
-- Default kind "video", shape "vertical" unless YouTube-only or "landscape", presenter "avatar".
+- Default kind "video".
+- shape: only if they said it. "vertical", "reel", "short", "TikTok" = vertical; "wide", "landscape", "horizontal" = wide. Otherwise null. Never guess.
+- presenter: only if they said it. "digital twin" / "my twin" = twin; "headshot" / "photo avatar" = headshot; "voice only" / "nobody on screen" = voice_only; "record myself", "on camera", "teleprompter" = camera. The word "avatar" alone = null. Otherwise null. Never guess.
+- style: only if they said it. "full video" / "b-roll" = full; "circle" / "corner" = circle. Otherwise null.
 - wantsSocialCopy true unless they say otherwise. wantsBlog true for market updates, guides and listings.
 - platforms: only ones they named; [] means "where they're connected".
 - when: only if they named a day or time. Today is {today} in {tz}.
 - crmFollowUp: true if they mention their database, past clients, contacts, BoldTrail, GHL or follow-up.
 - clarify: only if the goal is too vague to pick a topic.
 ${FAIR_HOUSING_SHORT}`;
+
+export const asShape = (v: unknown): Shape | null => (v === "vertical" || v === "wide" ? v : null);
+export const asPresenter = (v: unknown): Presenter | null =>
+  (v === "twin" || v === "headshot" || v === "voice_only" || v === "camera" ? v : null);
+export const asStyle = (v: unknown): VideoStyle | null => (v === "full" || v === "circle" ? v : null);
+
+/**
+ * Only the subject goes into the script and title. An AI client can pass its
+ * own working notes in the goal ("…; plan for approval only", seen in the
+ * first live test, 2026-11-22). Narrow on purpose: "don't overprice your
+ * home" is a real topic.
+ */
+export function cleanTopic(raw: string): string {
+  const t = raw
+    .replace(/\s*[,;:–—-]?\s*\b(?:plan\s+(?:it\s+)?)?for approval(?: only)?\b.*$/i, "")
+    .replace(/\s*[,;:–—-]?\s*\b(?:do not|don'?t)\s+(?:create|make|publish|post)\s+(?:anything|it|this|yet)\b.*$/i, "")
+    .replace(/^\s*(?:please\s+)?plan\s+(?:a|an|me a)\s+(?:new\s+)?/i, "")
+    .replace(/[\s,;:.–—-]+$/, "")
+    .trim();
+  if (t.length <= 160) return t;
+  const cut = t.slice(0, 160);
+  return cut.slice(0, cut.lastIndexOf(" ") > 80 ? cut.lastIndexOf(" ") : 160).trim();
+}
+
+/** What this account can pick, using the same plan rules the render enforces. */
+function twinRules(ctx: AgentContext) {
+  const role = ctx.allowance.isAdmin ? "admin" : null;
+  return {
+    full: canUseTwinInFullVideo(ctx.allowance.tier, role),
+    circle: canUseDigitalTwin(ctx.allowance.tier, role),
+  };
+}
+
+const PRESENTER_LABEL: Record<Presenter, string> = {
+  twin: "Digital Twin",
+  headshot: "Headshot avatar",
+  voice_only: "Voice only",
+  camera: "Yourself on camera",
+};
+const STYLE_LABEL: Record<VideoStyle, string> = {
+  full: "Full video with b-roll",
+  circle: "Corner circle over scenes",
+};
+
+export function presenterOptions(ctx: AgentContext): Presenter[] {
+  const rules = twinRules(ctx);
+  return [
+    ...(ctx.ready.twin && (rules.full || rules.circle) ? ["twin" as const] : []),
+    ...(ctx.ready.photoAvatar ? ["headshot" as const] : []),
+    "voice_only",
+    "camera",
+  ];
+}
+
+/** Style only applies to an avatar on screen. */
+export function styleOptions(ctx: AgentContext, presenter: Presenter): VideoStyle[] {
+  if (presenter === "headshot") return ["full", "circle"];
+  if (presenter !== "twin") return [];
+  const rules = twinRules(ctx);
+  return [...(rules.full ? ["full" as const] : []), ...(rules.circle ? ["circle" as const] : [])];
+}
+
+export interface PlanQuestion {
+  field: "shape" | "presenter" | "style" | "town";
+  question: string;
+  options?: { value: string; label: string }[];
+}
+
+/**
+ * What must be asked before a plan can be built. Shape and who's on screen
+ * are the person's choice; only what this account can really use is offered.
+ * A style with a single possibility is filled in rather than asked.
+ */
+export function questionsFor(intent: Intent, ctx: AgentContext): { questions: PlanQuestion[]; style: VideoStyle | null } {
+  const questions: PlanQuestion[] = [];
+  if (needsPlace(ctx) && !placeFor(intent, ctx)) {
+    questions.push({ field: "town", question: "What town and state is this for?" });
+  }
+  let style = intent.style;
+  if (intent.kind === "video") {
+    if (!intent.shape) {
+      questions.push({ field: "shape", question: "Vertical or wide?", options: [{ value: "vertical", label: "Vertical" }, { value: "wide", label: "Wide" }] });
+    }
+    const people = presenterOptions(ctx);
+    const presenter = intent.presenter && people.includes(intent.presenter) ? intent.presenter : null;
+    if (!presenter) {
+      questions.push({ field: "presenter", question: "Who's on screen?", options: people.map((p) => ({ value: p, label: PRESENTER_LABEL[p] })) });
+      style = null;
+    } else {
+      const styles = styleOptions(ctx, presenter);
+      if (!styles.length) style = null;
+      else if (styles.length === 1) style = styles[0];
+      else if (!style || !styles.includes(style)) {
+        style = null;
+        questions.push({ field: "style", question: "Which style?", options: styles.map((s) => ({ value: s, label: STYLE_LABEL[s] })) });
+      }
+    }
+  }
+  return { questions, style };
+}
+
+/** "Wide, your Digital Twin, full video with b-roll": the real names, in the plan. */
+export function videoLabel(shape: Shape, presenter: Presenter, style: VideoStyle | null): string {
+  const who = presenter === "twin" ? "your Digital Twin" : presenter === "headshot" ? "your headshot avatar" : presenter === "voice_only" ? "voice only" : "yourself on camera";
+  const how = style === "circle" ? "corner circle over scenes" : style === "full" ? "full video with b-roll" : null;
+  return [shape === "vertical" ? "Vertical" : "Wide", who, how].filter(Boolean).join(", ");
+}
+
+const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://www.sparkreels.ai";
+
+/** Opens the draft on setup with its script loaded and "You on camera" selected. */
+export const recordLink = (sparkId: string) => `${SITE}/create/${sparkId}?record=1&onscreen=self`;
+
+export const CAMERA_READY_NOTE = "Your script and Share Kit are ready. Open SparkReels to read it on the teleprompter and record yourself.";
 
 export async function readIntent(goal: string, ctx: AgentContext): Promise<Intent> {
   const tz = ctx.timeZone ?? "America/New_York";
@@ -65,14 +190,15 @@ export async function readIntent(goal: string, ctx: AgentContext): Promise<Inten
   const o = (out ?? {}) as Record<string, unknown>;
   const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
   return {
-    topic: str(o.topic) || goal.slice(0, 200),
+    topic: cleanTopic(str(o.topic) || goal),
     city: str(o.city) || null,
     state: /^[A-Za-z]{2}$/.test(str(o.state)) ? str(o.state).toUpperCase() : null,
     kind: o.kind === "blog_only" ? "blog_only" : "video",
     wantsBlog: o.wantsBlog === true,
     wantsSocialCopy: o.wantsSocialCopy !== false,
-    shape: o.shape === "wide" ? "wide" : "vertical",
-    presenter: o.presenter === "voice_only" ? "voice_only" : "avatar",
+    shape: asShape(o.shape),
+    presenter: asPresenter(o.presenter),
+    style: asStyle(o.style),
     platforms: Array.isArray(o.platforms) ? (o.platforms as unknown[]).map(String) : [],
     when: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(str(o.when)) ? str(o.when) : null,
     crmFollowUp: o.crmFollowUp === true,
@@ -110,14 +236,17 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
   const notes: string[] = [];
   const left = videosLeft(ctx);
   const canVideo = left === "unlimited" || left > 0;
-  const makeVideo = intent.kind === "video" && canVideo;
-  if (intent.kind === "video" && !canVideo) {
-    upgrade.push("You have no videos left this month. Buy extra videos in Billing, or upgrade for more each month.");
+  const shape: Shape = intent.shape ?? "wide";
+  const presenter: Presenter = intent.presenter ?? "voice_only";
+  // Recording yourself happens in SparkReels and never uses a plan video.
+  const camera = intent.kind === "video" && presenter === "camera";
+  const makeVideo = intent.kind === "video" && !camera && canVideo;
+  if (intent.kind === "video" && !camera && !canVideo) {
+    upgrade.push("You have no videos left this month. Buy extra videos in Billing, or upgrade for more each month. Recording yourself on camera never uses one.");
   }
-  if (makeVideo && intent.presenter === "avatar" && !ctx.ready.photoAvatar && !ctx.ready.twin) {
-    notes.push("No avatar is set up yet, so the video is voice only. Add a headshot in Settings to appear on camera.");
+  if (camera) {
+    notes.push("Recording happens in SparkReels: when the script and Share Kit are ready, you'll get a link to the teleprompter. Once it's recorded, you can come back here to post it.");
   }
-  const presenter = makeVideo && intent.presenter === "avatar" && !ctx.ready.photoAvatar && !ctx.ready.twin ? "voice_only" : intent.presenter;
 
   let n = 1;
   steps.push({
@@ -127,25 +256,36 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
       customTopic: intent.topic,
       city: placeFor(intent, ctx)?.city ?? "",
       state: placeFor(intent, ctx)?.state ?? "",
-      shortScript: intent.shape === "vertical",
-      videoPlatform: intent.shape === "vertical" ? "reel" : "youtube",
-      blogOnly: !makeVideo && intent.kind === "blog_only",
+      shortScript: intent.kind === "video" && shape === "vertical",
+      videoPlatform: shape === "vertical" ? "reel" : "youtube",
+      blogOnly: intent.kind === "blog_only",
+      ...(camera && { camera: true }),
     },
   });
   const scriptStep = 1;
   if (makeVideo) {
     steps.push({
       n: n++, tool: "make_video",
-      title: `Make the video: ${intent.shape === "vertical" ? "vertical" : "wide"}, ${presenter === "voice_only" ? "voice only" : "you on camera"}`,
+      title: `Make the video: ${videoLabel(shape, presenter, intent.style)}`,
       usesVideo: true, needsConfirm: false,
-      input: { sparkFromStep: scriptStep, size: intent.shape, voiceOnly: presenter === "voice_only" },
+      input: { sparkFromStep: scriptStep, size: shape, voiceOnly: presenter === "voice_only", presenter, style: intent.style },
     });
   }
   if (intent.wantsBlog || intent.kind === "blog_only") {
     steps.push({ n: n++, tool: "make_blog", title: "Write the blog post", usesVideo: false, needsConfirm: false, input: { sparkFromStep: scriptStep } });
   }
-  if (makeVideo && intent.wantsSocialCopy) {
-    steps.push({ n: n++, tool: "make_social_copy", title: "Write the social copy (LinkedIn, Facebook, Instagram, YouTube)", usesVideo: false, needsConfirm: false, input: { sparkFromStep: scriptStep } });
+  // A camera plan always gets its Share Kit: it's most of what the AI can do for it.
+  if (camera || (makeVideo && intent.wantsSocialCopy)) {
+    steps.push({
+      n: n++, tool: "make_social_copy", title: "Write the Share Kit (LinkedIn, Facebook, Instagram, YouTube)", usesVideo: false, needsConfirm: false,
+      input: { sparkFromStep: scriptStep, ...(camera && { camera: true }) },
+    });
+  }
+  if (camera) {
+    steps.push({
+      n: n++, tool: "record_in_sparkreels", title: `Record it yourself in SparkReels: ${shape === "vertical" ? "Vertical" : "Wide"}, on the teleprompter (link when ready)`,
+      usesVideo: false, needsConfirm: false, manual: true, input: { sparkFromStep: scriptStep },
+    });
   }
 
   // Where to post: what they asked for, limited to what's connected.
@@ -176,7 +316,9 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
     videosLeft: left,
     platforms: postable,
     notConnected: missing,
-    features: Array.from(new Set(steps.filter((s) => !s.comingSoon).map((s) => s.tool))),
+    features: Array.from(new Set(steps.filter((s) => !s.comingSoon && !s.manual).map((s) => s.tool))),
+    // Kept so editing a plan doesn't ask these again.
+    choices: { shape, presenter, style: intent.style },
   };
   return { steps, totals, upgrade, notes };
 }

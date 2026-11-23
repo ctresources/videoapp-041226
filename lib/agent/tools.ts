@@ -11,7 +11,11 @@ import { formatWhen, isValidTimeZone, zonedToUtc } from "@/lib/utils/time-zone";
 import type { ServiceResult } from "@/lib/content/service-result";
 import type { HaloSetup } from "@/lib/halo";
 import { type AgentContext, videosLeft } from "@/lib/agent/context";
-import { buildPlan, needsPlace, placeFor, readIntent, savePlan, summarize } from "@/lib/agent/planner";
+import {
+  asPresenter, asShape, asStyle, buildPlan, CAMERA_READY_NOTE, needsPlace, placeFor, presenterOptions, questionsFor,
+  readIntent, recordLink, savePlan, styleOptions, summarize, videoLabel, type Presenter, type Shape, type VideoStyle,
+} from "@/lib/agent/planner";
+import { getAvatarLooks } from "@/lib/api/heygen";
 import { decidePlan, getPlan, maybeCompletePlan, planAuthorizes, PUBLISH_CONFIRM_MINUTES, type PlanStep } from "@/lib/agent/approvals";
 import { claimAction, finishAction, requestIdFor } from "@/lib/agent/idempotency";
 import { failed, needsInput, ok, type AgentActor, type AgentResult, type Scope } from "@/lib/agent/types";
@@ -104,6 +108,21 @@ async function runCreationStep(
   }
 }
 
+/**
+ * The look for the presenter they picked. Left to fall through, a headshot
+ * request could render the twin and a twin request the headshot, so each is
+ * named here. Plan rules are still enforced by the render itself.
+ */
+async function lookFor(ctx: AgentContext, presenter: Presenter | null, shape: Shape): Promise<string | null> {
+  if (presenter === "twin") return ctx.looks.twin;
+  if (presenter !== "headshot") return null;
+  const shaped = shape === "vertical" ? ctx.looks.tall ?? ctx.looks.wide : ctx.looks.wide ?? ctx.looks.tall;
+  if (shaped) return shaped;
+  if (!ctx.looks.photoGroup) return null;
+  const looks = await getAvatarLooks(ctx.looks.photoGroup).catch(() => []);
+  return (looks.find((l) => l.status === "completed") ?? looks[0])?.id ?? null;
+}
+
 /** Builds publish targets for connected platforms, the same shape the Publish window sends. */
 function targetsFor(platforms: string[]) {
   return platforms.map((p) =>
@@ -194,11 +213,16 @@ export const TOOLS: ToolDef[] = [
   {
     name: "plan_spark",
     scope: "sparks:plan",
-    description: "START HERE. Turns a goal (\"Market my listing\", \"Keep me visible to sellers in Blue Bell this week\") into a recommended Spark plan. Creates nothing and uses no credits. To edit a plan, pass planId and change. Show the plan to the user with Approve / Edit / Cancel.",
+    description: "START HERE. Turns a goal (\"Market my listing\", \"Keep me visible to sellers in Blue Bell this week\") into a recommended Spark plan. Creates nothing and uses no credits. Pass the user's goal in their own words; never choose shape, presenter or style for them. If it returns questions, ask the user exactly those, then call again with the same goal plus their answers. To edit a plan, pass planId and change. Show the plan to the user with Approve / Edit / Cancel.",
     input: {
       type: "object",
       properties: {
         goal: { type: "string", description: "What the agent wants, in their words." },
+        shape: { type: "string", enum: ["vertical", "wide"], description: "Only if the user chose it." },
+        presenter: { type: "string", enum: ["twin", "headshot", "voice_only", "camera"], description: "Who's on screen, only if the user chose it. camera = they record themselves in SparkReels." },
+        style: { type: "string", enum: ["full", "circle"], description: "For an avatar, only if the user chose it." },
+        city: { type: "string", description: "The town, if the user gave it." },
+        state: { type: "string", description: "2-letter state, if the user gave it." },
         planId: { type: "string", description: "Only to edit an existing plan." },
         change: { type: "string", description: "Only with planId: what to change." },
       },
@@ -206,21 +230,38 @@ export const TOOLS: ToolDef[] = [
     async run(actor, ctx, input) {
       let goal = str(input.goal);
       let version = 1;
+      let prev: { shape?: unknown; presenter?: unknown; style?: unknown } = {};
       if (str(input.planId)) {
         const old = await getPlan(actor.userId, str(input.planId));
         if (!old) return failed("That plan isn't there. Ask for a new one.", "not_found");
+        prev = ((old.totals as { choices?: typeof prev }).choices) ?? {};
         const { data } = await createAdminClient().from("agent_plans").select("goal").eq("id", old.id).single();
         goal = `${(data as { goal: string | null } | null)?.goal ?? ""}\nChange: ${str(input.change)}`.trim();
         version = old.version + 1;
         await createAdminClient().from("agent_plans").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", old.id).eq("status", "proposed");
       }
       if (!goal) return needsInput("What would you like to make or get done?", "goal_required");
-      const intent = await readIntent(goal, ctx);
-      if (intent.clarify && intent.topic.length < 8) return needsInput(intent.clarify, "clarify");
-      // Asked now, not after approval: the script writer refuses without a place.
-      if (needsPlace(ctx) && !placeFor(intent, ctx)) {
-        return needsInput("What town and state is this for? Ask the user, then call plan_spark again with it in the goal.", "town_required");
+      const read = await readIntent(goal, ctx);
+      if (read.clarify && read.topic.length < 8) return needsInput(read.clarify, "clarify");
+      // The person's answers win, then what the goal said, then an edited plan's choices.
+      const intent = {
+        ...read,
+        city: str(input.city) || read.city,
+        state: str(input.state).toUpperCase() || read.state,
+        shape: asShape(input.shape) ?? read.shape ?? asShape(prev.shape),
+        presenter: asPresenter(input.presenter) ?? read.presenter ?? asPresenter(prev.presenter),
+        style: asStyle(input.style) ?? read.style ?? asStyle(prev.style),
+      };
+      // Asked now, never guessed, and before anything can be approved.
+      const { questions, style } = questionsFor(intent, ctx);
+      if (questions.length) {
+        return needsInput(
+          `Ask the user: ${questions.map((q) => q.options ? `${q.question} (${q.options.map((o) => o.label).join(" / ")})` : q.question).join(" ")} Then call plan_spark again with the same goal plus their answers.`,
+          "choices_needed",
+          { questions },
+        );
       }
+      intent.style = style;
       const { steps, totals, upgrade, notes } = buildPlan(intent, ctx);
       const summary = summarize(steps, totals, notes, upgrade);
       const planId = await savePlan(actor, { goal, steps, totals, summary, upgrade, version });
@@ -239,8 +280,9 @@ export const TOOLS: ToolDef[] = [
     async run(actor, _ctx, input) {
       const r = await decidePlan(actor, str(input.planId), input.decision === "cancel" ? "cancel" : "approve");
       if (!r.ok) return failed(r.message, r.code);
+      const runnable = r.plan.steps.filter((s) => !s.comingSoon && !s.manual && !s.needsConfirm).map((s) => `${s.tool} (step ${s.n})`);
       return ok(r.plan.status === "approved"
-        ? "Plan approved. Run its steps in order: write_script, make_video, make_blog, make_social_copy (each with planId and step). Posting will ask for its own confirmation."
+        ? `Plan approved. Run these in order, each with planId and step: ${runnable.join(", ")}. Posting will ask for its own confirmation.`
         : "Plan cancelled.", { planId: r.plan.id, status: r.plan.status, steps: r.plan.steps }, { planId: r.plan.id });
     },
   },
@@ -267,7 +309,13 @@ export const TOOLS: ToolDef[] = [
         const r = await createSparkScript(actor.userId, step.input as unknown as CreateSparkBody, { fromAutopilot: false });
         const project = (r.body as { project?: { id: string; title: string; ai_script: Record<string, unknown> } }).project;
         if (r.status >= 400 || !project) return fromService(r, "");
-        return { ...ok(`Script written: "${project.title}".`, { sparkId: project.id, title: project.title, hook: project.ai_script?.hook, script: project.ai_script?.script }), sparkId: project.id };
+        return {
+          ...ok(`Script written: "${project.title}".`, {
+            sparkId: project.id, title: project.title, hook: project.ai_script?.hook, script: project.ai_script?.script,
+            ...(step.input.camera === true && { openInSparkReels: recordLink(project.id) }),
+          }),
+          sparkId: project.id,
+        };
       }, { title: `Write the script: "${str(input.topic)}"`, usesVideo: false });
     },
   },
@@ -293,17 +341,58 @@ export const TOOLS: ToolDef[] = [
   {
     name: "make_video",
     scope: "videos:create",
-    description: "Starts the video for an approved plan step (planId + step). Uses one of the plan's videos, through SparkReels' normal render queue. Check progress with video_status.",
-    input: { type: "object", properties: { planId: { type: "string" }, step: { type: "number" }, sparkId: { type: "string" } } },
+    description: "Starts the video for an approved plan step (planId + step). Uses one of the plan's videos, through SparkReels' normal render queue. Check progress with video_status. Outside a plan, pass sparkId with the user's shape, presenter and style.",
+    input: {
+      type: "object",
+      properties: {
+        planId: { type: "string" }, step: { type: "number" }, sparkId: { type: "string" },
+        shape: { type: "string", enum: ["vertical", "wide"] },
+        presenter: { type: "string", enum: ["twin", "headshot", "voice_only", "camera"] },
+        style: { type: "string", enum: ["full", "circle"] },
+      },
+    },
     async run(actor, ctx, input) {
-      return runCreationStep(actor, ctx, "make_video", input, async (step, planId) => {
+      let args = input;
+      let title = "Make the video";
+      if (!str(input.planId)) {
+        // Outside a plan the same choices apply: asked, never guessed.
+        const shape = asShape(input.shape);
+        const presenter = asPresenter(input.presenter);
+        if (presenter === "camera" && str(input.sparkId)) {
+          return ok(`Recording yourself happens in SparkReels. Open it on the teleprompter: ${recordLink(str(input.sparkId))}`, { openInSparkReels: recordLink(str(input.sparkId)) });
+        }
+        const people = presenterOptions(ctx);
+        if (!shape || !presenter || !people.includes(presenter)) {
+          return needsInput(`Ask the user: Vertical or wide? Who's on screen (${people.join(" / ")})?`, "choices_needed");
+        }
+        const styles = styleOptions(ctx, presenter);
+        const style = styles.length === 1 ? styles[0] : asStyle(input.style);
+        if (styles.length > 1 && (!style || !styles.includes(style))) {
+          return needsInput("Ask the user: Full video with b-roll, or corner circle over scenes?", "choices_needed");
+        }
+        args = { sparkId: str(input.sparkId), size: shape, voiceOnly: presenter === "voice_only", presenter, style: styles.length ? style : null };
+        title = `Make the video: ${videoLabel(shape, presenter, styles.length ? style : null)}`;
+      }
+      return runCreationStep(actor, ctx, "make_video", args, async (step, planId) => {
         const sparkId = await sparkFor(actor.userId, planId, step.input);
         if (!sparkId) return failed("Write the script first: the video needs a Spark draft.", "spark_required");
-        const setup = { size: step.input.size === "wide" ? "horizontal" : "vertical", voiceOnly: step.input.voiceOnly === true, captions: true } as unknown as HaloSetup;
+        const shape: Shape = step.input.size === "vertical" ? "vertical" : "wide";
+        const presenter = asPresenter(step.input.presenter);
+        const lookId = await lookFor(ctx, presenter, shape);
+        if (presenter && presenter !== "voice_only" && !lookId) {
+          return failed(presenter === "twin" ? "Your Digital Twin isn't ready. Check it in Settings." : "Add a headshot in Settings first.", "look_missing");
+        }
+        const setup = {
+          size: shape === "vertical" ? "vertical" : "horizontal",
+          voiceOnly: step.input.voiceOnly === true,
+          look: (step.input.style as VideoStyle | null) === "circle" ? "circle" : "full",
+          lookId,
+          captions: true,
+        } as unknown as HaloSetup;
         const r = await renderSparkVideo(createAdminClient(), { id: actor.userId, email: await userEmail(actor.userId) }, sparkId, setup);
         if (r.status >= 400) return failed(String(r.out.error ?? "Couldn't start the video."), String(r.out.code ?? `http_${r.status}`));
         return { ...ok(r.out.queued ? "The video is in line to render. Check video_status in a few minutes." : "The video is rendering. Check video_status in a few minutes.", { sparkId, queued: r.out.queued === true }), sparkId };
-      }, { title: "Make the video", usesVideo: true });
+      }, { title, usesVideo: true });
     },
   },
   {
@@ -367,6 +456,11 @@ export const TOOLS: ToolDef[] = [
         const sparkId = await sparkFor(actor.userId, planId, step.input);
         if (!sparkId) return failed("Write the script first.", "spark_required");
         const r = await writeShareKit(actor.userId, { projectId: sparkId });
+        // Recording yourself: the last AI step, so this is where the link back goes.
+        if (step.input.camera === true && r.status < 400) {
+          const link = recordLink(sparkId);
+          return { ...ok(`${CAMERA_READY_NOTE}\nOpen in SparkReels → ${link}`, { ...(r.body as object), openInSparkReels: link }), sparkId };
+        }
         return { ...fromService(r, "Social copy written."), sparkId };
       }, { title: "Write the social copy", usesVideo: false });
     },

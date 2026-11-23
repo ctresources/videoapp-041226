@@ -36,6 +36,8 @@ export interface PlanStep {
   needsConfirm: boolean;
   /** Recommended, but its tool isn't available yet (e.g. CRM in V1.1). */
   comingSoon?: boolean;
+  /** Done by the person in SparkReels, not by a tool (recording on the teleprompter). */
+  manual?: boolean;
 }
 
 export const planHash = (steps: PlanStep[], totals: unknown) => hashPayload({ steps, totals });
