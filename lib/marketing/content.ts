@@ -76,7 +76,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
       { q: "How long does a video take?", a: "About a minute of your time to say what it's about. The video is then made for you, and most short videos are ready within the hour." },
       { q: "Does it sound like me?", a: "Yes. You record a short sample of your voice once in Settings, and every video after that uses your cloned voice." },
       { q: "What kinds of videos can I make?", a: "Market updates, neighborhood tours, listing videos, just sold, open house recaps, buyer and seller tips, interest rate updates, and anything else you can talk about for a minute." },
-      { q: "What does it cost?", a: "Start free. Paid plans are $99, $149 and $199 a month, with no contract. See the pricing page for what each includes." },
+      { q: "What does it cost?", a: "Start free. Paid plans are $99 and $149 a month, with no contract. See the pricing page for what each includes." },
     ],
   },
   {
@@ -103,7 +103,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
       "Looks like you, not a stock presenter",
       "Speaks in your own cloned voice",
       "Works for market updates, listings and tips",
-      "On every plan: free plans use it in the Avatar in circle video, paid plans in the full Avatar video too",
+      "On every plan: free plans use it in the AI Avatar in Circle video, paid plans in the Full AI Avatar video too",
       "Your photo avatar stays available as well",
       "New outfits for your twin: describe one and your twin wears it (paid plans)",
     ],
@@ -116,7 +116,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
     faqs: [
       { q: "What's the difference between a photo avatar and a Digital Twin?", a: "A photo avatar is made from one headshot. A Digital Twin is made from a short video of you, so it moves and gestures more like you do." },
       { q: "How do I record the clip?", a: "Settings walks you through it: good light, a plain background, look at the camera and talk naturally. A phone video is fine." },
-      { q: "Is a Digital Twin included on my plan?", a: "Yes, on every plan. On the free plan you can use it in the Avatar in circle video. The full Avatar video with your twin needs a paid plan." },
+      { q: "Is a Digital Twin included on my plan?", a: "Yes, on every plan. On the free plan you can use it in the AI Avatar in Circle video. The Full AI Avatar video with your twin needs a paid plan." },
       { q: "Can someone else make a twin of me?", a: "No. Every twin goes through a consent check, so it can only be made from you, with your OK." },
       { q: "Can my twin wear something different?", a: "Yes, on paid plans. Describe an outfit in Settings and your twin wears it in your videos, moving just like you." },
     ],
@@ -245,7 +245,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
     faqs: [
       { q: "Does AutoSparks post anything on its own?", a: "No. It writes drafts. Nothing is made or posted until you approve it." },
       { q: "Can I change the mix each week?", a: "Yes. Change how many videos and blog posts you get, and your post days, anytime." },
-      { q: "Which plans include AutoSparks?", a: "All paid plans: Creator, Producer and Influencer." },
+      { q: "Which plans include AutoSparks?", a: "Both paid plans: Creator and Producer." },
       { q: "Can AutoSparks send my weekly seller updates?", a: "Yes. Each listing with its sellers in BoldTrail gets a weekly card. Add the week's numbers, watch the short video, and approve it: it emails your sellers through BoldTrail on the day you pick. Recording the video yourself on camera is unlimited." },
       { q: "Do the drafts use up my videos?", a: "Drafts don't. A video counts toward your plan only when you approve it and make it. Blog posts and camera recordings are unlimited." },
     ],
@@ -286,7 +286,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
     ],
     faqs: [
       { q: "Do photo reels use my monthly videos?", a: "No. Photo reels are free and don't use anything from your monthly plan." },
-      { q: "How many photos can I use?", a: "Up to 20 photos for a reel, and up to 12 in an Avatar video." },
+      { q: "How many photos can I use?", a: "Up to 20 photos for a reel, and up to 12 in a Full AI Avatar video." },
       { q: "Can I send the video to my seller?", a: "Yes. Seller Updates writes the email with a video, and you send it through BoldTrail or your own email. On paid plans, AutoSparks can send it every week once you approve it." },
     ],
   },
@@ -296,7 +296,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
 export const PRICING_FAQS: Faq[] = [
   { q: "Is there a contract?", a: "No. Plans are billed monthly and you can cancel anytime." },
   // Replaced "short vs long" on 2026-11-13, when long AI videos were retired.
-  { q: "How many videos do I get?", a: "Creator includes 4 AI videos a month, Producer 7 and Influencer 10, each up to 2 minutes. Recording yourself on camera, up to 15 minutes, never uses one." },
+  { q: "How many videos do I get?", a: "Creator includes 4 AI videos a month. Producer includes 4 Full AI Avatar videos plus unlimited AI Avatar in Circle videos, up to 1 a day. Each is up to 2 minutes. Recording yourself on camera, up to 15 minutes, never uses one." },
   { q: "What if I need more videos one month?", a: "Add them anytime for $25 each. Add-on videos never expire, so they're non-refundable." },
   { q: "What's unlimited?", a: "Blog posts, camera recordings and screen recordings are unlimited on every paid plan, and photo reels don't use any of your monthly videos." },
   { q: "Can I try it free?", a: "Yes. Sign up free and make your first AI video, no credit card needed." },
@@ -328,7 +328,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
   {
     title: "Plans and pricing",
     items: [
-      { q: "How much does SparkReels cost?", a: "Creator is $99 a month with 4 AI videos, Producer $149 with 7 and Influencer $199 with 10. Each also includes unlimited blog posts, camera recordings and AutoSparks." },
+      { q: "How much does SparkReels cost?", a: "Creator is $99 a month with 4 AI videos. Producer is $149 with 4 Full AI Avatar videos plus unlimited AI Avatar in Circle videos, up to 1 a day. Both include unlimited blog posts, camera recordings and AutoSparks." },
       { q: "Can I cancel anytime?", a: "Yes. There's no contract; plans are billed monthly." },
       { q: "What are add-on videos?", a: "Extra videos you buy when you need them, $25 each. They never expire." },
       { q: "Do you have an affiliate program?", a: "Yes, for active paid subscribers. Sign in, apply on the Affiliates page, and earn a commission when agents you refer subscribe." },

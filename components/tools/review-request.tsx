@@ -395,7 +395,7 @@ export function ReviewRequestTool() {
             <p className={eyebrow}>The words</p>
             <textarea rows={4} value={script} onChange={(e) => setScript(e.target.value)} className={`${input} resize-none`} />
             <p className={`mt-1 text-[12px] ${way === "avatar" && words > MAX_AVATAR_WORDS ? "font-semibold text-red-600" : "text-spark-ink-faint"}`}>
-              {words} words, about {Math.max(1, Math.round((words / WPM) * 60))} seconds{way === "avatar" ? ` · Avatar in circle: ${MAX_AVATAR_WORDS} words at most` : ""}
+              {words} words, about {Math.max(1, Math.round((words / WPM) * 60))} seconds{way === "avatar" ? ` · AI Avatar in Circle: ${MAX_AVATAR_WORDS} words at most` : ""}
             </p>
             <p className="mb-3 mt-1 text-[12.5px]">
               {savedWords && (savedWords.script ?? "") === script.trim().replace(/\s+/g, " ") && (savedWords.subject ?? "") === subject.trim()
@@ -406,7 +406,7 @@ export function ReviewRequestTool() {
             </p>
             <div className="grid grid-cols-2 gap-2">
               {choice("record", <Camera size={14} />, "Record it myself", "Free, unlimited")}
-              {choice("avatar", <CircleUser size={14} />, "Avatar in circle", "Up to 60 sec · uses 1 short video")}
+              {choice("avatar", <CircleUser size={14} />, "AI Avatar in Circle", "Up to 60 sec · uses 1 short video")}
               {choice("reel", <ImagePlus size={14} />, "Photo reel", "Your photos · free")}
               {choice("mine", <Film size={14} />, "Use a video I made", "From My Sparks")}
             </div>

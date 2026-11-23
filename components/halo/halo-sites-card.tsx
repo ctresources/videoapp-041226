@@ -215,7 +215,7 @@ export function HaloSitesCard({ halo, bare = false }: { halo: Halo; bare?: boole
         </Row>
         <div className="border-t border-spark-rule" />
         <Row label="Look">
-          {([["circle", "Avatar in circle"], ["full", "Avatar video"], ["mix", "Mix"]] as const).map(([v, label]) => (
+          {([["circle", "AI Avatar in Circle"], ["full", "Full AI Avatar"], ["mix", "Mix"]] as const).map(([v, label]) => (
             <button key={v} type="button" className={tile(s.look === v)} onClick={() => void halo.saveSettings({ look: v })}>{label}</button>
           ))}
         </Row>

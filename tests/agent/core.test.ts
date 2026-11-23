@@ -115,6 +115,8 @@ describe("labeled answers (backup for AI apps with an old tool list)", () => {
     expect(labeledAnswers("Topic. Shape: Wide. Presenter: Voice only")).toEqual({ shape: "wide", presenter: "voice_only", style: null });
     expect(labeledAnswers("Topic. Presenter: Yourself on camera").presenter).toBe("camera");
     expect(labeledAnswers("Style: Full video with b-roll.").style).toBe("full");
+    expect(labeledAnswers("Style: Full AI Avatar.").style).toBe("full");
+    expect(labeledAnswers("Style: Your AI Avatar in Circle.").style).toBe("circle");
   });
   it("loose wording never counts", async () => {
     const { labeledAnswers } = await import("@/lib/agent/planner");
@@ -170,8 +172,8 @@ describe("plan_spark asks instead of guessing", () => {
   });
   it("uses the real names in the plan", async () => {
     const { videoLabel } = await import("@/lib/agent/planner");
-    expect(videoLabel("wide", "twin", "full")).toBe("Wide, your Digital Twin, full video with b-roll");
-    expect(videoLabel("vertical", "headshot", "circle")).toBe("Vertical, your headshot avatar, corner circle over scenes");
+    expect(videoLabel("wide", "twin", "full")).toBe("Wide, your Digital Twin, Full AI Avatar");
+    expect(videoLabel("vertical", "headshot", "circle")).toBe("Vertical, your headshot avatar, AI Avatar in Circle");
     expect(videoLabel("wide", "voice_only", null)).toBe("Wide, voice only");
   });
   it("only the subject goes into the topic", async () => {
@@ -179,6 +181,26 @@ describe("plan_spark asks instead of guessing", () => {
     expect(cleanTopic("Seller education in Blue Bell; plan for approval only")).toBe("Seller education in Blue Bell");
     expect(cleanTopic("Closing costs in Ambler, do not create anything yet")).toBe("Closing costs in Ambler");
     expect(cleanTopic("Why you shouldn't overprice: don't overprice your home")).toBe("Why you shouldn't overprice: don't overprice your home");
+  });
+});
+
+describe("Producer's free AI Avatar in Circle in a plan", () => {
+  const out = { unlimited: false, short: 0, level: "producer", tier: "agent" };
+  it("can plan today's free circle video with no videos left, using none", async () => {
+    const { buildPlan } = await import("@/lib/agent/planner");
+    const p = buildPlan({ ...intent, style: "circle" }, ctx({ allowance: { ...out, circleFreeToday: true } as never }));
+    expect(p.steps.find((s) => s.tool === "make_video")?.usesVideo).toBe(false);
+    expect(p.totals.videosNeeded).toBe(0);
+  });
+  it("a Full AI Avatar still needs a video left", async () => {
+    const { buildPlan } = await import("@/lib/agent/planner");
+    const p = buildPlan({ ...intent, style: "full" }, ctx({ allowance: { ...out, circleFreeToday: true } as never }));
+    expect(p.steps.some((s) => s.tool === "make_video")).toBe(false);
+  });
+  it("once today's is used, a circle video needs a video left", async () => {
+    const { buildPlan } = await import("@/lib/agent/planner");
+    const p = buildPlan({ ...intent, style: "circle" }, ctx({ allowance: { ...out, circleFreeToday: false } as never }));
+    expect(p.steps.some((s) => s.tool === "make_video")).toBe(false);
   });
 });
 

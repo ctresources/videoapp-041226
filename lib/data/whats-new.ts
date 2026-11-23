@@ -30,6 +30,17 @@ export type WhatsNewItem = {
 
 const ITEMS: WhatsNewItem[] = [
   {
+    id: "two-plans",
+    title: "Two Simple Plans, With Unlimited AI Avatar in Circle",
+    description:
+      "Creator is $99 with 4 AI videos a month. Producer is $149 with 4 Full AI Avatar videos plus unlimited AI Avatar in Circle videos, up to 1 a day. Recording yourself on camera never uses your videos.",
+    releaseDate: "2026-11-22",
+    howItWorksAnchor: "step-11",
+    badge: "NEW",
+    freeHref: "/settings/billing",
+    freeLabel: "See plans",
+  },
+  {
     id: "like-a-video",
     title: "Make One Like a Video You Love",
     description:
@@ -126,6 +137,8 @@ const ITEMS: WhatsNewItem[] = [
     badge: "IMPROVED",
     freeHref: "/settings/billing",
     freeLabel: "See plans",
+    // Replaced by "two-plans" (2026-11-22).
+    published: false,
   },
   {
     id: "halo-leads",
@@ -164,7 +177,7 @@ const ITEMS: WhatsNewItem[] = [
     id: "twin-photos-footage",
     title: "Your Twin in Front of Your Footage",
     description:
-      "In a horizontal Avatar video, your Digital Twin stands in front of your photos and clips as they play, at the side or in the corner.",
+      "In a horizontal Full AI Avatar video, your Digital Twin stands in front of your photos and clips as they play, at the side or in the corner.",
     releaseDate: "2026-10-31",
     howItWorksAnchor: "digital-twin-backgrounds",
     badge: "NEW",

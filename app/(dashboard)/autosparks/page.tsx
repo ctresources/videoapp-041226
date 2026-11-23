@@ -461,7 +461,7 @@ export default function AutopilotPage() {
                 <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-spark-ink-muted">
                   <span className="text-[15px] font-bold text-spark-ink">{when}</span>
                   <span className="flex items-center gap-1 rounded-full border border-spark-rule px-2 py-0.5">
-                    {d.kind === "video" ? <><Video size={11} /> Video · Avatar in circle</> : <><FileText size={11} /> Blog post</>}
+                    {d.kind === "video" ? <><Video size={11} /> Video · AI Avatar in Circle</> : <><FileText size={11} /> Blog post</>}
                   </span>
                   {d.requested && <span className="rounded-full bg-spark-amber-tint px-2 py-0.5 text-[#A3660F]">You asked</span>}
                   {needsVideo.has(d.id) && <span className="rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-700">Needs 1 more video</span>}

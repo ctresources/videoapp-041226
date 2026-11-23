@@ -18,7 +18,7 @@ export async function podcastSession(): Promise<
   const admin = createAdminClient();
   const { data: prof } = await admin.from("profiles").select("subscription_tier, role").eq("id", user.id).single();
   if (!podcastPlanOk(prof as { subscription_tier: string | null; role: string | null } | null)) {
-    return { ok: false, response: NextResponse.json({ error: "Spark Podcast comes with the Producer and Influencer plans.", code: "plan" }, { status: 403 }) };
+    return { ok: false, response: NextResponse.json({ error: "Spark Podcast comes with the Producer plan.", code: "plan" }, { status: 403 }) };
   }
   return { ok: true, user: { id: user.id, email: user.email ?? null }, admin };
 }

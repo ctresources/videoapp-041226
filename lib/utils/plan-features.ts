@@ -49,7 +49,7 @@ export function canUseTwinInFullVideo(tier: string | null | undefined, role?: st
 
 /** Said when the render refuses a free-plan twin in Avatar video. No vendor names. */
 export const TWIN_FULL_VIDEO_MESSAGE =
-  "Avatar video with your Digital Twin is on the paid plans. Choose Avatar in circle, or see plans in Billing.";
+  "Full AI Avatar with your Digital Twin is on the paid plans. Choose AI Avatar in Circle, or see plans in Billing.";
 
 export function canUseDigitalTwin(tier: string | null | undefined, role?: string | null): boolean {
   if (hasAdminPerks(role)) return true;

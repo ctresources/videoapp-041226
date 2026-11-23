@@ -25,6 +25,8 @@ import { footageTerms } from "@/lib/utils/script-keywords";
 import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, chargeOneVideo, type VideoKind } from "@/lib/utils/video-allowance";
 import { canUseDigitalTwin, canUseTwinInFullVideo, TWIN_FULL_VIDEO_MESSAGE } from "@/lib/utils/plan-features";
+import { CIRCLE_CREDIT_SOURCE, hasUnlimitedCircle } from "@/lib/plan-limits";
+import { circleFreeToday } from "@/lib/usage/circle";
 import { parseScriptLocation } from "@/lib/utils/parse-address";
 import { formatPhone, formatPhones } from "@/lib/utils/format-phone";
 import { notifyRenderBalanceLow } from "@/lib/email";
@@ -823,7 +825,7 @@ export async function startRender(
 
   const { data: profileData } = await admin
     .from("profiles")
-    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall, twin_wide_mode, twin_footage_layout, twin_default_bg,twin_consent_needed, twin_outfit_look_ids, twin_upright, heygen_twin2_look_id, twin2_upright, twin2_consent_needed")
+    .select("heygen_voice_id, voice_sample_url, heygen_photo_id, heygen_digital_twin_look_id, avatar_url, logo_url, full_name, company_name, phone, company_phone, location_city, location_state, website, voice_clone_id, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, role, subscription_tier, heygen_brand_kit_id, first_video_generated_at, heygen_look_wide, heygen_look_tall, twin_wide_mode, twin_footage_layout, twin_default_bg,twin_consent_needed, twin_outfit_look_ids, twin_upright, heygen_twin2_look_id, twin2_upright, twin2_consent_needed, time_zone")
     .eq("id", user.id)
     .single();
 
@@ -866,6 +868,7 @@ export async function startRender(
     /** Where a see-through twin stands in front of the footage (2026-10-31). */
     twin_footage_layout: string | null;
     twin_default_bg: unknown;
+    time_zone: string | null;
   } | null;
 
   // Auto-register the headshot with HeyGen if avatar_url exists but heygen_photo_id is not yet set
@@ -1030,6 +1033,16 @@ export async function startRender(
       remakeOf = { id: f.id, metadata: f.metadata ?? {} };
     }
   }
+  /**
+   * Producer's unlimited AI Avatar in Circle (2026-11-22, the owner's approved
+   * pricing): one a day uses none of their videos. Another that day uses a
+   * monthly video like any other, the same way the free Agent Intro works, so
+   * an automatic draft never fails just for being the day's second.
+   */
+  const circleVideo = useDirectVideo && !wantsFull && !isAgentIntro && !isLongForm && !voiceOnly;
+  const circleOnPlan = circleVideo && !isAdmin && !remakeFree && hasUnlimitedCircle(tier);
+  const circleFree = circleOnPlan && await circleFreeToday(admin, user.id, tier, profile.time_zone);
+
   /** Marks the flagged video's free remake as used, once the new render has started. */
   const useFreeRemake = async () => {
     if (!remakeOf) return;
@@ -1051,7 +1064,7 @@ export async function startRender(
   const capMsg = await staffCapMessage(admin, user.id, profile.role);
   if (capMsg) return NextResponse.json({ error: capMsg, code: "staff_cap" }, { status: 402 });
 
-  if (!isAdmin && !charge && !introFree && !remakeFree) {
+  if (!isAdmin && !charge && !introFree && !remakeFree && !circleFree) {
     // `code` and `kind` let the client open the plan picker instead of
     // string-matching the message. Someone who just watched their free video
     // render is the most likely person to buy — a dead-end toast wastes that.
@@ -1062,7 +1075,9 @@ export async function startRender(
         tier,
         error: isLongForm
           ? "You've used all your long videos. Buy another for $29 in Billing, upgrade your plan, or record one free with the camera teleprompter."
-          : "You've used all your short videos. Buy more in Billing or upgrade your plan.",
+          : circleOnPlan
+            ? "You've made today's AI Avatar in Circle video. Your next one is free tomorrow, or buy more in Billing."
+            : "You've used all your short videos. Buy more in Billing or upgrade your plan.",
       },
       { status: 402 },
     );
@@ -1681,9 +1696,9 @@ export async function startRender(
           render_job_id: directVideoId,
           metadata: {
             ...(videoRow.metadata ?? {}),
-            credit_cost: introFree || remakeFree ? 0 : creditCost,
+            credit_cost: introFree || remakeFree || circleFree ? 0 : creditCost,
             credit_kind: videoKind,
-            credit_source: introFree ? "intro_free" : remakeFree ? "remake_free" : (charge?.source ?? "plan"),
+            credit_source: introFree ? "intro_free" : remakeFree ? "remake_free" : circleFree ? CIRCLE_CREDIT_SOURCE : (charge?.source ?? "plan"),
             // What it was actually rendered with. Both are needed to price it:
             // the engine and the avatar type each move the rate, by up to four
             // times between them. Recorded here because this is the only place
@@ -1734,14 +1749,14 @@ export async function startRender(
       // Conditional write — see chargeOneVideo. The absolute value computed
       // above was a lost update: two tabs both read the same balance and both
       // wrote the same lower number, so one video was free.
-      if (charge && !isAdmin && !introFree && !remakeFree) await chargeOneVideo(admin, user.id, videoKind);
+      if (charge && !isAdmin && !introFree && !remakeFree && !circleFree) await chargeOneVideo(admin, user.id, videoKind);
       if (remakeFree) await useFreeRemake();
       await startFreeTrialClockIfNeeded();
       await admin.from("api_usage_log").insert({
         user_id: user.id,
         api_provider: "heygen",
         endpoint: "video-v3-direct",
-        credits_used: creditCost,
+        credits_used: circleFree ? 0 : creditCost,
         response_status: 202,
       });
 

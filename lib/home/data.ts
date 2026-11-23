@@ -88,7 +88,7 @@ export async function connectedPlatforms(p: Pick<ProfileRow, "youtube_channel_id
 
 export async function loadHome(admin: Admin, userId: string): Promise<HomeData> {
   const { data: prof } = await admin.from("profiles")
-    .select(`${ALLOWANCE_SELECT}, full_name, subscription_tier, role, location_city, location_state, time_zone, current_period_end, youtube_channel_id, youtube_refresh_token, social_profile_created_at, website, first_video_generated_at`)
+    .select(`${ALLOWANCE_SELECT}, full_name, subscription_tier, role, location_city, location_state, time_zone, current_period_end, youtube_channel_id, youtube_refresh_token, social_profile_created_at, website, first_video_generated_at, plan_videos_override`)
     .eq("id", userId).single();
   const p = (prof ?? {}) as unknown as ProfileRow;
   const level = getAccessLevel(p);
@@ -263,7 +263,7 @@ export async function loadHome(admin: Admin, userId: string): Promise<HomeData> 
 
   const usage = {
     shortLeft: availableFor(p as never, "short"),
-    perMonth: videosPerMonth(p.subscription_tier),
+    perMonth: videosPerMonth(p.subscription_tier, (p as { plan_videos_override?: number | null }).plan_videos_override),
     bought: Number(p.purchased_short_videos ?? 0),
     unlimited: isAdmin,
     renewsAt: p.current_period_end,

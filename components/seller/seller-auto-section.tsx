@@ -247,7 +247,7 @@ export function SellerAutoSection({ preview }: { /** Shown as is (screenshots). 
           <span>·</span>
           <span>Video:</span>
           <select className={select} value={settings.video} onChange={(e) => void save({ video: e.target.value as Settings["video"] })}>
-            <option value="circle">Avatar in circle</option>
+            <option value="circle">AI Avatar in Circle</option>
             <option value="none">Email only</option>
           </select>
           <span>·</span>

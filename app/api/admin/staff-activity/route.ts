@@ -36,8 +36,8 @@ function videoKind(v: { render_provider: string | null; metadata: Record<string,
   if (v.ai_kind === "agent_intro") return "Agent Intro";
   if (v.render_provider === "camera") return m.source === "screen" ? "Screen recording" : "Camera recording";
   if (v.render_provider === "ffmpeg") return m.source === "scenes-reel" ? "Scenes reel" : m.motion ? "Cinematic reel" : "Classic photo reel";
-  if (v.render_provider === "heygen_agent") return "Avatar video";
-  if (v.render_provider === "heygen_v3_direct") return m.twin_cutout ? "Avatar on footage" : m.twin_backdrop ? "Avatar on background" : "Avatar in circle";
+  if (v.render_provider === "heygen_agent") return "Full AI Avatar";
+  if (v.render_provider === "heygen_v3_direct") return m.twin_cutout ? "Avatar on footage" : m.twin_backdrop ? "Avatar on background" : "AI Avatar in Circle";
   if (v.render_provider?.includes("translate")) return "Translation";
   return "Video";
 }

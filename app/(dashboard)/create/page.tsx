@@ -323,7 +323,7 @@ function CreatePageInner() {
    * and nothing called it. A zero balance was discovered at Generate, after
    * the market, the topic, the recording and the style had all been chosen.
    */
-  const [allowance, setAllowance] = useState<{ short: number; long: number; unlimited: boolean; trialLocked: boolean; trialStarted: boolean; freeBlogLeft: number | null; freeRecordingLeft: number | null; isAdmin?: boolean } | null>(null);
+  const [allowance, setAllowance] = useState<{ short: number; long: number; unlimited: boolean; trialLocked: boolean; trialStarted: boolean; freeBlogLeft: number | null; freeRecordingLeft: number | null; isAdmin?: boolean; circleFreeToday?: boolean } | null>(null);
   const [step, setStep] = useState<Step>("input");
   const [transcript, setTranscript] = useState("");
   const [recordingId, setRecordingId] = useState<string | null>(null);
@@ -2564,6 +2564,8 @@ function CreatePageInner() {
 
   const outOfVideos = !!allowance && !allowance.unlimited
     && allowance.short === 0 && allowance.long === 0
+    // Producer can still make today's free AI Avatar in Circle video (2026-11-22).
+    && !allowance.circleFreeToday
     && inputMode !== "camera";
 
   const showActionBar = inputMode === "script" && step === "input";
@@ -3616,8 +3618,8 @@ function CreatePageInner() {
               // The owner's names for the three (2026-10-10).
               // Names only. "Avatar full video" lost its "full", and each lost
               // the line under it, at the owner's direction (2026-10-13).
-              { kind: "avatar" as const, Icon: SquareUser, label: "Avatar video" },
-              { kind: "circle" as const, Icon: CircleUser, label: "Avatar in circle" },
+              { kind: "avatar" as const, Icon: SquareUser, label: "Full AI Avatar" },
+              { kind: "circle" as const, Icon: CircleUser, label: "AI Avatar in Circle" },
               { kind: "scenes" as const, Icon: Clapperboard, label: "Voice over only" },
             ]).map(({ kind, Icon, label }) => {
               const on = scenesRoute ? kind === "scenes" : videoKind === kind;
@@ -4581,7 +4583,7 @@ function CreatePageInner() {
                    */
                   // Long AI videos retired 2026-11-13: Longform is always read
                   // on camera, so it never says "none left".
-                  const none = !isLong && !!allowance && !allowance.unlimited && allowance.short === 0;
+                  const none = !isLong && !!allowance && !allowance.unlimited && allowance.short === 0 && !allowance.circleFreeToday;
                   return (
                     <button
                       key={l.key}

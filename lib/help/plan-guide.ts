@@ -8,7 +8,7 @@ import { FREE_BLOGS_BEFORE_VIDEO, FREE_IMAGES_BEFORE_VIDEO, FREE_RECORDINGS_BEFO
  * both places.
  */
 export const FREE_PLAN_INCLUDES: string[] = [
-  "One free video, made with your avatar or as a voice over. With a Digital Twin, the free video is Avatar in circle.",
+  "One free video, made with your avatar or as a voice over. With a Digital Twin, the free video is AI Avatar in Circle.",
   `Before the free video: ${FREE_BLOGS_BEFORE_VIDEO} blog, ${FREE_RECORDINGS_BEFORE_VIDEO} camera recording, ${FREE_RUNS_BEFORE_VIDEO} Spark Tools tries and ${FREE_IMAGES_BEFORE_VIDEO} AI images.`,
   `For ${FREE_TRIAL_DAYS} days after the free video: unlimited blogs, camera recordings and the Spark Tools generators (titles, descriptions, tags, scripts, thumbnails, images, banners, channel name, LinkedIn profile, AI Answer Blocks).`,
   "Setting up in Settings: market, AI voice clone, brand profile, closing line, import address, phone.",
@@ -18,7 +18,7 @@ export const FREE_PLAN_INCLUDES: string[] = [
 ];
 
 export const PAID_PLANS_ONLY: string[] = [
-  "Avatar video (the full video) with your Digital Twin",
+  "Full AI Avatar video with your Digital Twin",
   "A second photo and a second Digital Twin, so there's one of each shape (vertical for Reels and Shorts, horizontal for YouTube)",
   "Outfits for your Digital Twin",
   "Record My Screen",
@@ -26,14 +26,15 @@ export const PAID_PLANS_ONLY: string[] = [
   "Seller Update, Ask for Google Review Video Email and Google Reviews in Spark Tools",
   "Email it (sending a video by email) and the newsletter",
   "AutoSparks: weekly drafts, Halo sites, email drafts and seller updates",
-  "Posting to Facebook, Instagram, LinkedIn, TikTok, Google Business and the other accounts (Creator posts to YouTube plus 3 others; Producer and Influencer to all)",
+  "Posting to Facebook, Instagram, LinkedIn, TikTok, Google Business and the other accounts (Creator posts to YouTube plus 3 others; Producer to all)",
+  "Unlimited AI Avatar in Circle videos, up to 1 a day (Producer)",
   "CRM: BoldTrail and GoHighLevel",
   "Spark Insights and Spark Calendar",
   "The Affiliate Program",
   "The full step-by-step How It Works guides",
 ];
 
-export const PAID_PLAN_NAMES = "Creator, Producer and Influencer";
+export const PAID_PLAN_NAMES = "Creator and Producer";
 
 /** The block added to Sparklee's instructions for a free account. */
 export function freePlanBriefing(): string {

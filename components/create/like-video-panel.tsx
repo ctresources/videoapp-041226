@@ -24,8 +24,8 @@ const MAX_SECONDS = 180;
 const MAX_BYTES = 200 * 1024 * 1024;
 
 const ON_SCREEN: { key: OnScreen; label: string }[] = [
-  { key: "full", label: "Avatar video" },
-  { key: "circle", label: "Avatar in circle" },
+  { key: "full", label: "Full AI Avatar" },
+  { key: "circle", label: "AI Avatar in Circle" },
   { key: "voice", label: "Voice over only" },
   { key: "self", label: "You on camera" },
 ];

@@ -28,7 +28,7 @@ interface Plan {
   usageLine: string; overBudget: boolean; missing: { label: string; href: string }[]; paid: boolean;
   connected?: string[];
 }
-const LOOKS = { full: "Avatar video", circle: "Avatar in circle", none: "No avatar" } as const;
+const LOOKS = { full: "Full AI Avatar", circle: "AI Avatar in Circle", none: "No avatar" } as const;
 
 /** Four examples, kept on one line (the owner's ask, 2026-10-31). */
 export const TRY_SAYING = ["Plan my week", "Market my listing", "Create a market update", "What should I post this week?"];

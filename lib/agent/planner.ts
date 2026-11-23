@@ -86,7 +86,7 @@ export function labeledAnswers(text: string): { shape: Shape | null; presenter: 
   };
   const shape = last(/\bshape\s*:\s*(vertical|wide)\b/gi);
   const who = last(/\bpresenter\s*:\s*(digital twin|twin|headshot avatar|headshot|voice only|yourself on camera|on camera|camera)\b/gi);
-  const how = last(/\bstyle\s*:\s*(full video with b-roll|full video|full|corner circle over scenes|corner circle|circle)(?![\w-])/gi);
+  const how = last(/\bstyle\s*:\s*(full ai avatar|full video with b-roll|full video|full|your ai avatar in circle|ai avatar in circle|corner circle over scenes|corner circle|circle)(?![\w-])/gi);
   return {
     shape: asShape(shape),
     presenter: !who ? null
@@ -141,8 +141,8 @@ const PRESENTER_LABEL: Record<Presenter, string> = {
   camera: "Yourself on camera",
 };
 const STYLE_LABEL: Record<VideoStyle, string> = {
-  full: "Full video with b-roll",
-  circle: "Corner circle over scenes",
+  full: "Full AI Avatar",
+  circle: "Your AI Avatar in Circle",
 };
 
 export function presenterOptions(ctx: AgentContext): Presenter[] {
@@ -205,7 +205,7 @@ export function questionsFor(intent: Intent, ctx: AgentContext): { questions: Pl
 /** "Wide, your Digital Twin, full video with b-roll": the real names, in the plan. */
 export function videoLabel(shape: Shape, presenter: Presenter, style: VideoStyle | null): string {
   const who = presenter === "twin" ? "your Digital Twin" : presenter === "headshot" ? "your headshot avatar" : presenter === "voice_only" ? "voice only" : "yourself on camera";
-  const how = style === "circle" ? "corner circle over scenes" : style === "full" ? "full video with b-roll" : null;
+  const how = style === "circle" ? "AI Avatar in Circle" : style === "full" ? "Full AI Avatar" : null;
   return [shape === "vertical" ? "Vertical" : "Wide", who, how].filter(Boolean).join(", ");
 }
 
@@ -275,15 +275,19 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
   const upgrade: string[] = [];
   const notes: string[] = [];
   const left = videosLeft(ctx);
-  const canVideo = left === "unlimited" || left > 0;
   const shape: Shape = intent.shape ?? "wide";
   const presenter: Presenter = intent.presenter ?? "voice_only";
+  // Producer's free AI Avatar in Circle video for today uses none of their videos.
+  const circleFree = !!ctx.allowance.circleFreeToday && intent.style === "circle"
+    && (presenter === "twin" || presenter === "headshot");
+  const canVideo = left === "unlimited" || left > 0 || circleFree;
   // Recording yourself happens in SparkReels and never uses a plan video.
   const camera = intent.kind === "video" && presenter === "camera";
   const makeVideo = intent.kind === "video" && !camera && canVideo;
   if (intent.kind === "video" && !camera && !canVideo) {
     upgrade.push("You have no videos left this month. Buy extra videos in Billing, or upgrade for more each month. Recording yourself on camera never uses one.");
   }
+  if (circleFree) notes.push("Today's AI Avatar in Circle video is included free.");
   if (camera) {
     notes.push("Recording happens in SparkReels: when the script and Share Kit are ready, you'll get a link to the teleprompter. Once it's recorded, you can come back here to post it.");
   }
@@ -307,7 +311,7 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
     steps.push({
       n: n++, tool: "make_video",
       title: `Make the video: ${videoLabel(shape, presenter, intent.style)}`,
-      usesVideo: true, needsConfirm: false,
+      usesVideo: !circleFree, needsConfirm: false,
       input: { sparkFromStep: scriptStep, size: shape, voiceOnly: presenter === "voice_only", presenter, style: intent.style },
     });
   }

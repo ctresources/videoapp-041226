@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { removeVoiceAndRecording } from "@/lib/utils/voice-slot";
 import { releaseSocialSlot } from "@/lib/api/social-slot";
 import { stripe, PLANS } from "@/lib/stripe";
+import { videosPerMonth } from "@/lib/plan-limits";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createCommissionIfEligible } from "@/lib/affiliate-commission";
 import { ALLOWANCE_SELECT, purchasedColumn, type VideoKind } from "@/lib/utils/video-allowance";
@@ -273,6 +274,8 @@ export async function POST(req: NextRequest) {
         cancel_at_period_end: false,
         credits_remaining: 0,
         long_credits_remaining: 0,
+        // A kept allowance lasts as long as the subscription (2026-11-22).
+        plan_videos_override: null,
       });
 
       // The plan comes off the subscription, not the profile: updateProfile
@@ -329,10 +332,10 @@ export async function POST(req: NextRequest) {
       const customerId = invoice.customer as string;
       const { data: profiles } = await admin
         .from("profiles")
-        .select("id, subscription_tier")
+        .select("id, subscription_tier, plan_videos_override")
         .eq("stripe_customer_id", customerId)
         .limit(1);
-      const profile = profiles?.[0];
+      const profile = profiles?.[0] as { id: string; subscription_tier: string | null; plan_videos_override: number | null } | undefined;
 
       // Commission on the first real charge AND every renewal within the window.
       if (profile && (invoice.billing_reason === "subscription_create" || invoice.billing_reason === "subscription_cycle")) {
@@ -347,7 +350,8 @@ export async function POST(req: NextRequest) {
       const plan = Object.values(PLANS).find((p) => p.tier === profile.subscription_tier);
       if (plan) {
         await updateProfile(admin, profile.id, {
-          credits_remaining: plan.shortVideos,
+          // A Producer from before 2026-11-22 keeps their 7 (plan_videos_override).
+          credits_remaining: videosPerMonth(profile.subscription_tier, profile.plan_videos_override) || plan.shortVideos,
           long_credits_remaining: plan.longVideos,
           subscription_status: "active",
         });

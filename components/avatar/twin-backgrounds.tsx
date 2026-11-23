@@ -170,7 +170,7 @@ export function TwinBackgrounds({
         <div>
           <p className="mb-1.5 text-[13px] font-semibold text-spark-ink-muted">Wide videos</p>
           <div className="flex flex-wrap gap-2">
-            {([["footage", "Me on my footage"], ["background", "Me on my background"], ["circle", "Avatar in circle"]] as const).map(([m, label]) => (
+            {([["footage", "Me on my footage"], ["background", "Me on my background"], ["circle", "AI Avatar in Circle"]] as const).map(([m, label]) => (
               <button key={m} type="button"
                 onClick={async () => { setWideMode(m); try { await call({ action: "settings", mode: m }); } catch { void load(); } }}
                 className={`rounded-xl border px-3 py-1.5 text-[13.5px] font-semibold ${wideMode === m ? "border-spark-amber bg-spark-amber-tint text-[#A3660F]" : "border-spark-rule bg-white text-spark-ink-soft"}`}>

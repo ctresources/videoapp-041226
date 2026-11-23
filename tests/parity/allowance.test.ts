@@ -34,12 +34,28 @@ describe("allowance route → shared service", () => {
 });
 
 describe("plan video counts", () => {
-  it("match the plans: Creator 4, Producer 7, Influencer 10", async () => {
+  it("match the plans: Creator 4, Producer 4, old Influencer 10", async () => {
     const { videosPerMonth } = await import("@/lib/plan-limits");
     expect(videosPerMonth("starter")).toBe(4);
-    expect(videosPerMonth("agent")).toBe(7);
+    expect(videosPerMonth("agent")).toBe(4);
     expect(videosPerMonth("pro")).toBe(10);
     expect(videosPerMonth("free")).toBe(0);
     expect(videosPerMonth(null)).toBe(0);
+  });
+
+  it("a Producer from before the change keeps their 7; it applies to no other plan", async () => {
+    const { videosPerMonth } = await import("@/lib/plan-limits");
+    expect(videosPerMonth("agent", 7)).toBe(7);
+    expect(videosPerMonth("starter", 7)).toBe(4);
+    expect(videosPerMonth("free", 7)).toBe(0);
+  });
+
+  it("only Producer (and the old Influencer) get unlimited circle", async () => {
+    const { hasUnlimitedCircle } = await import("@/lib/plan-limits");
+    expect(hasUnlimitedCircle("agent")).toBe(true);
+    expect(hasUnlimitedCircle("pro")).toBe(true);
+    expect(hasUnlimitedCircle("starter")).toBe(false);
+    expect(hasUnlimitedCircle("free")).toBe(false);
+    expect(hasUnlimitedCircle(null)).toBe(false);
   });
 });

@@ -46,11 +46,13 @@ export const PLANS = {
     // $149 from $189 on 2026-10-20, in STRIPE_PRICE_PRODUCER.
     priceId: (process.env.STRIPE_PRICE_PRODUCER || process.env.STRIPE_PRICE_AGENT)!,
     price: 149,
-    // 4 short + 2 long until 2026-11-13; 7 videos now (worst case ~41% before bills).
+    // 7 videos until 2026-11-22; now 4 Full AI Avatar videos plus unlimited AI
+    // Avatar in Circle, up to 1 a day (lib/plan-limits.ts). Customers from
+    // before keep 7 through profiles.plan_videos_override.
     videos: VIDEOS_PER_MONTH.agent,
     shortVideos: VIDEOS_PER_MONTH.agent,
     longVideos: 0,
-    blurb: "7 videos",
+    blurb: "4 Full AI Avatar + unlimited in Circle",
     tier: "agent" as const,
   },
   pro: {

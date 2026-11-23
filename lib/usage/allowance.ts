@@ -9,7 +9,8 @@ import {
 } from "@/lib/utils/free-trial";
 import { CAMPAIGN_CALENDAR, hasFeature } from "@/lib/utils/feature-access";
 import { IMAGE_MONTHLY_LIMIT, aiImagesUsedThisMonth } from "@/lib/utils/image-allowance";
-import { videosPerMonth } from "@/lib/plan-limits";
+import { hasUnlimitedCircle, videosPerMonth } from "@/lib/plan-limits";
+import { circleFreeToday } from "@/lib/usage/circle";
 
 /**
  * An account's allowance and access: videos left, plan, features, free-trial
@@ -27,7 +28,7 @@ type Db = SupabaseClient<any, any, any>;
 export async function getAllowance(db: Db, userId: string, opts: { touchLastActive?: boolean } = {}) {
   const { data } = await db
     .from("profiles")
-    .select(`${ALLOWANCE_SELECT}, subscription_tier, role, first_video_generated_at, last_seen_whats_new, current_period_end, last_active_at`)
+    .select(`${ALLOWANCE_SELECT}, subscription_tier, role, first_video_generated_at, last_seen_whats_new, current_period_end, last_active_at, plan_videos_override, time_zone`)
     .eq("id", userId)
     .single();
 
@@ -70,7 +71,10 @@ export async function getAllowance(db: Db, userId: string, opts: { touchLastActi
     // For "Videos left this month: 2 of 7 · 1 bought" on AutoSparks (2026-10-24).
     shortPlanLeft: Number(profile.credits_remaining ?? 0),
     shortBought: Number(profile.purchased_short_videos ?? 0),
-    shortPerMonth: videosPerMonth(profile.subscription_tier as string | null),
+    shortPerMonth: videosPerMonth(profile.subscription_tier as string | null, profile.plan_videos_override as number | null),
+    // Producer: unlimited AI Avatar in Circle, up to 1 a day (2026-11-22).
+    circleUnlimited: hasUnlimitedCircle(profile.subscription_tier as string | null),
+    circleFreeToday: await circleFreeToday(createAdminClient(), userId, profile.subscription_tier as string | null, profile.time_zone as string | null),
     tier: (profile.subscription_tier as string) ?? "free",
     isAdmin,
     isRealAdmin,

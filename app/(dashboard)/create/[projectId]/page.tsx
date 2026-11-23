@@ -324,7 +324,7 @@ export default function ProjectEditorPage() {
   // Set when a render is refused for lack of videos — opens the plan picker.
   const [outOfVideos, setOutOfVideos] = useState<{ kind: "short" | "long"; tier: string } | null>(null);
   // Remaining allowance, so the Generate button can say so up front.
-  const [allowance, setAllowance] = useState<{ short: number; long: number; tier: string; isAdmin: boolean; isRealAdmin?: boolean } | null>(null);
+  const [allowance, setAllowance] = useState<{ short: number; long: number; tier: string; isAdmin: boolean; isRealAdmin?: boolean; circleFreeToday?: boolean } | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   /** The top Save on the Share Kit (2026-10-29). */
   const [topSaving, setTopSaving] = useState(false);
@@ -475,6 +475,9 @@ export default function ProjectEditorPage() {
    * circle, as it always rendered; one the AI wrote opens on full.
    */
   const [avatarStyle, setAvatarStyle] = useState<"full" | "circle">("full");
+  // Producer's free AI Avatar in Circle video for today (2026-11-22): it needs
+  // no video left, and doesn't use one.
+  const circleFreeNow = !!allowance?.circleFreeToday && avatarStyle === "circle" && selectedKind === "short";
   /** Both halves of the avatar setup are done, so the Settings nudge is noise. */
   const [avatarVoiceReady, setAvatarVoiceReady] = useState(false);
   /** For the ready check above Spark Video (2026-10-26). */
@@ -1852,10 +1855,10 @@ export default function ProjectEditorPage() {
       const left = videosLeft ?? 0;
       items.push({
         label: "Videos left",
-        ok: allowance.isAdmin || left > 0,
-        okText: allowance.isAdmin ? "No limit" : `${left} left`,
+        ok: allowance.isAdmin || left > 0 || (circleFreeNow && renderMode !== "voice_only"),
+        okText: allowance.isAdmin ? "No limit" : circleFreeNow && renderMode !== "voice_only" ? "Free today" : `${left} left`,
         badText: "None left",
-        blocks: !allowance.isAdmin && left <= 0,
+        blocks: !allowance.isAdmin && left <= 0 && !(circleFreeNow && renderMode !== "voice_only"),
         fix: { label: allowance.tier === "free" || allowance.tier === "beta" ? "Choose a plan" : "Get more", href: "/billing" },
       });
     }
@@ -2200,7 +2203,7 @@ export default function ProjectEditorPage() {
               key: "full",
               mode: "avatar_voice" as const,
               style: "full" as const,
-              label: "Avatar video",
+              label: "Full AI Avatar",
               desc: twinFullLocked ? "Paid plans" : fullBlocked ? "Up to 2 minutes" : "B-roll and graphics made for you",
               blocked: fullBlocked,
             },
@@ -2208,7 +2211,7 @@ export default function ProjectEditorPage() {
               key: "circle",
               mode: "avatar_voice" as const,
               style: "circle" as const,
-              label: "Avatar in circle",
+              label: "AI Avatar in Circle",
               desc: "You in a corner, over scenes or your photos",
               blocked: false,
             },
@@ -2303,18 +2306,18 @@ export default function ProjectEditorPage() {
               ? <>Agent Intro: your first one each month is <b className="text-[#A3660F]">free</b>; more use a short video.</>
               : allowance.tier === "free"
                 ? <>Agent Intro: this uses your free video.</>
-                : <>Agent Intro: this uses 1 short video. Producer and Influencer get one free every month.</>}
+                : <>Agent Intro: this uses 1 short video. Producer gets one free every month.</>}
           </p>
         )}
         {/* The Digital Twin and the format (2026-10-22, the owner's wording):
-            a twin on a horizontal video is made as Avatar in circle (see
-            start-render), a vertical one stays a full Avatar video. */}
+            a twin on a horizontal video is made as AI Avatar in Circle (see
+            start-render), a vertical one stays a Full AI Avatar video. */}
         {isTwinId(selectedLookId) && renderMode === "avatar_voice" && !circleStyle
           && !selfRecord && !twinFullLocked && (
           <p className="flex items-start gap-2 rounded-lg border border-[#f1d29a] bg-spark-amber-tint px-3 py-2 text-[12px] leading-[1.45] text-spark-ink">
             <Info size={14} className="mt-[1px] shrink-0 text-[#A3660F]" aria-hidden="true" />
             {/* Avatar video is always the Video Agent, either shape (2026-10-24). */}
-            <span>With your Digital Twin, this is a full <b className="text-[#A3660F]">Avatar video</b>, with b-roll and graphics made for you.</span>
+            <span>With your Digital Twin, this is a <b className="text-[#A3660F]">Full AI Avatar</b> video, with b-roll and graphics made for you.</span>
           </p>
         )}
         {/* Opener: the agent in front of the home, before the video (2026-10-24,
@@ -2349,7 +2352,7 @@ export default function ProjectEditorPage() {
         </p>
         {/* Why Avatar video is greyed out, and the two ways back to it
             (2026-10-16, the owner's words). It used to switch to the circle
-            with nothing said. Not on Longform, which Avatar video isn't for. */}
+            with nothing said. Not on Longform, which Full AI Avatar isn't for. */}
         {fullTooLong && selectedVideoType !== "youtube_long" && !selfRecord && (() => {
           const ctaWords = activeCta.split(/\s+/).filter(Boolean).length;
           const total = editedScript.trim().split(/\s+/).filter(Boolean).length + ctaWords;
@@ -2358,7 +2361,7 @@ export default function ProjectEditorPage() {
               <p className="min-w-0 flex-1 text-[12.5px] text-amber-900">
                 {/* Both looks since 2026-10-24: the circle is held to 2 minutes too,
                     and an over-length script would lose its ending there. */}
-                Avatar video and Avatar in circle take up to {standardMaxWords()} words (about 2 minutes),
+                Full AI Avatar and AI Avatar in Circle take up to {standardMaxWords()} words (about 2 minutes),
                 counting your closing line. Yours are {total}.
               </p>
               <button
@@ -3799,8 +3802,8 @@ export default function ProjectEditorPage() {
                     // look, by the name under its picture.
                     fields={[
                       { key: "onscreen", label: "Who is on screen", type: "choice", options: [
-                        ...(fullBlocked ? [] : [{ value: "full", label: "Avatar video" }]),
-                        { value: "circle", label: "Avatar in circle" },
+                        ...(fullBlocked ? [] : [{ value: "full", label: "Full AI Avatar" }]),
+                        { value: "circle", label: "AI Avatar in Circle" },
                         { value: "voice", label: "Voice over only" },
                         { value: "self", label: "You on camera" },
                       ] },
@@ -4095,8 +4098,8 @@ export default function ProjectEditorPage() {
             {uploadedPhotos.length > photoLimit && (
               <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mb-2">
                 Only your first <strong>{photoLimit}</strong> photos will be used. The other{" "}
-                {uploadedPhotos.length - photoLimit} won&apos;t appear. Avatar video takes{" "}
-                {AGENT_PHOTO_LIMIT}. Avatar in circle, pasted scripts and long-form videos
+                {uploadedPhotos.length - photoLimit} won&apos;t appear. Full AI Avatar takes{" "}
+                {AGENT_PHOTO_LIMIT}. AI Avatar in Circle, pasted scripts and long-form videos
                 use up to {DIRECT_PHOTO_LIMIT}.
               </p>
             )}
@@ -4384,7 +4387,8 @@ export default function ProjectEditorPage() {
                   format is selected: create-blog spends one of whichever
                   `isLongForm` resolves to. Naming the wrong kind here, or a
                   count from the other one, would be worse than naming none. */}
-              {showVideoCost && (
+              {circleFreeNow && renderMode !== "voice_only" && ". Today's is free"}
+              {showVideoCost && !(circleFreeNow && renderMode !== "voice_only") && (
                 <>
                   {". This uses "}
                   <span className="text-spark-ink">

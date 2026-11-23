@@ -286,7 +286,7 @@ function FullGuide() {
               short approval on camera, and you come back to SparkReels with it marked approved (if
               not, press <strong>I&apos;ve approved it</strong>). Until then it can&apos;t be used in a video;
               if you try, the video setup offers <strong>Approve now</strong> and nothing is charged.
-              In <strong>Avatar in circle</strong>, the circle follows you as you move.
+              In <strong>AI Avatar in Circle</strong>, the circle follows you as you move.
               You can delete your twin any time in Settings.
               {/* Two twins (2026-10-29, the owner's ask). */}
               <span className="block mt-1.5 scroll-mt-20" id="two-twins">
@@ -316,7 +316,7 @@ function FullGuide() {
                 (smaller).
               </span>
               <span className="block mt-1">
-                <strong>Avatar in circle</strong>: your twin sits in a circle over the photos and clips.
+                <strong>AI Avatar in Circle</strong>: your twin sits in a circle over the photos and clips.
               </span>
               <span className="block mt-1">
                 To change it for one video, use <strong>Background</strong> in video setup. Tall videos keep
@@ -489,8 +489,10 @@ function FullGuide() {
               <Link href="/settings/billing" className="text-primary-600 font-medium hover:underline">Settings → 11 · Billing &amp; Plan</Link>{" "}
               shows your plan, when it renews, and what you have left this month.
               <span className="block mt-1.5">
-                Creator includes <strong>4 videos</strong> a month, Producer <strong>7</strong> and
-                Influencer <strong>10</strong>, each up to 2 minutes. They reset each billing month. Blog
+                Creator includes <strong>4 videos</strong> a month. Producer includes{" "}
+                <strong>4 Full AI Avatar</strong> videos plus <strong>unlimited AI Avatar in Circle</strong>,
+                up to 1 a day (another that day uses one of your videos). Each is up to 2 minutes, and
+                the monthly videos reset each billing month. Blog
                 posts, camera recordings and AutoSparks drafts don&apos;t use any. Need more?{" "}
                 <strong>Buy More Videos</strong> adds one video for $25, and bought videos never expire;
                 your plan&apos;s videos are used first. The AutoSparks page shows <strong>Videos left this month</strong>, and a
@@ -534,13 +536,13 @@ function FullGuide() {
                 {/* The three kinds of Video / Reel, by the names the "Choose your
                     video" page and Video setup both use. */}
                 <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Avatar video</td>
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Full AI Avatar</td>
                   <td className="py-2 pr-3">You on screen, with b-roll and graphics made for you. Up to 2 minutes</td>
                   <td className="py-2 whitespace-nowrap">1 video</td>
                 </tr>
                 <tr className="border-t border-slate-100">
-                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">Avatar in circle</td>
-                  <td className="py-2 pr-3">You in a corner circle, over AI scenes that follow each sentence, with your photos among them</td>
+                  <td className="py-2 pr-3 font-semibold text-brand-text whitespace-nowrap">AI Avatar in Circle</td>
+                  <td className="py-2 pr-3">You in a circle, over AI scenes that follow each sentence, with your photos among them. On Producer, 1 a day is free</td>
                   <td className="py-2 whitespace-nowrap">1 video</td>
                 </tr>
                 <tr className="border-t border-slate-100">
@@ -635,8 +637,8 @@ function FullGuide() {
                 <strong>Video / Reel</strong> is three kinds of video, and they sit right under
                 that card for you to pick, so the script is written to suit. Pick one any time; if
                 you press Next first, they light up and ask.
-                <strong> Avatar video</strong> puts you on screen with b-roll
-                and graphics made for you. <strong>Avatar in circle</strong> puts you in a corner
+                <strong> Full AI Avatar</strong> puts you on screen with b-roll
+                and graphics made for you. <strong>AI Avatar in Circle</strong> puts you in a corner
                 circle over scenes that follow what you&apos;re saying. <strong>Voice over only</strong>{" "}
                 has nobody on screen: it is a Scenes Reel (step 17). Each uses one video. If
                 your sentence already said which, such as &ldquo;with my avatar&rdquo; or
@@ -788,7 +790,7 @@ function FullGuide() {
                 you pick who you help most and add anything personal or your profile link. It runs about{" "}
                 <strong>30 seconds</strong>. You get the intro script plus a short and a long bio
                 in the Share Kit. It&apos;s you, full screen, and with your Digital Twin it&apos;s made
-                on our most lifelike avatar. Producer and Influencer get <strong>one free every
+                on our most lifelike avatar. Producer gets <strong>one free every
                 month</strong>; otherwise it uses 1 video (on the free plan, your free video).
                 Either way, AI researches live market data for your city and writes a
                 broadcast-quality script with real stats.
@@ -822,16 +824,16 @@ function FullGuide() {
                 script, whether AI wrote it or you pasted your own:
               </span>
               <span className="block mt-1.5">
-                <strong>Avatar video</strong> — you on screen, with b-roll and graphics made
+                <strong>Full AI Avatar</strong> — you on screen, with b-roll and graphics made
                 for you. Up to 2 minutes, so a Longform script is for camera. It takes a script of up
-                to 290 words, counting your closing line. If yours is longer, Avatar video is greyed
+                to 290 words, counting your closing line. If yours is longer, Full AI Avatar is greyed
                 out and a note under the choices says how many words you have. Press{" "}
                 <strong>Shorten to fit</strong> and the script is cut to fit, or{" "}
                 <strong>Shorten closing line</strong> to trim your closing line yourself. With your
-                Digital Twin it is a full Avatar video too, vertical or horizontal.
+                Digital Twin it is a Full AI Avatar video too, vertical or horizontal.
               </span>
               <span className="block mt-1.5">
-                <strong>Avatar in circle</strong> — you in a corner circle, speaking the script
+                <strong>AI Avatar in Circle</strong> — you in a corner circle, speaking the script
                 exactly as written, over scenes made for each sentence. Attach a few photos and
                 each takes a sentence among the scenes; attach many and the photos are the background.
                 Up to 12 of your photos move gently, a slow drift made from the photo itself and checked
@@ -909,8 +911,8 @@ function FullGuide() {
                 Guides, Events, Market report and more), how many a month under{" "}
                 <strong>Each month</strong> (1 to 4, one a week), and the day and time under{" "}
                 <strong>Post on</strong>. The rest are the starting choices for every Halo video:{" "}
-                <strong>Look</strong> (Avatar in circle, Avatar video, or <strong>Mix</strong>, which
-                uses Avatar video for the market report and Avatar in circle for the rest),{" "}
+                <strong>Look</strong> (AI Avatar in Circle, Full AI Avatar, or <strong>Mix</strong>, which
+                uses Full AI Avatar for the market report and AI Avatar in Circle for the rest),{" "}
                 <strong>Avatar</strong>, <strong>Size</strong>, <strong>Post to</strong> (the accounts
                 you connected), <strong>Captions</strong> and <strong>Music</strong>. When your sites
                 publish more than your month holds, the others wait under{" "}
@@ -978,7 +980,7 @@ function FullGuide() {
               <span className="block mt-1.5 scroll-mt-20" id="seller-updates">
                 <strong>Seller updates</strong><SectionVideo id="seller-updates" /> (on AutoSparks, paid plans) send your weekly seller update by
                 itself. In the <strong>Seller updates</strong> box, turn it <strong>On</strong> and pick the
-                day and time, the video (<strong>Avatar in circle</strong> or <strong>Email only</strong>) and
+                day and time, the video (<strong>AI Avatar in Circle</strong> or <strong>Email only</strong>) and
                 whether the sellers also get a text. Every listing with its sellers added from BoldTrail gets a
                 card for that day (a listing without them shows <strong>Add sellers</strong>). On the card, type
                 the week&apos;s numbers (last week&apos;s show in grey; all optional) and what buyers said, then
@@ -987,7 +989,7 @@ function FullGuide() {
                 is done (about 5 to 10 minutes), <strong>Watch</strong> it, <strong>Preview email</strong>,
                 and press <strong>Approve to send</strong>: it emails each seller through BoldTrail on its day,
                 video included. <strong>Don&apos;t send it yourself</strong> from Spark Tools, or they get it
-                twice. The Avatar in circle video uses 1 video per listing each week; Email only uses
+                twice. The AI Avatar in Circle video uses 1 video per listing each week; Email only uses
                 none, and recording it yourself on camera is unlimited.
               </span>
               <span className="block mt-1.5">
@@ -1033,7 +1035,7 @@ function FullGuide() {
                 Each lead gets a card under <strong>Halo leads</strong> on AutoSparks. Nothing is written or made
                 until you press <strong>Write it</strong>: it writes the email and the video script (a welcome
                 for a buyer or seller, a spotlight for a business). Change the script by typing, or tap the mic
-                and say it. Then pick who says it: <strong>Avatar video</strong> (about 5 to 10 minutes),{" "}
+                and say it. Then pick who says it: <strong>Full AI Avatar</strong> (about 5 to 10 minutes),{" "}
                 <strong>Me on camera · unlimited</strong> (the camera opens with the script in the teleprompter;
                 come back to AutoSparks and your recording is on the card), <strong>Saved video</strong> (pick
                 one of your finished videos, so one video can answer every lead it fits; the one you used last is
@@ -1240,7 +1242,7 @@ function FullGuide() {
               </span>
               {/* Photo counts (2026-10-16). */}
               <span className="block mt-1.5">
-                A video takes up to <strong>20 photos</strong>; Avatar video uses the first 15. When
+                A video takes up to <strong>20 photos</strong>; Full AI Avatar uses the first 15. When
                 your photos are enough to fill the video, no stock footage is added.
               </span>
               <span className="block mt-1.5 scroll-mt-20" id="photos-only-reel">
@@ -1454,7 +1456,7 @@ function FullGuide() {
               Open the finished video in <Link href="/videos" className="text-primary-600 font-medium hover:underline">My Sparks</Link> and
               hit <strong>Publish</strong>. Your AI-generated title, description, and hashtags are attached
               automatically — choose public, unlisted, or private, and you&apos;re live without leaving the app.
-              Avatar videos, Cinematic reels, Scenes reels and a camera recording made over AI scenes
+              Full AI Avatar videos, Cinematic reels, Scenes reels and a camera recording made over AI scenes
               are marked to YouTube as AI-made when they go up, which YouTube asks for. Other videos
               you record yourself and Classic reels are not.
               {/* Failures used to be a toast and nothing else: gone on refresh,
@@ -1482,7 +1484,7 @@ function FullGuide() {
               ones this video should go to and the button names them — <strong>Publish to
               Facebook</strong>, <strong>Publish to YouTube and Instagram</strong>. Nothing goes out
               until you press it. <strong>Creator</strong> posts each video to YouTube plus three
-              others; <strong>Producer</strong> and <strong>Influencer</strong> post to all of them.
+              others; <strong>Producer</strong> posts to all of them.
               <span className="block mt-1.5">
                 <strong>Caption / Post Text</strong> appears as soon as you tick anything besides
                 YouTube. It starts with the caption and hashtags written for the video, and what you leave there is
@@ -1624,7 +1626,7 @@ function FullGuide() {
                 first name and email. <strong>2 Your video</strong>: edit the words, then{" "}
                 <strong>Record it myself</strong> (free, unlimited: the camera opens with the words on the
                 teleprompter, and when it&apos;s saved, come back and it&apos;s picked for you),{" "}
-                <strong>Avatar in circle</strong> (up to 60 seconds, uses 1 video),{" "}
+                <strong>AI Avatar in Circle</strong> (up to 60 seconds, uses 1 video),{" "}
                 <strong>Photo reel</strong> (upload your photos; the words show as text cards or your cloned voice
                 reads them; free) or <strong>Use a video I made</strong>. Make one general video once, with no
                 client names, and press <strong>Save as my review video</strong>: from then on it&apos;s picked for
@@ -1864,7 +1866,7 @@ function FullGuide() {
                 Business Card. <strong>Who AI cited instead</strong> lists the sites it used. Press{" "}
                 <strong>Make a video</strong> on a question nobody cited you for, to make a video
                 answering it. <strong>Edit questions</strong> swaps any question for your own. Creator
-                watches 1 town, Producer 2 and Influencer 3: <strong>Add town</strong>. Add your
+                watches 1 town and Producer 2: <strong>Add town</strong>. Add your
                 website under <strong>Your links</strong> so it&apos;s checked too. AI answers change
                 each time, so watch the trend.
               </span>

@@ -384,7 +384,7 @@ export const TOOLS: ToolDef[] = [
         const styles = styleOptions(ctx, presenter);
         const style = styles.length === 1 ? styles[0] : asStyle(input.style);
         if (styles.length > 1 && (!style || !styles.includes(style))) {
-          return needsInput("Ask the user: Full video with b-roll, or corner circle over scenes?", "choices_needed");
+          return needsInput("Ask the user: Full AI Avatar, or your AI Avatar in Circle?", "choices_needed");
         }
         args = { sparkId: str(input.sparkId), size: shape, voiceOnly: presenter === "voice_only", presenter, style: styles.length ? style : null };
         title = `Make the video: ${videoLabel(shape, presenter, styles.length ? style : null)}`;

@@ -8,13 +8,16 @@ import Link from "next/link";
 import { SettingsSteps } from "@/components/settings/settings-steps";
 import { AffiliateCard } from "@/components/settings/affiliate-card";
 import { redirect } from "next/navigation";
+import { hasUnlimitedCircle, videosPerMonth } from "@/lib/plan-limits";
 import {
   CheckCircle, CreditCard, Zap, Building2, User,
   AlertCircle, ArrowRight, ExternalLink, Sprout, Gift, Video, Infinity,
 } from "lucide-react";
 
 // One monthly allowance of videos, up to 2 minutes each (long AI videos
-// retired 2026-11-13). Must match lib/stripe.ts.
+// retired 2026-11-13). Must match lib/stripe.ts and lib/plan-limits.ts.
+// Two plans on offer since 2026-11-22; Influencer stays here only so an
+// account already on it (the owner's admin accounts) still shows its plan.
 const PLANS = [
   {
     key: "starter",
@@ -24,7 +27,7 @@ const PLANS = [
     blurb: "4 videos",
     highlighted: false,
     features: [
-      "4 AI videos/month — up to 2 minutes each",
+      "4 AI videos/month — any style, up to 2 minutes each",
       "AutoSparks — 3 posts drafted for you every week, ready to approve",
       "Automatic b-roll, captions & titles on every video",
       "MLS listing videos — paste a listing link, get a finished property tour",
@@ -43,11 +46,13 @@ const PLANS = [
     key: "agent",
     name: "Producer",
     price: 149,
-    videos: 7,
-    blurb: "7 videos",
+    videos: 4,
+    blurb: "4 Full AI Avatar + unlimited in Circle",
     highlighted: true,
     features: [
-      "7 AI videos/month — up to 2 minutes each, with automatic b-roll",
+      "Unlimited AI Avatar in Circle videos — up to 1 a day",
+      "4 Full AI Avatar videos/month — up to 2 minutes each, with automatic b-roll",
+      "A free Agent Intro video every month",
       "AutoSparks — 3 posts drafted for you every week, ready to approve",
       "MLS listing videos — paste a listing link, get a finished property tour",
       "Unlimited camera recordings (up to 15 mins each)",
@@ -106,7 +111,7 @@ export default async function BillingPage({
   const admin = createAdminClient();
   const { data: profileData } = await admin
     .from("profiles")
-    .select("subscription_tier, subscription_status, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_subscription_id, role")
+    .select("subscription_tier, subscription_status, credits_remaining, long_credits_remaining, purchased_short_videos, purchased_long_videos, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_subscription_id, role, plan_videos_override")
     .eq("id", user.id)
     .single();
 
@@ -122,6 +127,7 @@ export default async function BillingPage({
     stripe_customer_id: string | null;
     stripe_subscription_id: string | null;
     role: string | null;
+    plan_videos_override: number | null;
   } | null;
 
   const currentTier = profile?.subscription_tier || "free";
@@ -134,6 +140,13 @@ export default async function BillingPage({
     : null;
 
   const currentPlan = PLANS.find((p) => p.key === currentTier);
+  // A Producer from before 2026-11-22 keeps their 7.
+  const planVideos = videosPerMonth(currentTier, profile?.plan_videos_override) || currentPlan?.videos || 0;
+  const planBlurb = currentTier === "agent" && planVideos !== currentPlan?.videos
+    ? `${planVideos} Full AI Avatar + unlimited in Circle`
+    : currentPlan?.blurb;
+  // The plans on offer, plus Influencer only for an account already on it.
+  const plansShown = PLANS.filter((p) => p.key !== "pro" || currentTier === "pro");
 
   // Users never see the word "credit". The monthly plan balance plus any
   // purchased add-ons, which never expire. Long videos were retired on
@@ -233,7 +246,7 @@ export default async function BillingPage({
               {currentTier === "beta" ? (
                 <p className="text-sm text-slate-500">Beta access · {profile?.credits_remaining ?? 0} AI video{(profile?.credits_remaining ?? 0) !== 1 ? "s" : ""} remaining · Unlimited camera recordings</p>
               ) : currentPlan ? (
-                <p className="text-sm text-slate-500">${currentPlan.price}/month · {currentPlan.blurb} · Unlimited camera recordings</p>
+                <p className="text-sm text-slate-500">${currentPlan.price}/month · {planBlurb} · Unlimited camera recordings</p>
               ) : null}
               {periodEnd && currentTier !== "beta" && (
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -288,14 +301,14 @@ export default async function BillingPage({
                   <Zap size={11} className="text-primary-500" /> AI Videos Left
                 </p>
                 <p className="text-xs font-bold text-brand-text">
-                  {shortPlan} of {currentPlan?.videos ?? 0}
+                  {shortPlan} of {planVideos}
                   {shortBought > 0 && <span className="font-normal text-slate-400"> + {shortBought} add-on</span>}
                 </p>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full">
                 <div
                   className="h-2 bg-primary-500 rounded-full transition-all"
-                  style={{ width: `${Math.min(100, (shortPlan / (currentPlan?.videos || 1)) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (shortPlan / (planVideos || 1)) * 100)}%` }}
                 />
               </div>
 
@@ -304,6 +317,9 @@ export default async function BillingPage({
                   ? "Included with beta access · add-on videos you purchase never expire"
                   : "Plan videos reset each billing period · add-on videos you purchase never expire"}
               </p>
+              {hasUnlimitedCircle(currentTier) && (
+                <p className="text-xs font-semibold text-slate-600 mt-1">Plus unlimited AI Avatar in Circle, up to 1 a day</p>
+              )}
             </div>
             {/* Camera recordings */}
             <div>
@@ -339,14 +355,14 @@ export default async function BillingPage({
       <h3 id="plans" className="text-base font-bold text-brand-text mb-4 scroll-mt-28">
         {hasSubscription ? "Change Plan" : currentTier === "beta" ? "Upgrade To A Paid Plan" : "Choose A Plan"}
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-        {PLANS.map((plan) => {
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${plansShown.length > 2 ? "xl:grid-cols-3" : ""} items-stretch gap-4 mb-8`}>
+        {plansShown.map((plan) => {
           const isCurrent = plan.key === currentTier && (isActive || isTrialing);
           const Icon = PLAN_ICONS[plan.key];
           return (
             <div
               key={plan.key}
-              className={`rounded-2xl p-5 border relative transition-all ${
+              className={`flex flex-col rounded-2xl p-5 border relative transition-all ${
                 plan.highlighted && !isCurrent
                   ? "border-primary-400 ring-2 ring-primary-100 bg-white"
                   : isCurrent
@@ -356,7 +372,7 @@ export default async function BillingPage({
             >
               {plan.highlighted && !isCurrent && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary-500 to-secondary-500 text-white text-[10px] font-black px-3 py-1 rounded-full">
-                  Most Popular
+                  Recommended
                 </div>
               )}
               {isCurrent && (
@@ -387,7 +403,7 @@ export default async function BillingPage({
               </ul>
 
               {isCurrent ? (
-                <a href="/api/stripe/portal">
+                <a href="/api/stripe/portal" className="mt-auto">
                   <Button variant="outline" size="sm" className="w-full gap-1.5">
                     <CreditCard size={12} /> Manage
                   </Button>
@@ -398,7 +414,7 @@ export default async function BillingPage({
                    Sending them to checkout opened a SECOND subscription on the
                    same customer and left the first one billing invisibly — an
                    upgrade cost both prices, every month, forever. */
-                <a href={hasSubscription ? "/api/stripe/portal" : `/api/stripe/checkout?plan=${plan.key}`}>
+                <a href={hasSubscription ? "/api/stripe/portal" : `/api/stripe/checkout?plan=${plan.key}`} className="mt-auto">
                   <Button
                     variant={plan.highlighted ? "primary" : "outline"}
                     size="sm"
