@@ -19,6 +19,7 @@ import { getAvatarLooks } from "@/lib/api/heygen";
 import { pictureForPlan, type PlanPicture } from "@/lib/agent/plan-picture";
 import { imageLinks, imagesForPlan, labeledVisuals, MAX_PLAN_IMAGES, visualsFrom, withoutVisualLabels, type PlanVisuals } from "@/lib/agent/plan-visuals";
 import { cleanVisualDirection } from "@/lib/utils/visual-direction";
+import { livePosts, liveSummary, postCopyFor, previewFor, type PostCopy, type PostProject } from "@/lib/agent/publish-check";
 import { decidePlan, getPlan, maybeCompletePlan, planAuthorizes, PUBLISH_CONFIRM_MINUTES, type PlanStep } from "@/lib/agent/approvals";
 import { claimAction, finishAction, requestIdFor } from "@/lib/agent/idempotency";
 import { failed, needsInput, ok, type AgentActor, type AgentResult, type Scope } from "@/lib/agent/types";
@@ -134,11 +135,11 @@ export const renderingMessage = (provider: string | null) =>
   `Still rendering. This kind of video usually takes ${provider === "heygen_agent" ? "15 to 30" : "5 to 15"} minutes. There is no percent complete, so don't give one.`;
 
 /** Builds publish targets for connected platforms, the same shape the Publish window sends. */
-function targetsFor(platforms: string[]) {
+function targetsFor(platforms: string[], copy: PostCopy) {
   return platforms.map((p) =>
     p === "youtube"
-      ? { accountId: "native_youtube", platform: "youtube", source: "native" as const }
-      : { accountId: partnerAccountId(p as PartnerPlatform), platform: p, source: "partner" as const });
+      ? { accountId: "native_youtube", platform: "youtube", source: "native" as const, title: copy.title, description: copy.description }
+      : { accountId: partnerAccountId(p as PartnerPlatform), platform: p, source: "partner" as const, title: copy.title, caption: copy.caption });
 }
 
 /** Step 1 of publishing: prepare an exact, expiring publish action. Posts nothing. */
@@ -151,8 +152,8 @@ async function preparePublish(actor: AgentActor, ctx: AgentContext, input: Recor
     videoId = (data as { id: string } | null)?.id ?? "";
   }
   if (!videoId) return needsInput("Which video? Give a videoId or the sparkId of a finished video.", "video_required");
-  const { data: v } = await admin.from("generated_videos").select("id, render_status, video_url, project_id").eq("id", videoId).eq("user_id", actor.userId).maybeSingle();
-  const video = v as { id: string; render_status: string; video_url: string | null; project_id: string | null } | null;
+  const { data: v } = await admin.from("generated_videos").select("id, render_status, video_url, project_id, projects(title, ai_script, seo_data)").eq("id", videoId).eq("user_id", actor.userId).maybeSingle();
+  const video = v as unknown as { id: string; render_status: string; video_url: string | null; project_id: string | null; projects: PostProject | PostProject[] | null } | null;
   if (!video) return failed("That video isn't in your account.", "not_yours");
   if (video.render_status !== "completed") return failed("That video isn't finished yet. Check its status and try again when it's ready.", "video_not_ready");
 
@@ -160,6 +161,20 @@ async function preparePublish(actor: AgentActor, ctx: AgentContext, input: Recor
   const platforms = (asked.length ? asked : ctx.connected).filter((p) => ctx.connected.includes(p));
   const missing = asked.filter((p) => !ctx.connected.includes(p));
   if (!platforms.length) return needsInput("None of those accounts are connected. Connect them in SparkReels Settings first.", "no_connected_platforms", { notConnected: missing });
+
+  // Already out there: left out, unless they clearly asked for a second copy.
+  const postAgain = input.postAgain === true;
+  const live = await livePosts(admin, actor.userId, videoId, platforms);
+  if (!live) return failed("Couldn't check where this video is already posted, so nothing was prepared. Try again in a moment.", "post_check_failed");
+  const toPost = postAgain ? platforms : platforms.filter((p) => !live.some((l) => l.platform === p));
+  const alreadyPosted = live.map((l) => ({ platform: label(l.platform), status: l.status, at: l.at }));
+  if (!toPost.length) {
+    return needsInput(
+      `This video is ${liveSummary(live, label)}. Nothing was prepared, so it won't post twice. Tell the user. Only if they then clearly ask for a second copy, call again with postAgain: true.`,
+      "already_posted",
+      { alreadyPosted },
+    );
+  }
 
   let scheduledAt: string | undefined;
   let whenText = "now";
@@ -180,7 +195,9 @@ async function preparePublish(actor: AgentActor, ctx: AgentContext, input: Recor
     whenText = `${formatWhen(at, tz)} (${tz})`;
   }
 
-  const payload = { videoId, targets: targetsFor(platforms), ...(scheduledAt && { scheduledAt }) };
+  const project = Array.isArray(video.projects) ? video.projects[0] ?? null : video.projects;
+  const copy = postCopyFor(project);
+  const payload = { videoId, targets: targetsFor(toPost, copy), ...(scheduledAt && { scheduledAt }), ...(postAgain && { postAgain: true }) };
   const expiresAt = new Date(Date.now() + PUBLISH_CONFIRM_MINUTES * 60_000).toISOString();
   const claim = await claimAction(actor, {
     tool: schedule ? "schedule_video" : "publish_video", kind: "publish",
@@ -188,10 +205,20 @@ async function preparePublish(actor: AgentActor, ctx: AgentContext, input: Recor
     payload, status: "prepared", expiresAt, planId: str(input.planId) || null, step: Number(input.step) || null,
   });
   if (claim.kind === "conflict") return failed("That request id was already used for something different.", "idempotency_conflict");
+  if (claim.kind === "repeat" && claim.status !== "prepared") {
+    return failed(`That same post was just tried and is ${claim.status}. Check My Sparks before trying again.`, `action_${claim.status}`);
+  }
+  const secondCopy = postAgain ? live.filter((l) => toPost.includes(l.platform)) : [];
+  const leftOut = postAgain ? [] : live;
   const preview = {
     actionId: claim.actionId,
     video: { id: videoId, url: video.video_url },
-    destinations: platforms.map(label),
+    destinations: toPost.map(label),
+    // Exactly what will post. Show these words; don't substitute others.
+    title: copy.title,
+    posts: toPost.map((p) => ({ ...previewFor(p, copy), platform: label(p) })),
+    alreadyPosted,
+    secondCopy: secondCopy.map((l) => label(l.platform)),
     notConnected: missing.map(label),
     when: whenText,
     timeZone: schedule ? tz : null,
@@ -199,7 +226,12 @@ async function preparePublish(actor: AgentActor, ctx: AgentContext, input: Recor
   };
   return {
     status: "needs_approval",
-    message: `Ready to ${schedule ? "schedule" : "post"} this video to ${preview.destinations.join(", ")}${schedule ? ` for ${whenText}` : " now"}. Nothing is posted until you confirm. This expires in ${PUBLISH_CONFIRM_MINUTES} minutes.`,
+    message: [
+      `Ready to ${schedule ? "schedule" : "post"} this video to ${preview.destinations.join(", ")}${schedule ? ` for ${whenText}` : " now"}, titled "${copy.title}".`,
+      leftOut.length ? `It's ${liveSummary(leftOut, label)}, so ${leftOut.length === 1 ? "that account is" : "those accounts are"} left out.` : "",
+      secondCopy.length ? `This will be a SECOND copy: it's ${liveSummary(secondCopy, label)}.` : "",
+      `Nothing is posted until you confirm. This expires in ${PUBLISH_CONFIRM_MINUTES} minutes.`,
+    ].filter(Boolean).join(" "),
     actionId: claim.actionId,
     data: preview,
   };
@@ -523,22 +555,26 @@ export const TOOLS: ToolDef[] = [
   {
     name: "publish_video",
     scope: "publish:write",
-    description: "Step 1 of posting now: prepares the exact post (finished video, destinations) and returns an actionId. Posts nothing. Show the preview to the user; only after they confirm, call confirm_publish.",
+    description: "Step 1 of posting now: prepares the exact post (finished video, destinations, title and text) and returns an actionId. Posts nothing. Show the preview's title and text exactly; never show a different title. An account the video is already on is left out and the result says so. Only after the user confirms, call confirm_publish.",
     input: {
       type: "object",
-      properties: { videoId: { type: "string" }, sparkId: { type: "string" }, platforms: { type: "array", items: { type: "string" } }, requestId: { type: "string" } },
+      properties: {
+        videoId: { type: "string" }, sparkId: { type: "string" }, platforms: { type: "array", items: { type: "string" } }, requestId: { type: "string" },
+        postAgain: { type: "boolean", description: "Only if the user was told it's already posted and clearly asked for a second copy." },
+      },
     },
     async run(actor, ctx, input) { return preparePublish(actor, ctx, input, false); },
   },
   {
     name: "schedule_video",
     scope: "publish:write",
-    description: "Step 1 of scheduling: prepares the exact post with a local date and time (\"when\": \"YYYY-MM-DDTHH:mm\") in the user's SparkReels time zone and returns an actionId. Posts nothing. If the time zone is missing it asks for one.",
+    description: "Step 1 of scheduling: prepares the exact post (title and text included) with a local date and time (\"when\": \"YYYY-MM-DDTHH:mm\") in the user's SparkReels time zone and returns an actionId. Posts nothing. Show the preview's title and text exactly. An account the video is already on is left out and the result says so. If the time zone is missing it asks for one.",
     input: {
       type: "object",
       properties: {
         videoId: { type: "string" }, sparkId: { type: "string" }, platforms: { type: "array", items: { type: "string" } },
         when: { type: "string" }, timeZone: { type: "string" }, requestId: { type: "string" },
+        postAgain: { type: "boolean", description: "Only if the user was told it's already posted and clearly asked for a second copy." },
       },
       required: ["when"],
     },
@@ -552,7 +588,7 @@ export const TOOLS: ToolDef[] = [
     async run(actor, ctx, input) {
       const admin = createAdminClient();
       const { data } = await admin.from("agent_actions").select("id, kind, status, payload, expires_at").eq("id", str(input.actionId)).eq("user_id", actor.userId).maybeSingle();
-      const a = data as { id: string; kind: string; status: string; payload: { videoId: string; targets: { platform: string }[]; scheduledAt?: string }; expires_at: string | null } | null;
+      const a = data as { id: string; kind: string; status: string; payload: { videoId: string; targets: { platform: string }[]; scheduledAt?: string; postAgain?: boolean }; expires_at: string | null } | null;
       // A publish confirmation can only ever carry out a publish action.
       if (!a || a.kind !== "publish") return failed("That isn't a post waiting for confirmation.", "not_found");
       if (a.status === "succeeded") return ok("Already posted.", undefined, { actionId: a.id });
@@ -560,6 +596,19 @@ export const TOOLS: ToolDef[] = [
       if (a.expires_at && Date.parse(a.expires_at) < Date.now()) {
         await admin.from("agent_actions").update({ status: "expired" }).eq("id", a.id).eq("status", "prepared");
         return failed("That confirmation expired. Prepare the post again.", "action_expired");
+      }
+      // Checked again here: it may have been posted from My Sparks since this was prepared.
+      if (!a.payload.postAgain) {
+        const live = await livePosts(admin, actor.userId, a.payload.videoId, a.payload.targets.map((t) => t.platform));
+        if (!live) return failed("Couldn't check where this video is already posted, so nothing was posted. Try again in a moment.", "post_check_failed");
+        if (live.length) {
+          await admin.from("agent_actions").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", a.id).eq("status", "prepared");
+          return needsInput(
+            `Not posted: this video is ${liveSummary(live, label)}. Tell the user. Only if they then clearly ask for a second copy, prepare it again with postAgain: true.`,
+            "already_posted",
+            { alreadyPosted: live.map((l) => ({ platform: label(l.platform), status: l.status, at: l.at })) },
+          );
+        }
       }
       if (a.payload.targets.some((t) => !ctx.connected.includes(t.platform))) {
         return failed("One of those accounts is no longer connected. Prepare the post again.", "platform_disconnected");
@@ -569,7 +618,8 @@ export const TOOLS: ToolDef[] = [
         .update({ status: "running", confirmed_via: "confirm_tool", updated_at: new Date().toISOString() })
         .eq("id", a.id).eq("status", "prepared").select("id").maybeSingle();
       if (!claimed) return failed("That post is already being sent.", "action_running");
-      const r = await publishToTargets(actor.userId, a.payload as never);
+      const { postAgain: _postAgain, ...toPublish } = a.payload;
+      const r = await publishToTargets(actor.userId, toPublish as never);
       const body = (r.body ?? {}) as Record<string, unknown>;
       await finishAction(a.id, r.status < 400 ? "succeeded" : "failed", body);
       return {
