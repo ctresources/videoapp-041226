@@ -145,7 +145,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
       "A teleprompter that keeps pace with your voice",
       "Full-screen reading mode and speed controls",
       "Your photos, your own footage or AI scenes behind you",
-      "Record your screen with you in a corner, up to 10 minutes",
+      "Record your screen with you in a circle, up to 10 minutes",
       "Captions, branding and a blog post for each recording",
       "Unlimited camera recordings, up to 15 minutes each",
     ],

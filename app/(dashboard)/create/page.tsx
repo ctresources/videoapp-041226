@@ -2341,7 +2341,7 @@ function CreatePageInner() {
   const behindYouBox = (
     <div className="rounded-2xl border border-spark-rule bg-white p-3.5">
       <p className="text-[14px] font-bold text-spark-ink">Behind you</p>
-      <p className="mb-2.5 text-xs text-spark-ink-muted">What fills the screen while you talk in the corner.</p>
+      <p className="mb-2.5 text-xs text-spark-ink-muted">What fills the screen while you talk in a circle.</p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <button
           type="button"

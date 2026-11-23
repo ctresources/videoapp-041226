@@ -53,7 +53,7 @@ export const DESIGNS: Design[] = [
       { key: "s3", label: "Number 3" }, { key: "s3l", label: "What it is" }, { key: "s3c", label: "Change" },
       // Shown under the numbers as "Source: …" (2026-11-03, the owner's ask); AI search fills it.
       { key: "source", label: "Source", placeholder: "Redfin · September 2026" }, ...CONTACT] },
-  { id: "neighborhood", name: "Neighborhood Spotlight", blurb: "The place name big, three highlights, agent in the corner.", photos: "place",
+  { id: "neighborhood", name: "Neighborhood Spotlight", blurb: "The place name big, three highlights, agent in a circle.", photos: "place",
     fields: [{ key: "headline", label: "Label" }, { key: "name", label: "Neighborhood" }, { key: "highlights", label: "Highlights (comma between)", placeholder: "Walkable, Top schools, Riverfront park" }, ...CONTACT] },
   { id: "agent_intro", name: "Agent Introduction", blurb: "Big portrait, name, brokerage, phones and website, with their logo.", photos: "none",
     fields: [{ key: "headline", label: "Label" }, { key: "name", label: "Your name" }, { key: "role", label: "Title and brokerage" }, { key: "phones", label: "Phones" }, { key: "website", label: "Website" }] },

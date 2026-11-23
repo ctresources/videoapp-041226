@@ -416,7 +416,7 @@
       "wait": 700
      },
      {
-      "hover": "btn:Avatar in circle"
+      "hover": "btn:AI Avatar in Circle"
      },
      {
       "wait": 700
@@ -1276,14 +1276,14 @@
     ]
    },
    {
-    "say": "Avatar video takes up to two hundred ninety words.",
+    "say": "Full AI Avatar takes up to two hundred ninety words.",
     "do": [
      {
-      "scroll": "btn:Avatar video",
+      "scroll": "btn:Full AI Avatar",
       "block": "center"
      },
      {
-      "hover": "btn:Avatar video"
+      "hover": "btn:Full AI Avatar"
      }
     ]
    },
@@ -1530,7 +1530,7 @@
     ]
    },
    {
-    "say": "Turn it on, and pick the day, the time, and Avatar in circle or Email only.",
+    "say": "Turn it on, and pick the day, the time, and AI Avatar in Circle or Email only.",
     "do": []
    },
    {
@@ -2771,7 +2771,7 @@
     ]
    },
    {
-    "say": "Tick Show me in a corner circle if you want to be in it.",
+    "say": "Tick Show me in a circle if you want to be in it.",
     "do": [
      {
       "go": "/tools"
@@ -2786,7 +2786,7 @@
       "wait": 1200
      },
      {
-      "hover": "text:Show me in a corner circle"
+      "hover": "text:Show me in a circle"
      }
     ]
    },
@@ -2924,7 +2924,7 @@
     ]
    },
    {
-    "say": "Record it yourself for free, use Avatar in circle, a photo reel, or a video you made.",
+    "say": "Record it yourself for free, use AI Avatar in Circle, a photo reel, or a video you made.",
     "do": [
      {
       "hover": "btn~:^Record it myself"
@@ -2933,7 +2933,7 @@
       "wait": 700
      },
      {
-      "hover": "btn~:^Avatar in circle"
+      "hover": "btn~:^AI Avatar in Circle"
      },
      {
       "wait": 700

@@ -638,7 +638,7 @@ function FullGuide() {
                 that card for you to pick, so the script is written to suit. Pick one any time; if
                 you press Next first, they light up and ask.
                 <strong> Full AI Avatar</strong> puts you on screen with b-roll
-                and graphics made for you. <strong>AI Avatar in Circle</strong> puts you in a corner
+                and graphics made for you. <strong>AI Avatar in Circle</strong> puts you in a
                 circle over scenes that follow what you&apos;re saying. <strong>Voice over only</strong>{" "}
                 has nobody on screen: it is a Scenes Reel (step 17). Each uses one video. If
                 your sentence already said which, such as &ldquo;with my avatar&rdquo; or
@@ -833,7 +833,7 @@ function FullGuide() {
                 Digital Twin it is a Full AI Avatar video too, vertical or horizontal.
               </span>
               <span className="block mt-1.5">
-                <strong>AI Avatar in Circle</strong> — you in a corner circle, speaking the script
+                <strong>AI Avatar in Circle</strong> — you in a circle, speaking the script
                 exactly as written, over scenes made for each sentence. Attach a few photos and
                 each takes a sentence among the scenes; attach many and the photos are the background.
                 Up to 12 of your photos move gently, a slow drift made from the photo itself and checked
@@ -857,7 +857,7 @@ function FullGuide() {
                 The first three use one video from your plan. Attach photos or documents as b-roll,
                 and hit <strong>Spark Video</strong>. How long it takes follows the length of the{" "}
                 <em>script</em>, not the format: Voice over only is usually ready in{" "}
-                <strong>2 to 10 minutes</strong>, an avatar video in about <strong>10 to 12</strong>, and a
+                <strong>2 to 10 minutes</strong>, a Full AI Avatar video in about <strong>10 to 12</strong>, and a
                 long one can take up to an hour. You can close the page: when it&apos;s done, Sparklee pops
                 up on whatever page you&apos;re on with <strong>Watch</strong> and{" "}
                 <strong>Edit thumbnail</strong>, and if you&apos;ve left the app you get a{" "}
@@ -1048,7 +1048,7 @@ function FullGuide() {
                 connected (added there as a contact), otherwise from you via SparkReels with replies coming to
                 you. An approved avatar spotlight also goes in your Halo drafts to post. Two forms from the same person
                 within an hour become one card. Calling, texting and the lead&apos;s status stay in Halo:{" "}
-                <strong>Open in Halo</strong> on each card. An avatar video uses 1 video; Saved video, Email only
+                <strong>Open in Halo</strong> on each card. A Full AI Avatar video uses 1 video; Saved video, Email only
                 and Me on camera use none. A saved video isn&apos;t added to your Halo drafts. Your own notes on a lead in Halo never come to SparkReels.
               </span>
               {/* Two accounts, two webhooks (2026-11-10, the owner's ask; Halo confirmed it). */}
@@ -1140,7 +1140,7 @@ function FullGuide() {
               YouTube&apos;s algorithm sweet spot and unlocks mid-roll ads).
               <span data-paid-only="true">
               On paid plans, on a computer, press <strong>Record my screen</strong> under the script choices to record a listing, a market
-              report or anything else on screen while you talk, with you in a corner circle or not.
+              report or anything else on screen while you talk, with you in a circle or not.
               It records horizontal, up to 10 minutes, and finishes like any camera recording.
               </span>
               {/* The teleprompter's reading and speed controls (2026-10-21). */}
@@ -1165,7 +1165,7 @@ function FullGuide() {
                   costs something, on a screen whose headline is "free". */}
               <span className="block mt-1.5 scroll-mt-20" id="behind-you">
                 <SectionVideo id="behind-you" /> <strong>Behind you</strong>, in Set up your take, is what fills the screen while you talk
-                in the corner: <strong>Just me</strong> (you, full screen), <strong>Your photos</strong>{" "}
+                in a circle: <strong>Just me</strong> (you, full screen), <strong>Your photos</strong>{" "}
                 (up to 20), <strong>Your own footage</strong>, a video you shot that plays behind you
                 (silent, and it loops), or{" "}
                 <strong>AI scenes</strong>: short realistic scenes made with AI,
@@ -1322,7 +1322,7 @@ function FullGuide() {
               <span className="block mt-1.5">
                 <strong>Next · script</strong> writes a short script from the words on screen. Change it
                 if you like, then press <strong>Make video</strong>. It uses one video. You talk in
-                a circle in the corner while the words animate in, and the post&apos;s title, description
+                a circle while the words animate in, and the post&apos;s title, description
                 and hashtags are written for you.
               </span>
               <span className="block mt-1.5">
@@ -1590,7 +1590,7 @@ function FullGuide() {
               <strong>Reviews</strong> (Google Reviews, Ask for Google Review Video Email) and <strong>Sellers &amp; AI search</strong> (Seller Update,
               AI Answer Blocks). Pick a group, then a tool.{" "}
               <SectionVideo id="screen-recorder" /> <strong>Record My Screen</strong> is the simple screen recorder: tick or untick{" "}
-              <strong>Show me in a corner circle</strong>, press <strong>Start recording</strong>, pick the tab or window
+              <strong>Show me in a circle</strong>, press <strong>Start recording</strong>, pick the tab or window
               to show, talk as you go, and press Stop. Up to 10 minutes, free, saved to My Sparks with Watch,
               Download, Publish and Email it. Showing a web page? Open it in another tab first and pick that tab:
               the tab you record from is never offered, so the recording can't show itself.{" "}

@@ -120,7 +120,7 @@ const features: { title: string; description: string; photo: string; paid?: bool
   // Added 2026-10-16 at the owner's ask; the feature was live but unlisted.
   {
     title: "Record Your Screen",
-    description: "On a computer, record a listing, a market report or anything on your screen while you talk, with you in a corner circle or not. Up to 10 minutes, ready to post like any recording, and free.",
+    description: "On a computer, record a listing, a market report or anything on your screen while you talk, with you in a circle or not. Up to 10 minutes, ready to post like any recording, and free.",
     photo: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
   },
   {

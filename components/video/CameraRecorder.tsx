@@ -2118,7 +2118,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
         {simple && screenSupported && (
           <label className="flex cursor-pointer select-none items-center gap-2.5 text-[15px] text-spark-ink">
             <input type="checkbox" checked={screenBubble} onChange={(e) => setScreenBubble(e.target.checked)} className="h-4 w-4 accent-[#A3660F]" />
-            Show me in a corner circle
+            Show me in a circle
           </label>
         )}
         {!simple && screenSupported && screenMode && (
@@ -2147,7 +2147,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
                   onChange={(e) => setScreenBubble(e.target.checked)}
                   className="h-4 w-4 accent-[#A3660F]"
                 />
-                Show me in a corner circle
+                Show me in a circle
               </label>
             )}
           </div>
@@ -2364,7 +2364,7 @@ export function CameraRecorder({ initialScreen = false, brief, city, state, init
                     />
                     <span className="text-xs text-slate-600">
                       <strong>Use my {photos.length} photos as b-roll</strong> — they fill the screen
-                      while you stay on camera in the corner.{" "}
+                      while you stay on camera in a circle.{" "}
                       <span className="text-slate-400">
                         You&apos;re full-screen for the first 8 seconds, then each photo holds about 10.
                       </span>

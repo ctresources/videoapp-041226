@@ -857,18 +857,18 @@
     ]
    },
    {
-    "say": "Avatar video puts you on screen, with b-roll and graphics made for you.",
+    "say": "Full AI Avatar puts you on screen, with b-roll and graphics made for you.",
     "do": [
      {
-      "hover": "btn:Avatar video"
+      "hover": "btn:Full AI Avatar"
      }
     ]
    },
    {
-    "say": "Avatar in circle shows you in a circle, over footage.",
+    "say": "AI Avatar in Circle shows you in a circle, over footage.",
     "do": [
      {
-      "hover": "btn:Avatar in circle"
+      "hover": "btn:AI Avatar in Circle"
      }
     ]
    },

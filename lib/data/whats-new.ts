@@ -155,7 +155,7 @@ const ITEMS: WhatsNewItem[] = [
     id: "quick-reels-templates",
     title: "Quick Reels Templates",
     description:
-      "Five ready-made designs: Just Listed, Luxury, Market Update, Neighborhood and Meet Your Agent. Your words animate in while you talk in the corner, and you can open with a short shot of you welcoming viewers.",
+      "Five ready-made designs: Just Listed, Luxury, Market Update, Neighborhood and Meet Your Agent. Your words animate in while you talk in a circle, and you can open with a short shot of you welcoming viewers.",
     releaseDate: "2026-11-03",
     howItWorksAnchor: "quick-reels-templates",
     badge: "NEW",
@@ -251,7 +251,7 @@ const ITEMS: WhatsNewItem[] = [
     id: "record-my-screen",
     title: "Record My Screen",
     description:
-      "Walk through a listing, a market chart or a website with you in a corner circle, saved straight to My Sparks.",
+      "Walk through a listing, a market chart or a website with you in a circle, saved straight to My Sparks.",
     releaseDate: "2026-10-27",
     featureKey: "tool_workflows",
     howItWorksAnchor: "record-my-screen",

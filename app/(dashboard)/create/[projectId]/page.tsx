@@ -2212,7 +2212,7 @@ export default function ProjectEditorPage() {
               mode: "avatar_voice" as const,
               style: "circle" as const,
               label: "AI Avatar in Circle",
-              desc: "You in a corner, over scenes or your photos",
+              desc: "You in a circle, over scenes or your photos",
               blocked: false,
             },
             {
@@ -2469,7 +2469,7 @@ export default function ProjectEditorPage() {
              a long video, with nothing on screen offering to undo it. */
           <div className="flex flex-col gap-1.5">
             <p className="text-[10.5px] leading-[1.4] text-spark-ink-muted">
-              Longform is horizontal (16:9) and uses one of your long videos.
+              Longform is horizontal (16:9).
               {/* The owner's wording, 2026-10-20: the circle tile is lit for
                   Longform, but with no photos the presenter fills the frame. */}
               <span className="block">With your photos you&apos;re in a circle over them; with none, you&apos;re full screen.</span>
@@ -2479,7 +2479,7 @@ export default function ProjectEditorPage() {
               onClick={() => setSelectedVideoType("youtube_16x9")}
               className="self-start rounded-lg border border-spark-rule bg-white px-2.5 py-1.5 text-[10.5px] font-medium text-spark-ink transition-colors hover:border-spark-rule-dim"
             >
-              Back to Shorts — uses a short video instead
+              Back to Shorts
             </button>
           </div>
         ) : (
