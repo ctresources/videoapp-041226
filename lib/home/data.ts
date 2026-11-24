@@ -286,7 +286,11 @@ export async function loadHome(admin: Admin, userId: string): Promise<HomeData> 
     approvals: approvals.slice(0, 8), working: working.slice(0, 8),
     week: { start: weekStart, today, items: weekItems },
     insights, opportunities, sparks,
-    whatsNew: whatsNewItems.slice(0, 3).map((i) => ({ id: i.id, title: i.title, description: i.description, releaseDate: i.releaseDate })),
+    // A free account sees a paid feature's name only (2026-11-24, the owner's ask).
+    whatsNew: whatsNewItems.slice(0, 3).map((i) => ({
+      id: i.id, title: i.title, releaseDate: i.releaseDate,
+      description: !paid && i.paidOnlyDetails === true ? "Available with a SparkReels plan." : i.description,
+    })),
   };
 }
 

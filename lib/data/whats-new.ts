@@ -7,8 +7,9 @@ import type { FeatureKey } from "@/lib/access";
  * on the How It Works page (an id="..." there). The menu's NEW dot comes back
  * for everyone on its own, because the newest id changes.
  *
- * Only features that are built and on the site. Marketing-level wording:
- * free accounts read the title and description, never the setup.
+ * Only features that are built and on the site. Free accounts read the title
+ * and description of a free feature; for a paid one (paidOnlyDetails: true)
+ * only its title, since 2026-11-24.
  */
 export type WhatsNewItem = {
   id: string;

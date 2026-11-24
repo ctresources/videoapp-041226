@@ -21,7 +21,10 @@ function formatDate(iso: string): string {
 }
 
 function UpdateCard({ item, paid }: { item: WhatsNewItem; paid: boolean }) {
-  const locked = !paid && item.paidOnlyDetails !== false;
+  // Paid features show a free account only their name (2026-11-24, the
+  // owner's ask). Only paidOnlyDetails: true locks a card; a free feature
+  // keeps its description and its own button.
+  const locked = !paid && item.paidOnlyDetails === true;
   return (
     <article className="flex h-full flex-col rounded-2xl border border-spark-rule bg-white p-5 shadow-brand">
       <div className="mb-2 flex items-center gap-2">
@@ -33,7 +36,11 @@ function UpdateCard({ item, paid }: { item: WhatsNewItem; paid: boolean }) {
         <span className="text-[12.5px] text-spark-ink-faint">{formatDate(item.releaseDate)}</span>
       </div>
       <h2 className="font-display text-[19px] font-bold leading-snug text-spark-ink">{item.title}</h2>
-      <p className="mt-1.5 flex-1 text-[15px] leading-relaxed text-spark-ink-muted">{item.description}</p>
+      {locked ? (
+        <div className="flex-1" />
+      ) : (
+        <p className="mt-1.5 flex-1 text-[15px] leading-relaxed text-spark-ink-muted">{item.description}</p>
+      )}
 
       <div className="mt-4">
         {paid && item.howItWorksAnchor ? (

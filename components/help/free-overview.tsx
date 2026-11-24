@@ -36,17 +36,30 @@ const BASICS = [
   },
 ];
 
+// Every paid feature, by name only (2026-11-24, the owner's approved list).
 const LOCKED = [
-  "Advanced Publishing",
-  "Social Auto-Publishing",
-  "CRM Workflows",
-  "Website / Halo Content Workflow",
+  "Make Videos From Claude & ChatGPT",
   "AutoSparks",
+  "Website / Halo Content Workflow",
+  "Halo Leads",
   "Seller Updates",
+  "Social Auto-Publishing",
+  "Advanced Publishing",
+  "CRM Workflows",
+  "BoldTrail Video Email",
+  "Newsletter",
   "Review Video Emails",
+  "Video Business Card",
+  "Record My Screen",
+  "Photo Touch-Up",
+  "Moving Photos",
+  "Outfits for Your Digital Twin",
+  "AI Answer Blocks",
   "Advanced YouTube Tools",
   "Spark Insights",
-  "Integrations",
+  "AI Visibility",
+  "Spark Calendar",
+  "Affiliate Program",
 ];
 
 export function FreeOverview() {
