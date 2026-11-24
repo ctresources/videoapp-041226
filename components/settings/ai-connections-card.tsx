@@ -3,16 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { Copy } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { AiConnectSteps } from "@/components/settings/ai-connect-steps";
-import { ALL_SCOPES, type Scope } from "@/lib/agent/types";
+import type { Scope } from "@/lib/agent/types";
 
 /**
  * Settings → AI connections (2026-11-22, the owner's approved mockup:
  * docs/mockups/agent-connections.html). The AI apps connected to SparkReels,
  * what each may do, when it was last used, and Disconnect. Personal access
- * keys sit under Advanced: shown once, revocable, optional expiry.
+ * keys can't be created here since 2026-11-23; existing ones can be revoked.
  */
 
 interface Conn {
@@ -33,14 +32,6 @@ const SHORT: Record<Scope, string> = {
   "videos:create": "Make videos",
   "videos:read": "Check videos",
   "publish:write": "Publish (you confirm)",
-};
-const FORM_LABEL: Record<Scope, string> = {
-  "account:read": "See plan and accounts",
-  "sparks:plan": "Plan Sparks",
-  "sparks:write": "Write scripts and copy",
-  "videos:create": "Make videos",
-  "videos:read": "Check videos",
-  "publish:write": "Ask to publish",
 };
 
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -70,11 +61,6 @@ export function AiConnectionsCard() {
   const [loaded, setLoaded] = useState(false);
   const [canConnect, setCanConnect] = useState(true);
   const cardRef = useRef<HTMLDivElement>(null);
-  const [name, setName] = useState("");
-  const [picked, setPicked] = useState<Scope[]>(["account:read", "sparks:plan", "videos:read"]);
-  const [expires, setExpires] = useState<number | null>(90);
-  const [newKey, setNewKey] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -97,19 +83,6 @@ export function AiConnectionsCard() {
     const r = await fetch("/api/agent/connections", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id }) });
     if (r.ok) { toast.success(c.kind === "oauth" ? "Disconnected." : "Key revoked."); void load(); }
     else toast.error("Couldn't do that. Try again.");
-  }
-
-  async function createKey() {
-    setBusy(true);
-    try {
-      const r = await fetch("/api/agent/connections", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "create_key", name, scopes: picked, expiresInDays: expires }),
-      });
-      const d = await r.json();
-      if (!r.ok) { toast.error(d.error ?? "Couldn't create the key."); return; }
-      setNewKey(d.key); setName(""); void load();
-    } finally { setBusy(false); }
   }
 
   return (
@@ -147,71 +120,28 @@ export function AiConnectionsCard() {
         </details>
       )}
 
-      <details className="mt-4 border-t border-spark-rule pt-3.5">
-        <summary className="cursor-pointer text-sm font-semibold text-spark-ink-muted">Advanced · Personal access keys</summary>
+      {/* Hidden 2026-11-23 (the owner's ask): no new keys from Settings. A key
+          that already exists still shows here so it can be revoked. */}
+      {keys.length > 0 && (
+        <details className="mt-4 border-t border-spark-rule pt-3.5">
+          <summary className="cursor-pointer text-sm font-semibold text-spark-ink-muted">Advanced · Personal access keys</summary>
 
-        {keys.map((c) => (
-          <div key={c.id} className="flex flex-col gap-3 border-t border-spark-rule py-3.5 first-of-type:border-t-0 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-base font-bold text-spark-ink">{c.client_name}</p>
-              <p className="mt-0.5 text-[13px] text-spark-ink-faint">
-                {c.key_prefix}… · Created {day(c.created_at)} · Last used {ago(c.last_used_at)}{c.expires_at ? ` · Expires ${day(c.expires_at)}` : ""}
-              </p>
-              <Chips scopes={c.scopes} />
-            </div>
-            <button type="button" onClick={() => void remove(c)} className="self-start rounded-xl border border-red-200 bg-white px-3.5 py-2 text-sm font-semibold text-red-700 sm:self-center">
-              Revoke
-            </button>
-          </div>
-        ))}
-
-        <div className="mt-3.5 grid gap-3 rounded-xl border border-spark-rule p-4">
-          <label className="text-[13px] font-semibold text-spark-ink-muted">
-            Name
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Zapier"
-              className="mt-1.5 w-full rounded-xl border border-spark-rule px-3 py-2.5 text-[15px] font-normal text-spark-ink outline-none focus:border-spark-amber" />
-          </label>
-          <div>
-            <p className="text-[13px] font-semibold text-spark-ink-muted">Can</p>
-            <div className="mt-1.5 grid gap-x-4 gap-y-1.5 text-sm text-spark-ink sm:grid-cols-2">
-              {ALL_SCOPES.map((s) => (
-                <label key={s} className="flex items-center gap-2">
-                  <input type="checkbox" checked={picked.includes(s)} className="accent-spark-amber"
-                    onChange={(e) => setPicked((p) => (e.target.checked ? [...p, s] : p.filter((x) => x !== s)))} />
-                  {FORM_LABEL[s]}
-                </label>
-              ))}
-            </div>
-          </div>
-          <label className="text-[13px] font-semibold text-spark-ink-muted">
-            Expires
-            <select value={expires ?? "never"} onChange={(e) => setExpires(e.target.value === "never" ? null : Number(e.target.value))}
-              className="mt-1.5 w-full rounded-xl border border-spark-rule bg-white px-3 py-2.5 text-[15px] font-normal text-spark-ink">
-              <option value={90}>In 90 days</option>
-              <option value={30}>In 30 days</option>
-              <option value={365}>In 1 year</option>
-              <option value="never">Never</option>
-            </select>
-          </label>
-          <button type="button" disabled={busy || !picked.length} onClick={() => void createKey()}
-            className="justify-self-start rounded-xl bg-spark-amber px-4 py-2.5 text-[15px] font-semibold text-white disabled:opacity-60">
-            Create key
-          </button>
-        </div>
-
-        {newKey && (
-          <div className="mt-3 rounded-xl bg-spark-ink p-3.5 font-mono text-sm text-white">
-            <div className="flex items-start justify-between gap-3">
-              <span className="break-all">{newKey}</span>
-              <button type="button" aria-label="Copy key" className="shrink-0 text-white/80 hover:text-white"
-                onClick={() => { void navigator.clipboard.writeText(newKey); toast.success("Copied."); }}>
-                <Copy size={16} />
+          {keys.map((c) => (
+            <div key={c.id} className="flex flex-col gap-3 border-t border-spark-rule py-3.5 first-of-type:border-t-0 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-base font-bold text-spark-ink">{c.client_name}</p>
+                <p className="mt-0.5 text-[13px] text-spark-ink-faint">
+                  {c.key_prefix}… · Created {day(c.created_at)} · Last used {ago(c.last_used_at)}{c.expires_at ? ` · Expires ${day(c.expires_at)}` : ""}
+                </p>
+                <Chips scopes={c.scopes} />
+              </div>
+              <button type="button" onClick={() => void remove(c)} className="self-start rounded-xl border border-red-200 bg-white px-3.5 py-2 text-sm font-semibold text-red-700 sm:self-center">
+                Revoke
               </button>
             </div>
-            <p className="mt-2 font-sans text-xs text-white/70">Copy it now. You won&apos;t see it again.</p>
-          </div>
-        )}
-      </details>
+          ))}
+        </details>
+      )}
     </Card>
   );
 }
