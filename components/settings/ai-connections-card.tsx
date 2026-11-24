@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import toast from "react-hot-toast";
 import { Copy } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { AiConnectSteps } from "@/components/settings/ai-connect-steps";
 import { ALL_SCOPES, type Scope } from "@/lib/agent/types";
 
 /**
@@ -66,6 +68,8 @@ export function AiConnectionsCard() {
   const [apps, setApps] = useState<Conn[]>([]);
   const [keys, setKeys] = useState<Conn[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [canConnect, setCanConnect] = useState(true);
+  const cardRef = useRef<HTMLDivElement>(null);
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<Scope[]>(["account:read", "sparks:plan", "videos:read"]);
   const [expires, setExpires] = useState<number | null>(90);
@@ -76,12 +80,16 @@ export function AiConnectionsCard() {
     try {
       const r = await fetch("/api/agent/connections");
       if (r.ok) {
-        const d = (await r.json()) as { apps: Conn[]; keys: Conn[] };
-        setApps(d.apps); setKeys(d.keys);
+        const d = (await r.json()) as { apps: Conn[]; keys: Conn[]; canConnect?: boolean };
+        setApps(d.apps); setKeys(d.keys); setCanConnect(d.canConnect !== false);
       }
     } finally { setLoaded(true); }
   }, []);
   useEffect(() => { void load(); }, [load]);
+  // The website's "How to connect" lands here, once the steps have loaded.
+  useEffect(() => {
+    if (loaded && window.location.hash === "#ai-connections") cardRef.current?.scrollIntoView({ block: "start" });
+  }, [loaded]);
 
   async function remove(c: Conn) {
     const what = c.kind === "oauth" ? `Disconnect ${c.client_name}?` : `Revoke the key "${c.client_name}"? Anything using it stops working.`;
@@ -106,6 +114,7 @@ export function AiConnectionsCard() {
 
   return (
     <Card id="ai-connections" className="scroll-mt-28">
+      <div ref={cardRef} className="scroll-mt-28" />
       <h3 className="mb-1 text-[19px] font-semibold text-spark-ink">AI connections</h3>
 
       {loaded && apps.length === 0 && (
@@ -123,6 +132,20 @@ export function AiConnectionsCard() {
           </button>
         </div>
       ))}
+
+      {loaded && !canConnect && (
+        <p className="text-sm text-spark-ink-muted">
+          AI connections come with a SparkReels plan.{" "}
+          <Link href="/settings/billing" className="font-semibold text-[#A3660F] hover:underline">See plans</Link>
+        </p>
+      )}
+      {loaded && canConnect && apps.length === 0 && <AiConnectSteps />}
+      {loaded && canConnect && apps.length > 0 && (
+        <details className="mt-4 border-t border-spark-rule pt-3.5">
+          <summary className="cursor-pointer text-sm font-semibold text-spark-ink-muted">How to connect</summary>
+          <AiConnectSteps />
+        </details>
+      )}
 
       <details className="mt-4 border-t border-spark-rule pt-3.5">
         <summary className="cursor-pointer text-sm font-semibold text-spark-ink-muted">Advanced · Personal access keys</summary>

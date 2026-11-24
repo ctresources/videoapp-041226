@@ -26,19 +26,24 @@ async function signedIn() {
 }
 
 export async function GET() {
-  const { user } = await signedIn();
+  const { supabase, user } = await signedIn();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { data } = await createAdminClient()
-    .from("agent_connections")
-    .select("id, kind, client_id, client_name, scopes, key_prefix, created_at, last_used_at, expires_at")
-    .eq("user_id", user.id)
-    .is("revoked_at", null)
-    .order("created_at", { ascending: false });
+  const [{ data }, { data: prof }] = await Promise.all([
+    createAdminClient()
+      .from("agent_connections")
+      .select("id, kind, client_id, client_name, scopes, key_prefix, created_at, last_used_at, expires_at")
+      .eq("user_id", user.id)
+      .is("revoked_at", null)
+      .order("created_at", { ascending: false }),
+    supabase.from("profiles").select("subscription_tier, role").eq("id", user.id).single(),
+  ]);
   const rows = (data ?? []) as { kind: string; expires_at: string | null }[];
   const live = rows.filter((r) => !r.expires_at || Date.parse(r.expires_at) > Date.now());
   return NextResponse.json({
     apps: live.filter((r) => r.kind === "oauth"),
     keys: live.filter((r) => r.kind === "key"),
+    // Whether Settings shows the connect steps or the plan note.
+    canConnect: isPaidLevel(getAccessLevel((prof as { subscription_tier: string | null; role: string | null } | null) ?? {})),
   });
 }
 

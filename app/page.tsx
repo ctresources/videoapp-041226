@@ -12,6 +12,7 @@ import {
 import type { Metadata } from "next";
 import { canonicalUrl } from "@/lib/seo/public-pages";
 import { PricingSection } from "@/components/marketing/pricing-section";
+import { AiAssistantsSection } from "@/components/marketing/ai-assistants-section";
 import { Hero } from "@/components/marketing/hero";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
@@ -816,6 +817,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ── Works With Your AI ── Claude and ChatGPT (2026-11-23). */}
+      <AiAssistantsSection />
 
       {/* ── Start a YouTube Channel ── */}
       <section id="channel" className="py-12 sm:py-14 px-4 sm:px-6 bg-slate-900 border-b border-slate-800">

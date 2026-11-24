@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Connections Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0f172a; --body: #64748b; --rule: #e2e8f0; --soft: #f8fafc;
+    --gold: #BA7517; --gold-dark: #A3660F; --gold-tint: #fbf3e4;
+    --app-ink: #2b2720; --app-muted: #6f675a; --app-rule: #e7e1d3; --app-paper: #faf7ef;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: #eceae4; color: var(--ink); font-family: Inter, system-ui, sans-serif; line-height: 1.5; }
+  .frame-label { max-width: 1280px; margin: 28px auto 10px; padding: 0 16px; font-size: 14px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #57534e; }
+  .frame { max-width: 1280px; margin: 0 auto; background: #fff; border-block: 1px solid #d6d3cb; }
+  @media (min-width: 1312px) { .frame { border: 1px solid #d6d3cb; border-radius: 14px; overflow: hidden; } }
+
+  /* Website */
+  .site { padding: 52px 32px; }
+  .eyebrow { margin: 0 0 12px; color: var(--gold-dark); font-size: 18px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  h2 { margin: 0 0 12px; font-size: 36px; line-height: 1.15; font-weight: 900; color: var(--ink); }
+  .lede { margin: 0 0 30px; color: var(--body); font-size: 19px; }
+  .even { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: stretch; }
+  .panel { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--rule); border-radius: 14px; padding: 26px; background: #fff; }
+  .badge { align-self: flex-start; margin-bottom: 18px; border-radius: 999px; background: var(--gold); color: #fff; padding: 3px 12px; font-size: 14px; font-weight: 600; }
+  .how { display: grid; gap: 20px; margin: 0 0 26px; padding: 0; list-style: none; }
+  .how li { display: flex; gap: 14px; }
+  .num { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--gold-tint); color: var(--gold-dark); font-size: 16px; font-weight: 800; }
+  .how strong { display: block; color: var(--ink); font-size: 20px; line-height: 1.3; }
+  .how span.t { color: var(--body); font-size: 18px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; border: 1.5px solid var(--gold); border-radius: 10px; padding: 9px 20px; font: inherit; font-size: 17px; font-weight: 700; text-decoration: none; cursor: default; }
+  .btn.solid { background: var(--gold); color: #fff; }
+  .btn.line { background: #fff; color: var(--gold-dark); }
+  .chat { background: #1f1d1a; border-color: #1f1d1a; color: #f5f2ea; }
+  .you { align-self: flex-end; max-width: 88%; margin-bottom: 18px; border-radius: 16px 16px 4px 16px; background: #3a362f; padding: 11px 15px; font-size: 17px; }
+  .plan { flex: 1; display: flex; flex-direction: column; border: 1px solid #47423a; border-radius: 12px; padding: 18px; background: #292621; }
+  .plan h3 { margin: 0 0 12px; font-size: 19px; color: #fff; }
+  .plan ol { margin: 0 0 18px; padding-left: 22px; color: #ded9cd; font-size: 17px; }
+  .plan li + li { margin-top: 6px; }
+  .plan .actions .btn { min-height: 42px; padding: 7px 15px; font-size: 16px; }
+  .plan .ghost { background: transparent; border-color: #6a6355; color: #f5f2ea; }
+
+  /* Settings */
+  .settings { padding: 28px; background: var(--app-paper); }
+  .card { max-width: 1040px; margin: 0 auto; border: 1px solid var(--app-rule); border-radius: 16px; background: #fff; padding: 24px; color: var(--app-ink); }
+  .card h3 { margin: 0 0 4px; font-size: 19px; font-weight: 600; }
+  .muted { margin: 0; color: var(--app-muted); font-size: 14px; }
+  .label { display: block; margin: 18px 0 6px; color: var(--app-muted); font-size: 14px; font-weight: 600; }
+  .copy-row { display: flex; gap: 8px; }
+  .code { flex: 1; min-width: 0; overflow-wrap: anywhere; border: 1px solid var(--app-rule); border-radius: 10px; background: var(--app-paper); padding: 10px 13px; font: 500 15px ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .copy { flex: none; min-height: 44px; border: 0; border-radius: 10px; background: var(--gold); color: #fff; padding: 0 18px; font: inherit; font-size: 15px; font-weight: 600; cursor: default; }
+  .connect { margin-top: 16px; }
+  .app { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--app-rule); border-radius: 14px; padding: 18px; }
+  .app-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .app-head h4 { margin: 0; font-size: 18px; font-weight: 700; }
+  .open { display: inline-flex; align-items: center; min-height: 38px; border: 1.5px solid var(--gold); border-radius: 9px; padding: 4px 12px; color: var(--gold-dark); font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+  .app ol { flex: 1; margin: 0 0 14px; padding-left: 22px; font-size: 15.5px; }
+  .app li + li { margin-top: 7px; }
+  .app .fine { margin: 0; border-top: 1px solid var(--app-rule); padding-top: 11px; color: var(--app-muted); font-size: 13.5px; }
+  .advanced { margin-top: 18px; border-top: 1px solid var(--app-rule); padding-top: 14px; color: var(--app-muted); font-size: 14px; font-weight: 600; }
+
+  @media (max-width: 760px) {
+    .site { padding: 38px 16px; }
+    h2 { font-size: 30px; }
+    .even { grid-template-columns: minmax(0, 1fr); }
+    .panel { padding: 20px; }
+    .settings { padding: 16px; }
+    .card { padding: 18px; }
+    .copy-row { flex-direction: column; }
+    .copy { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<p class="frame-label">Website</p>
+<div class="frame">
+  <section class="site">
+    <p class="eyebrow">Works With Your AI</p>
+    <h2>Make videos from Claude or ChatGPT</h2>
+    <p class="lede">Ask in your AI app. Approve the plan. SparkReels makes it.</p>
+    <div class="even">
+      <div class="panel">
+        <span class="badge">Paid plans</span>
+        <ol class="how">
+          <li><span class="num">1</span><span><strong>Connect SparkReels</strong><span class="t">Add it to Claude or ChatGPT once.</span></span></li>
+          <li><span class="num">2</span><span><strong>Ask for a video</strong><span class="t">Say what you want in your own words.</span></span></li>
+          <li><span class="num">3</span><span><strong>Approve the plan</strong><span class="t">Your script, video and Share Kit are made in SparkReels.</span></span></li>
+          <li><span class="num">4</span><span><strong>Confirm to post</strong><span class="t">Nothing posts until you say so.</span></span></li>
+        </ol>
+        <div class="actions">
+          <a class="btn solid">See Plans</a>
+          <a class="btn line">How to connect</a>
+        </div>
+      </div>
+      <div class="panel chat">
+        <div class="you">Plan a wide video about the Blue Bell market with my Digital Twin.</div>
+        <div class="plan">
+          <h3>Recommended Spark Plan</h3>
+          <ol>
+            <li>Write the script</li>
+            <li>Make the video: Wide, your Digital Twin, Full AI Avatar</li>
+            <li>Write the Share Kit</li>
+            <li>Post to YouTube (you confirm when the video is ready)</li>
+          </ol>
+          <div class="actions">
+            <span class="btn solid">Approve Plan</span>
+            <span class="btn ghost">Edit Plan</span>
+            <span class="btn ghost">Cancel</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<p class="frame-label">Settings</p>
+<div class="frame">
+  <div class="settings">
+    <div class="card">
+      <h3>AI connections</h3>
+      <p class="muted">No AI apps connected yet.</p>
+
+      <span class="label">Your SparkReels link</span>
+      <div class="copy-row">
+        <div class="code">https://www.sparkreels.ai/api/mcp</div>
+        <button class="copy" type="button">Copy</button>
+      </div>
+
+      <div class="even connect">
+        <div class="app">
+          <div class="app-head"><h4>Claude</h4><a class="open">Open Claude</a></div>
+          <ol>
+            <li>Open <b>Customize</b>, then <b>Connectors</b></li>
+            <li>Click <b>+ Add</b>, then <b>Add custom connector</b></li>
+            <li>Name it <b>SparkReels</b>, paste your link, click <b>Continue</b></li>
+            <li>Choose <b>Sign in now</b> and <b>Register automatically</b>, then <b>Add</b></li>
+            <li>Click <b>Allow</b> on the SparkReels page</li>
+          </ol>
+          <p class="fine">Works on every Claude plan.</p>
+        </div>
+        <div class="app">
+          <div class="app-head"><h4>ChatGPT</h4><a class="open">Open ChatGPT</a></div>
+          <ol>
+            <li>Open <b>Plugins</b> on a computer</li>
+            <li>Click <b>+</b>, then <b>Add custom MCP server</b></li>
+            <li>Name it <b>SparkReels</b> and paste your link</li>
+            <li>Choose <b>OAuth</b>, check <b>I understand and want to continue</b>, click <b>Create as a plugin</b></li>
+            <li>Click <b>Allow</b> on the SparkReels page</li>
+          </ol>
+          <p class="fine">Works on ChatGPT Plus. On Business or Enterprise, an admin may need to add it.</p>
+        </div>
+      </div>
+
+      <span class="label">Try it in a new chat</span>
+      <div class="copy-row">
+        <div class="code">Using SparkReels, plan a video about my local market.</div>
+        <button class="copy" type="button">Copy</button>
+      </div>
+
+      <div class="advanced">Advanced · Personal access keys</div>
+    </div>
+  </div>
+</div>
+<div style="height:32px"></div>
+</body>
+</html>
