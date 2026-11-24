@@ -30,6 +30,16 @@ export type WhatsNewItem = {
 
 const ITEMS: WhatsNewItem[] = [
   {
+    id: "ai-connections",
+    title: "Make Videos From Claude or ChatGPT",
+    description:
+      "Connect SparkReels to Claude or ChatGPT, ask for a video in the chat and approve the plan. Your script, video and Share Kit are made in SparkReels, and nothing posts until you confirm.",
+    releaseDate: "2026-11-23",
+    howItWorksAnchor: "ai-connections",
+    badge: "NEW",
+    paidOnlyDetails: true,
+  },
+  {
     id: "two-plans",
     title: "Two Simple Plans, With Unlimited AI Avatar in Circle",
     description:

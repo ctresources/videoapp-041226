@@ -1904,6 +1904,54 @@ function FullGuide() {
                 date, so you can find them on your Halo dashboard and see who signed up.
               </span>
             </Step>
+            {/* AI assistants (2026-11-23, the owner's ask). The steps match
+                components/settings/ai-connect-steps.tsx. Name Grok or Gemini
+                only after each passes a real test. */}
+            <Step n={30} title="Make Videos From Claude Or ChatGPT (Paid Plans)" icon={Bot} anchor="ai-connections">
+              Connect SparkReels to Claude or ChatGPT once, then ask for a video right in the chat. Open{" "}
+              <Link href="/settings#ai-connections" className="text-primary-600 font-medium hover:underline">Settings → AI connections</Link>{" "}
+              and copy <strong>Your SparkReels link</strong>.
+              <span className="block mt-3 font-semibold text-brand-text">Connect Claude</span>
+              <ol className="mt-1 list-decimal space-y-0.5 pl-5">
+                <li>Open <strong>Customize</strong>, then <strong>Connectors</strong></li>
+                <li>Click <strong>+ Add</strong>, then <strong>Add custom connector</strong></li>
+                <li>Name it <strong>SparkReels</strong>, paste your link, click <strong>Continue</strong></li>
+                <li>Choose <strong>Sign in now</strong> and <strong>Register automatically</strong>, then <strong>Add</strong></li>
+                <li>Click <strong>Allow</strong> on the SparkReels page</li>
+              </ol>
+              <span className="block mt-3 font-semibold text-brand-text">Connect ChatGPT</span>
+              <ol className="mt-1 list-decimal space-y-0.5 pl-5">
+                <li>Open <strong>Plugins</strong> on a computer</li>
+                <li>Click <strong>+</strong>, then <strong>Add custom MCP server</strong></li>
+                <li>Name it <strong>SparkReels</strong> and paste your link</li>
+                <li>Choose <strong>OAuth</strong>, check <strong>I understand and want to continue</strong>, click <strong>Create as a plugin</strong></li>
+                <li>Click <strong>Allow</strong> on the SparkReels page</li>
+              </ol>
+              <span className="block mt-1.5">
+                It works on every Claude plan and on ChatGPT Plus. On ChatGPT Business or Enterprise, an admin may need to add it.
+              </span>
+              <span className="block mt-3">
+                <strong>Ask for a video.</strong> In a new chat, type{" "}
+                <em>Using SparkReels, plan a video about my local market.</em> It asks the shape, who&apos;s on screen and
+                the style, then shows a <strong>Recommended Spark Plan</strong>. Approve it and SparkReels writes the script,
+                makes the video and writes the Share Kit. It uses your plan&apos;s videos the same way the app does, and the
+                video appears in <strong>My Sparks</strong>.
+              </span>
+              <span className="block mt-1.5">
+                <strong>Choose what&apos;s on screen.</strong> Add <em>On screen: my website homepage</em> to direct a Full AI
+                Avatar video. To use your own screenshots or photos, add <em>Images:</em> and up to 6 public image links. A file
+                attached in the chat can&apos;t be used. Without an image of a website or app, the video shows a text card
+                instead of a made-up screen.
+              </span>
+              <span className="block mt-1.5">
+                <strong>Post it.</strong> Ask it to post or schedule the video. It shows the exact video, accounts, title and
+                text, and nothing goes out until you confirm. A video already on an account isn&apos;t posted there again unless
+                you clearly ask for a second copy.
+              </span>
+              <span className="block mt-1.5">
+                <strong>Disconnect any time</strong> in Settings → AI connections.
+              </span>
+            </Step>
           </div>
           <VideoPlaceholder label="Finding Your Work" />
         </Card>

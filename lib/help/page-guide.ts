@@ -27,7 +27,7 @@ const PAGES: { name: string; match: (p: string) => boolean; steps: number[] }[] 
   { name: "Social Accounts settings", match: (p) => p.startsWith("/settings/social") || p.startsWith("/social"), steps: [9, 21, 22] },
   { name: "CRM settings", match: (p) => p.startsWith("/settings/crm"), steps: [10, 16] },
   { name: "Billing (in Settings)", match: (p) => p.startsWith("/billing") || p.startsWith("/settings/billing"), steps: [11] },
-  { name: "Settings", match: (p) => p.startsWith("/settings"), steps: [1, 2, 3, 4, 5, 6, 7, 8] },
+  { name: "Settings", match: (p) => p.startsWith("/settings"), steps: [1, 2, 3, 4, 5, 6, 7, 8, 30] },
   { name: "Spark Tools", match: (p) => p.startsWith("/tools"), steps: [23, 24, 25] },
   { name: "Spark Insights", match: (p) => p.startsWith("/analytics") || p.startsWith("/dashboard"), steps: [26, 27] },
   { name: "Spark Calendar", match: (p) => p.startsWith("/calendar") || p.startsWith("/campaigns"), steps: [28, 26] },
@@ -50,9 +50,10 @@ function stepText(s: GuideStep, full: boolean): string {
  * workflows, whose guides free accounts don't get on How It Works either.
  * 10 CRM (step 8 until 2026-10-30), 16 AutoSparks/Halo/seller updates, 22 social publishing, 23-25 Spark
  * Tools (they hold the seller, review-email and Google Reviews workflows),
- * 27 Insights, 28 Calendar, 29 the Affiliate Program (paid subscribers only).
+ * 27 Insights, 28 Calendar, 29 the Affiliate Program (paid subscribers only),
+ * 30 connecting Claude or ChatGPT.
  */
-const PAID_ONLY_STEPS = [10, 16, 22, 23, 24, 25, 27, 28, 29];
+const PAID_ONLY_STEPS = [10, 16, 22, 23, 24, 25, 27, 28, 29, 30];
 
 /** Sparklee's instructions for one conversation. `fullGuide` is false for a free account. */
 export function sparkleeInstructions(path: string, firstName: string | null, fullGuide = true): string {
