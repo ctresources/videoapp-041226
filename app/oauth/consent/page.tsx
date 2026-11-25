@@ -51,6 +51,18 @@ export default function ConsentPage() {
   // scopes; what the app may do here is recorded on Allow (agent_connections).
   const scopes: Scope[] = ALL_SCOPES;
 
+  const email = details?.user.email ?? "";
+
+  // Sign out here and log in again; the login page brings you back to this
+  // same request (middleware/login use consentReturnPath).
+  async function switchAccount() {
+    if (!details) return;
+    setBusy(true);
+    await createClient().auth.signOut().catch(() => null);
+    const back = `/oauth/consent?authorization_id=${encodeURIComponent(details.authorization_id)}`;
+    window.location.assign(`/login?next=${encodeURIComponent(back)}`);
+  }
+
   async function decide(approve: boolean) {
     if (!details) return;
     setBusy(true);
@@ -83,7 +95,18 @@ export default function ConsentPage() {
         ) : (
           <>
             <h1 className="mt-5 text-[22px] font-semibold text-spark-ink">Connect {label} to SparkReels?</h1>
-            {name && <p className="mt-1 text-[15px] text-spark-ink-muted">Signed in as {name}</p>}
+            {/* Email and switch link (2026-11-25, the owner's ask): she has
+                several accounts, and a name alone doesn't say which one. */}
+            <div className="mt-2 rounded-xl border border-spark-rule px-3.5 py-2.5 text-[15px]">
+              <p className="text-spark-ink-muted">
+                Signed in as <span className="font-semibold text-spark-ink">{name || email}</span>
+              </p>
+              {email && email !== name && <p className="text-spark-ink-muted">{email}</p>}
+              <button type="button" disabled={busy} onClick={() => void switchAccount()}
+                className="mt-1 font-semibold text-[#A3660F] hover:underline disabled:opacity-60">
+                Use a different account
+              </button>
+            </div>
 
             {paid ? (
               <>
