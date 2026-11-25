@@ -3,6 +3,7 @@ import { bearerToken, type AuthProvider } from "@/lib/agent/auth";
 import { KEY_PREFIX } from "@/lib/agent/auth/personal-key";
 import { ALL_SCOPES, type AgentActor, type Scope } from "@/lib/agent/types";
 import { clientLabel } from "@/lib/agent/client-label";
+import { activeAccount } from "@/lib/agent/auth/active-account";
 
 /**
  * Primary sign-in: access tokens issued by Supabase's OAuth 2.1 server
@@ -49,12 +50,12 @@ export const supabaseOAuthProvider: AuthProvider = {
     // OAuth server only issues its own standard scopes (tested 2026-11-22).
     const { data: existing } = await admin
       .from("agent_connections")
-      .select("id, revoked_at, client_name, scopes")
+      .select("id, revoked_at, client_name, scopes, active_user_id")
       .eq("user_id", userId)
       .eq("client_id", clientId)
       .eq("kind", "oauth")
       .maybeSingle();
-    let row = existing as { id: string; revoked_at: string | null; client_name: string; scopes: string[] } | null;
+    let row = existing as { id: string; revoked_at: string | null; client_name: string; scopes: string[]; active_user_id?: string | null } | null;
     if (!row) {
       // Approved somewhere the consent page didn't record: read-only until reconnected.
       const { data: made } = await admin
@@ -69,6 +70,8 @@ export const supabaseOAuthProvider: AuthProvider = {
     await admin.from("agent_connections").update({ last_used_at: new Date().toISOString() }).eq("id", row.id);
 
     const scopes = row.scopes.filter((s): s is Scope => ALL_SCOPES.includes(s as Scope));
-    return { userId, connectionId: row.id, source: row.client_name, adapter: "mcp", scopes };
+    // A linked account it switched to (2026-11-25), checked on every call.
+    const acting = await activeAccount(admin, row.id, userId, row.active_user_id ?? null);
+    return { userId: acting, ownerUserId: userId, connectionId: row.id, source: row.client_name, adapter: "mcp", scopes };
   },
 };

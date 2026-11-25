@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Switch Accounts</title>
+<style>
+  :root { --ink:#1f1a14; --muted:#6b6257; --rule:#e8dfd2; --paper:#f7f3ec; --field:#fdfbf7; --amber:#A3660F; --btn:#e8a33d; --tint:#fbf1e1; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; padding:28px 16px 60px; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 22px; font-size: 15px; }
+  .label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--amber); margin: 26px 0 8px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .card { background:#fff; border:1px solid var(--rule); border-radius: 16px; padding: 18px; height: 100%; }
+  .card h2 { font-size: 17px; margin: 0 0 12px; }
+  .row { display:flex; align-items:center; gap: 10px; padding: 10px 12px; border:1px solid var(--rule); border-radius: 12px; margin-bottom: 8px; font-size: 14.5px; }
+  .row .who { flex:1; min-width:0; }
+  .row .who b { display:block; }
+  .row .who span { color: var(--muted); font-size: 13px; }
+  .pill { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; background: var(--tint); color: var(--amber); }
+  .link { color: var(--amber); font-weight: 600; font-size: 13.5px; background: none; border: 0; padding: 0; cursor: pointer; }
+  .btn { display:inline-block; background: var(--btn); color:#fff; font-weight: 600; border-radius: 12px; padding: 10px 16px; border:0; font-size: 15px; }
+  .btn.ghost { background:#fff; color: var(--muted); border:1px solid var(--rule); }
+  .note { font-size: 13px; color: var(--muted); margin-top: 10px; }
+  .consent { max-width: 420px; margin: 0 auto; }
+  .brand { display:flex; align-items:center; gap: 10px; font-weight: 700; font-size: 18px; }
+  .brand i { display:grid; place-items:center; width: 34px; height: 34px; border-radius: 10px; background: var(--btn); color:#fff; font-style: normal; }
+  .chat { display:flex; flex-direction: column; gap: 10px; font-size: 14.5px; }
+  .me, .ai { border-radius: 14px; padding: 10px 13px; max-width: 92%; }
+  .me { align-self: flex-end; background: #1f1a14; color: #fff; }
+  .ai { align-self: flex-start; background: #f4efe7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Switch accounts from your AI app</h1>
+  <p class="sub">Mockup only. You link your SparkReels accounts once. After that, ChatGPT, Claude or Cursor can switch between them when you ask, without disconnecting.</p>
+
+  <div class="label">1 · Settings → AI connections: Your accounts</div>
+  <div class="grid">
+    <div class="card">
+      <h2>Your accounts</h2>
+      <div class="row"><div class="who"><b>Carmella Thompson</b><span>carmella@…main.com</span></div><span class="pill">This account</span></div>
+      <div class="row"><div class="who"><b>Carmella Thompson</b><span>carmella@…second.com</span></div><button class="link">Unlink</button></div>
+      <div class="row"><div class="who"><b>Carmella Thompson</b><span>carmella@…third.com</span></div><button class="link">Unlink</button></div>
+      <button class="btn" style="margin-top:6px">Link another account</button>
+      <p class="note">Your AI apps can switch to any account here when you ask. Unlink to stop it.</p>
+    </div>
+
+    <div class="card">
+      <h2>Linking: sign in to the other account</h2>
+      <div class="consent">
+        <div class="brand"><i>✦</i> SparkReels</div>
+        <h3 style="font-size:20px;margin:16px 0 6px">Link these accounts?</h3>
+        <div class="row"><div class="who"><b>Carmella Thompson</b><span>carmella@…main.com</span></div></div>
+        <div class="row"><div class="who"><b>Carmella Thompson</b><span>carmella@…second.com</span></div><span class="pill">Signed in</span></div>
+        <p class="note" style="margin-top:4px">Your AI apps on either account can switch to the other.</p>
+        <div style="display:flex;gap:10px;margin-top:14px"><button class="btn ghost">Cancel</button><button class="btn" style="flex:1">Link</button></div>
+      </div>
+      <p class="note">You prove it's yours by signing in to it. Opens in a new tab and comes back here.</p>
+    </div>
+  </div>
+
+  <div class="label">2 · In the AI app</div>
+  <div class="grid">
+    <div class="card">
+      <h2>Catching the wrong account</h2>
+      <div class="chat">
+        <div class="me">Make a holiday video for my sphere.</div>
+        <div class="ai">SparkReels account: Carmella Thompson (carmella@…second.com). Is that the account you want?</div>
+        <div class="me">No, use my main one.</div>
+        <div class="ai">Switched to Carmella Thompson (carmella@…main.com). Here's the plan…</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>What stays the same</h2>
+      <p style="margin:0 0 8px">Each account keeps its own videos, plan, Digital Twin, voice, branding and BoldTrail.</p>
+      <p style="margin:0 0 8px">A video made after switching uses that account's videos left.</p>
+      <p style="margin:0">Only accounts you linked by signing in can be switched to. Not linked yet? The AI says to link it in Settings.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

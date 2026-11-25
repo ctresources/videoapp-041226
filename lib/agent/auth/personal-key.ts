@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bearerToken, type AuthProvider } from "@/lib/agent/auth";
+import { activeAccount } from "@/lib/agent/auth/active-account";
 import { ALL_SCOPES, type AgentActor, type Scope } from "@/lib/agent/types";
 
 /**
@@ -45,16 +46,17 @@ export const personalKeyProvider: AuthProvider = {
     const admin = createAdminClient();
     const { data } = await admin
       .from("agent_connections")
-      .select("id, user_id, client_name, scopes, expires_at, revoked_at")
+      .select("id, user_id, client_name, scopes, expires_at, revoked_at, active_user_id")
       .eq("key_hash", hashKey(token))
       .eq("kind", "key")
       .maybeSingle();
-    const row = data as { id: string; user_id: string; client_name: string; scopes: string[]; expires_at: string | null; revoked_at: string | null } | null;
+    const row = data as { id: string; user_id: string; client_name: string; scopes: string[]; expires_at: string | null; revoked_at: string | null; active_user_id?: string | null } | null;
     if (!row || row.revoked_at) return null;
     if (row.expires_at && Date.parse(row.expires_at) < Date.now()) return null;
     await admin.from("agent_connections").update({ last_used_at: new Date().toISOString() }).eq("id", row.id);
     return {
-      userId: row.user_id,
+      userId: await activeAccount(admin, row.id, row.user_id, row.active_user_id ?? null),
+      ownerUserId: row.user_id,
       connectionId: row.id,
       source: row.client_name,
       adapter: "mcp",

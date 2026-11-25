@@ -12,7 +12,7 @@ export const MCP_PROTOCOL_VERSION = "2025-06-18";
 
 const INSTRUCTIONS = [
   "SparkReels makes real estate videos, blogs and social posts in the agent's own voice.",
-  "A person may have more than one SparkReels account. Every plan starts with the account's name and email: tell the user which account it is, and if it isn't the one they want, stop before making anything.",
+  "A person may have more than one SparkReels account. Every plan starts with the account's name and email: tell the user which account it is, and if it isn't the one they want, stop before making anything. If they want one of their linked accounts (get_account lists them), call switch_account with its email, then start again.",
   "Always start with plan_spark for any goal, passing the user's words as they said them. If it returns questions, ask the user exactly those and never answer for them.",
   "Show the plan and wait for the user to Approve, Edit or Cancel.",
   "Never add images or photos from the web to a SparkReels plan: show only the picture SparkReels returns, if any. SparkReels chooses the video's visuals.",

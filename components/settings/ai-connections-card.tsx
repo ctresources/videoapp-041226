@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { Card } from "@/components/ui/card";
@@ -56,6 +56,79 @@ function Chips({ scopes }: { scopes: string[] }) {
   );
 }
 
+type Acct = { id: string; name: string | null; email: string | null };
+
+/**
+ * Your accounts (2026-11-25, the owner's approved mockup:
+ * docs/mockups/switch-accounts.html): accounts linked by signing in to each,
+ * which AI apps can switch between when asked. Linking opens a new tab.
+ */
+function YourAccounts() {
+  const [me, setMe] = useState<Acct | null>(null);
+  const [accounts, setAccounts] = useState<Acct[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    const r = await fetch("/api/accounts/links").catch(() => null);
+    if (!r?.ok) return;
+    const d = (await r.json()) as { me: Acct; accounts: Acct[] };
+    setMe(d.me); setAccounts(d.accounts);
+  }, []);
+  useEffect(() => {
+    void load();
+    // Back from the link tab: show the new account without a reload.
+    const onFocus = () => { void load(); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [load]);
+
+  async function linkAnother() {
+    // Opened first, filled after: a window opened after an await is blocked as a pop-up.
+    const win = window.open("", "_blank");
+    setBusy(true);
+    try {
+      const r = await fetch("/api/accounts/links", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "start" }) });
+      const d = await r.json();
+      if (!r.ok || !d.url) throw new Error();
+      if (win) win.location.href = d.url; else window.location.href = d.url;
+    } catch {
+      win?.close();
+      toast.error("Couldn't start linking. Try again.");
+    } finally { setBusy(false); }
+  }
+
+  async function unlinkOne(a: Acct) {
+    if (!window.confirm(`Unlink ${a.email ?? a.name ?? "this account"}?`)) return;
+    const r = await fetch("/api/accounts/links", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ otherId: a.id }) });
+    if (r.ok) { toast.success("Unlinked."); void load(); } else toast.error("Couldn't do that. Try again.");
+  }
+
+  const row = (a: Acct, right: ReactNode) => (
+    <div key={a.id} className="mt-2 flex items-center gap-3 rounded-xl border border-spark-rule px-3.5 py-2.5">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[15px] font-semibold text-spark-ink">{a.name || a.email}</p>
+        {a.email && a.name && <p className="truncate text-[13px] text-spark-ink-muted">{a.email}</p>}
+      </div>
+      {right}
+    </div>
+  );
+
+  return (
+    <div className="mt-4 border-t border-spark-rule pt-3.5">
+      <p className="text-base font-bold text-spark-ink">Your accounts</p>
+      {me && row(me, <span className="shrink-0 rounded-full bg-spark-amber-tint px-2 py-0.5 text-[11px] font-bold text-[#A3660F]">This account</span>)}
+      {accounts.map((a) => row(a, (
+        <button type="button" onClick={() => void unlinkOne(a)} className="shrink-0 text-[13.5px] font-semibold text-[#A3660F] hover:underline">Unlink</button>
+      )))}
+      <button type="button" disabled={busy} onClick={() => void linkAnother()}
+        className="mt-3 rounded-xl bg-spark-amber px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+        Link another account
+      </button>
+      <p className="mt-2 text-[13px] text-spark-ink-muted">Your AI apps can switch to any account here when you ask. Unlink to stop it.</p>
+    </div>
+  );
+}
+
 export function AiConnectionsCard() {
   const [apps, setApps] = useState<Conn[]>([]);
   const [keys, setKeys] = useState<Conn[]>([]);
@@ -106,6 +179,8 @@ export function AiConnectionsCard() {
           </button>
         </div>
       ))}
+
+      {loaded && canConnect && <YourAccounts />}
 
       {loaded && !canConnect && (
         <p className="text-sm text-spark-ink-muted">

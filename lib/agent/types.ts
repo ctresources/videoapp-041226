@@ -36,7 +36,10 @@ export type Adapter = "mcp" | "in_app" | "hub" | "halo" | "boldtrail" | "ghl";
 
 /** Who is calling, resolved by an AuthProvider before any tool runs. */
 export interface AgentActor {
+  /** The account the tools act on: the connecting one, or a linked one it switched to. */
   userId: string;
+  /** The account that connected this app (2026-11-25, linked accounts). Defaults to userId. */
+  ownerUserId?: string;
   /** agent_connections row, when the call came through OAuth or a key. */
   connectionId: string | null;
   /** "ChatGPT", "Claude", "Sparklee in-app", a key's name… */

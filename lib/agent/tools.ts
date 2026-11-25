@@ -21,6 +21,7 @@ import { sendVideoEmail, VIDEO_EMAIL_MAX } from "@/lib/email/video-email-send";
 import { writeVideoEmail } from "@/lib/api/video-email";
 import { loadAgentSignature } from "@/lib/utils/agent-signature";
 import { staffLimits, STAFF_NO_EMAIL } from "@/lib/staff/staff";
+import { describeAccount, linkedAccounts, type LinkedAccount } from "@/lib/accounts/links";
 import { getAvatarLooks } from "@/lib/api/heygen";
 import { pictureForPlan, type PlanPicture } from "@/lib/agent/plan-picture";
 import { imageLinks, imagesForPlan, labeledVisuals, MAX_PLAN_IMAGES, visualsFrom, withoutVisualLabels, type PlanVisuals } from "@/lib/agent/plan-visuals";
@@ -69,8 +70,16 @@ async function accountOf(actor: AgentActor, ctx: AgentContext): Promise<{ name: 
   const who = [ctx.name, email && `(${email})`].filter(Boolean).join(" ") || "this account";
   return {
     name: ctx.name, email,
-    line: `SparkReels account: ${who}. If that's not the account the user wants, stop and tell them before making anything.`,
+    line: `SparkReels account: ${who}. If that's not the account the user wants, stop before making anything; if they name one of their linked accounts, call switch_account.`,
   };
+}
+
+/** The connecting account and every account linked to it: the ones switch_account can use. */
+async function switchableAccounts(actor: AgentActor): Promise<LinkedAccount[]> {
+  const admin = createAdminClient();
+  const owner = actor.ownerUserId ?? actor.userId;
+  const [me, linked] = await Promise.all([describeAccount(admin, owner), linkedAccounts(admin, owner)]);
+  return [me, ...linked];
 }
 
 /** A direct call outside a plan becomes a one-step plan that needs approval first. */
@@ -266,13 +275,45 @@ export const TOOLS: ToolDef[] = [
     input: { type: "object", properties: {}, additionalProperties: false },
     async run(actor, ctx) {
       const al = ctx.allowance;
-      const account = await accountOf(actor, ctx);
-      return ok(account.line, {
+      const [account, all] = await Promise.all([accountOf(actor, ctx), switchableAccounts(actor).catch(() => [] as LinkedAccount[])]);
+      const others = all.filter((a) => a.id !== actor.userId).map((a) => ({ name: a.name, email: a.email }));
+      return ok(others.length
+        ? `${account.line} Other linked accounts: ${others.map((o) => [o.name, o.email && `(${o.email})`].filter(Boolean).join(" ")).join(", ")}.`
+        : account.line, {
         account: { name: account.name, email: account.email },
+        otherAccounts: others,
         plan: al.tier, level: al.level, videosLeft: videosLeft(ctx), videosPerMonth: al.shortPerMonth,
         features: { videoTemplates: al.videoTemplates, sparkPodcast: al.sparkPodcast, sparkCalendar: al.campaignCalendar },
         connectedPlatforms: ctx.connected.map(label), market: ctx.market, timeZone: ctx.timeZone, ready: ctx.ready,
       });
+    },
+  },
+  {
+    // Linked accounts (2026-11-25, the owner's approved mockup): only accounts
+    // linked in Settings by signing in to each, so an AI app can never reach
+    // an account its user hasn't proven is theirs.
+    name: "switch_account",
+    scope: "account:read",
+    description: "Switches this connection to another of the user's SparkReels accounts, by its email. Only accounts the user linked in SparkReels Settings (AI connections → Your accounts). get_account lists them. After switching, everything (plans, videos, plan usage, Digital Twin, voice, branding) is that account's. Only when the user asks.",
+    input: { type: "object", properties: { email: { type: "string", description: "The email of the account to use." } }, required: ["email"] },
+    async run(actor, _ctx, input) {
+      if (!actor.connectionId) return failed("Switching accounts works from a connected AI app.", "no_connection");
+      const want = str(input.email).toLowerCase();
+      if (!want) return needsInput("Which account? Give its email.", "email_required");
+      const all = await switchableAccounts(actor);
+      const target = all.find((a) => (a.email ?? "").toLowerCase() === want);
+      if (!target) {
+        return needsInput(
+          "That account isn't linked. In SparkReels, open Settings → AI connections → Your accounts and press Link another account.",
+          "not_linked",
+          { accounts: all.map((a) => ({ name: a.name, email: a.email })) },
+        );
+      }
+      const owner = actor.ownerUserId ?? actor.userId;
+      await createAdminClient().from("agent_connections")
+        .update({ active_user_id: target.id === owner ? null : target.id }).eq("id", actor.connectionId);
+      const who = [target.name, target.email && `(${target.email})`].filter(Boolean).join(" ");
+      return ok(`Switched to ${who}.`, { account: { name: target.name, email: target.email } });
     },
   },
   {
