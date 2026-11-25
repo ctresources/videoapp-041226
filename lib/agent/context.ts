@@ -27,11 +27,13 @@ export interface AgentContext {
   ready: { photoAvatar: boolean; twin: boolean; clonedVoice: boolean };
   /** Which look each presenter choice renders with. */
   looks: { twin: string | null; wide: string | null; tall: string | null; photoGroup: string | null };
+  /** BoldTrail connected in Settings: contacts can be emailed (2026-11-25). */
+  boldtrail?: boolean;
 }
 
 export async function loadContext(userId: string): Promise<AgentContext> {
   const admin = createAdminClient();
-  const [allowance, profileRes, voice] = await Promise.all([
+  const [allowance, profileRes, voice, bt] = await Promise.all([
     getAllowance(admin, userId),
     admin
       .from("profiles")
@@ -39,6 +41,7 @@ export async function loadContext(userId: string): Promise<AgentContext> {
       .eq("id", userId)
       .maybeSingle(),
     getMyVoice(admin, userId),
+    admin.from("integration_tokens").select("user_id", { count: "exact", head: true }).eq("user_id", userId).eq("provider", "boldtrail"),
   ]);
   const p = (profileRes.data ?? {}) as Record<string, string | null>;
   const connected = await connectedPlatforms(p as never, userId);
@@ -63,6 +66,7 @@ export async function loadContext(userId: string): Promise<AgentContext> {
       tall: p.heygen_look_tall ?? null,
       photoGroup: p.heygen_photo_id ?? null,
     },
+    boldtrail: (bt.count ?? 0) > 0,
   };
 }
 

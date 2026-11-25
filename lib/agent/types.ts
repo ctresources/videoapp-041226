@@ -12,10 +12,12 @@ export type Scope =
   | "sparks:write"
   | "videos:create"
   | "videos:read"
-  | "publish:write";
+  | "publish:write"
+  /** Emailing BoldTrail contacts, each send confirmed (2026-11-25, V1.1). */
+  | "contacts:email";
 
 export const ALL_SCOPES: Scope[] = [
-  "account:read", "sparks:plan", "sparks:write", "videos:create", "videos:read", "publish:write",
+  "account:read", "sparks:plan", "sparks:write", "videos:create", "videos:read", "publish:write", "contacts:email",
 ];
 
 /** Plain words for Settings → Connections and consent screens. */
@@ -26,6 +28,7 @@ export const SCOPE_LABELS: Record<Scope, string> = {
   "videos:create": "Make videos (uses your plan's videos)",
   "videos:read": "Check videos and drafts",
   "publish:write": "Ask to publish or schedule (you confirm each one)",
+  "contacts:email": "Ask to email your BoldTrail contacts (you confirm each send)",
 };
 
 /** Where a call came from: the client or source, and which adapter carried it. */

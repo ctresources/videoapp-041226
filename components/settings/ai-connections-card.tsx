@@ -32,6 +32,7 @@ const SHORT: Record<Scope, string> = {
   "videos:create": "Make videos",
   "videos:read": "Check videos",
   "publish:write": "Publish (you confirm)",
+  "contacts:email": "Email contacts (you confirm)",
 };
 
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });

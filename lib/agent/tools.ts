@@ -12,9 +12,15 @@ import type { ServiceResult } from "@/lib/content/service-result";
 import type { HaloSetup } from "@/lib/halo";
 import { type AgentContext, videosLeft } from "@/lib/agent/context";
 import {
-  asPresenter, asShape, asStyle, buildPlan, CAMERA_READY_NOTE, labeledAnswers, needsPlace, placeFor, presenterOptions, questionsFor,
+  asPresenter, asShape, asStyle, buildPlan, CAMERA_READY_NOTE, contactsPhrase, crmWanted, labeledAnswers, needsPlace, placeFor, presenterOptions, questionsFor,
   readIntent, recordLink, savePlan, styleOptions, summarize, videoLabel, type Presenter, type Shape, type VideoStyle,
 } from "@/lib/agent/planner";
+import { findContacts, loadBoldTrailToken } from "@/lib/api/boldtrail";
+import { cleanFilter, contactTag, type FoundContact } from "@/lib/boldtrail/filters";
+import { sendVideoEmail, VIDEO_EMAIL_MAX } from "@/lib/email/video-email-send";
+import { writeVideoEmail } from "@/lib/api/video-email";
+import { loadAgentSignature } from "@/lib/utils/agent-signature";
+import { staffLimits, STAFF_NO_EMAIL } from "@/lib/staff/staff";
 import { getAvatarLooks } from "@/lib/api/heygen";
 import { pictureForPlan, type PlanPicture } from "@/lib/agent/plan-picture";
 import { imageLinks, imagesForPlan, labeledVisuals, MAX_PLAN_IMAGES, visualsFrom, withoutVisualLabels, type PlanVisuals } from "@/lib/agent/plan-visuals";
@@ -357,8 +363,10 @@ export const TOOLS: ToolDef[] = [
       const r = await decidePlan(actor, str(input.planId), input.decision === "cancel" ? "cancel" : "approve");
       if (!r.ok) return failed(r.message, r.code);
       const runnable = r.plan.steps.filter((s) => !s.comingSoon && !s.manual && !s.needsConfirm).map((s) => `${s.tool} (step ${s.n})`);
+      const emailStep = r.plan.steps.find((s) => s.tool === "email_contacts");
       return ok(r.plan.status === "approved"
         ? `Plan approved. Run these in order, each with planId and step: ${runnable.join(", ")}. Posting will ask for its own confirmation.`
+          + (emailStep ? ` When the video is finished, call find_contacts with planId and step ${emailStep.n}, let the user pick who gets it, then prepare_email and, only after they say send, confirm_email.` : "")
         : "Plan cancelled.", { planId: r.plan.id, status: r.plan.status, steps: r.plan.steps }, { planId: r.plan.id });
     },
   },
@@ -625,6 +633,175 @@ export const TOOLS: ToolDef[] = [
       return {
         ...(r.status < 400 ? ok(a.payload.scheduledAt ? "Scheduled." : "Posted.", body, { actionId: a.id }) : failed(String(body.error ?? "Nothing could be posted."), "publish_failed")),
         audit: { videoId: a.payload.videoId, publishRef: Array.isArray(body.pendingRefs) ? String((body.pendingRefs as string[])[0] ?? "") : null, approvalState: "confirmed" },
+      };
+    },
+  },
+  // ── Email it to BoldTrail contacts (2026-11-25, the owner's approved plan, V1.1) ──
+  // find_contacts lists, prepare_email shows the exact email, confirm_email sends
+  // once. Approving a plan never sends. Email it's own code (sendVideoEmail) does
+  // the sending: reused, never copied.
+  {
+    name: "find_contacts",
+    scope: "contacts:email",
+    description: "Lists the user's BoldTrail contacts to choose from, by status (new, client, closed, sphere, active, under contract, prospect), type (buyer, seller, renter, agent, vendor) and/or part of a name. Up to 25, with names and status only. Sends nothing. Show the names and ask who should get the email (up to 10), then call prepare_email with this listId and their ids.",
+    input: {
+      type: "object",
+      properties: {
+        status: { type: "string", description: "One of: new, client, closed, sphere, active, under contract, prospect." },
+        type: { type: "string", description: "One of: buyer, seller, renter, agent, vendor." },
+        search: { type: "string", description: "Part of a first name, last name or email." },
+        planId: { type: "string" }, step: { type: "number" },
+      },
+    },
+    async run(actor, ctx, input) {
+      const admin = createAdminClient();
+      const token = await loadBoldTrailToken(admin, actor.userId);
+      if (!token) return needsInput("BoldTrail isn't connected. Connect it in SparkReels Settings first.", "boldtrail_not_connected");
+      // The plan's step may carry the filter; what the user says now wins.
+      const plan = str(input.planId) ? await getPlan(actor.userId, str(input.planId)) : null;
+      const fromPlan = plan?.steps.find((s) => s.tool === "email_contacts")?.input ?? {};
+      const wanted = crmWanted(str(input.status) || null, str(input.type) || null);
+      const filter = cleanFilter({
+        status: str(input.status) ? wanted.crmStatus : fromPlan.status,
+        type: str(input.type) ? wanted.crmType : fromPlan.type,
+      });
+      const search = str(input.search);
+      if (search.length < 2 && filter.status === null && !filter.type) {
+        return needsInput("Which contacts? Give a status (like closed), a type (like seller) or part of a name.", "filter_required");
+      }
+      const found = await findContacts(token, search, filter).catch(() => null);
+      if (!found) return failed("Couldn't reach BoldTrail just now. Try again in a moment.", "boldtrail_error");
+      if (!found.contacts.length) return ok(`No ${contactsPhrase(filter.status, filter.type).replace(/^your /, "")} found in BoldTrail.`, { contacts: [] });
+      // Kept on our side, so an email can only go to someone the user saw listed.
+      const payload = { filter, search, contacts: found.contacts };
+      const claim = await claimAction(actor, {
+        tool: "find_contacts", kind: "crm_send", requestId: requestIdFor(actor, "find_contacts", { filter, search }), payload,
+        planId: plan?.id ?? null, step: Number(input.step) || null,
+      });
+      if (claim.kind === "conflict" || (claim.kind === "repeat" && claim.status !== "running" && claim.status !== "succeeded")) {
+        return failed("Couldn't keep that list. Ask again in a moment.", "list_conflict");
+      }
+      if (claim.kind === "new") await finishAction(claim.actionId, "succeeded", payload);
+      const list = claim.kind === "repeat" && claim.status === "succeeded" ? (claim.result as typeof payload).contacts : found.contacts;
+      return ok(
+        `${found.total && found.total > list.length ? `Showing ${list.length} of ${found.total}` : `${list.length} found`}. Ask who should get it (up to ${VIDEO_EMAIL_MAX}).`,
+        { listId: claim.actionId, contacts: list.map((c) => ({ id: c.id, name: c.name, tag: contactTag(c) })), total: found.total },
+        { actionId: claim.actionId },
+      );
+    },
+  },
+  {
+    name: "prepare_email",
+    scope: "contacts:email",
+    description: "Step 1 of emailing a finished video to chosen BoldTrail contacts: takes the listId from find_contacts and the ids the user chose (up to 10), writes the subject and note unless given, and returns an actionId with the exact email. Sends nothing. Show the names, subject and note exactly, then call confirm_email only after the user says send.",
+    input: {
+      type: "object",
+      properties: {
+        listId: { type: "string" }, contactIds: { type: "array", items: { type: "string" } },
+        videoId: { type: "string" }, sparkId: { type: "string" },
+        subject: { type: "string" }, note: { type: "string" },
+        planId: { type: "string" }, step: { type: "number" }, requestId: { type: "string" },
+      },
+      required: ["listId", "contactIds"],
+    },
+    async run(actor, ctx, input) {
+      const admin = createAdminClient();
+      if ((await staffLimits(actor.userId))?.emails === false) return failed(STAFF_NO_EMAIL, "staff_access");
+      const { data: listRow } = await admin.from("agent_actions").select("id, tool, status, result").eq("id", str(input.listId)).eq("user_id", actor.userId).maybeSingle();
+      const listed = ((listRow as { tool: string; status: string; result: { contacts?: FoundContact[] } | null } | null)?.tool === "find_contacts"
+        ? (listRow as { result: { contacts?: FoundContact[] } | null }).result?.contacts ?? [] : []);
+      if (!listed.length) return needsInput("List the contacts first with find_contacts.", "list_required");
+      const ids = Array.from(new Set((Array.isArray(input.contactIds) ? input.contactIds : []).map(String)));
+      if (!ids.length) return needsInput("Who should get it? Give the ids of the people the user chose.", "contacts_required");
+      if (ids.length > VIDEO_EMAIL_MAX) return needsInput(`Up to ${VIDEO_EMAIL_MAX} people at a time. Ask which ${VIDEO_EMAIL_MAX}.`, "too_many");
+      const chosen = ids.map((id) => listed.find((c) => c.id === id)).filter((c): c is FoundContact => !!c);
+      if (chosen.length !== ids.length) return needsInput("Some of those people weren't in the list. Use ids from find_contacts.", "not_listed");
+
+      let videoId = str(input.videoId);
+      if (!videoId && str(input.sparkId)) {
+        const { data } = await admin.from("generated_videos").select("id").eq("user_id", actor.userId).eq("project_id", str(input.sparkId))
+          .eq("render_status", "completed").order("created_at", { ascending: false }).limit(1).maybeSingle();
+        videoId = (data as { id: string } | null)?.id ?? "";
+      }
+      if (!videoId) return needsInput("Which video? Give a videoId or the sparkId of a finished video.", "video_required");
+      const { data: v } = await admin.from("generated_videos")
+        .select("id, render_status, video_url, projects(title, ai_script, seo_data, location_city, location_state)")
+        .eq("id", videoId).eq("user_id", actor.userId).maybeSingle();
+      const video = v as unknown as { id: string; render_status: string; video_url: string | null; projects: Record<string, unknown> | Record<string, unknown>[] | null } | null;
+      if (!video) return failed("That video isn't in your account.", "not_yours");
+      if (video.render_status !== "completed" || !/^https:\/\//.test(video.video_url ?? "")) return failed("That video isn't finished yet. Try again when it's ready.", "video_not_ready");
+
+      // The subject and note Email it writes, unless the user gave their own.
+      let subject = str(input.subject).slice(0, 150);
+      let note = str(input.note).slice(0, 3000);
+      if (!subject || !note) {
+        const project = (Array.isArray(video.projects) ? video.projects[0] : video.projects) as {
+          title?: string | null; ai_script?: { script?: string } | null; seo_data?: { description?: string } | null; location_city?: string | null; location_state?: string | null;
+        } | null;
+        const signature = await loadAgentSignature(admin, actor.userId);
+        const written = await writeVideoEmail({
+          title: project?.title || "My latest video",
+          about: project?.seo_data?.description || project?.ai_script?.script || null,
+          agentName: signature.name,
+          market: [project?.location_city, project?.location_state].filter(Boolean).join(", ") || null,
+        });
+        if (!written) return failed("Couldn't write the note just now. Try again, or give a subject and note.", "write_failed");
+        subject ||= written.subject;
+        note ||= written.note;
+      }
+
+      const payload = { videoId, subject, note, contacts: chosen.map((c) => ({ id: c.id, name: c.name, email: c.email })) };
+      const expiresAt = new Date(Date.now() + PUBLISH_CONFIRM_MINUTES * 60_000).toISOString();
+      const claim = await claimAction(actor, {
+        tool: "prepare_email", kind: "crm_send", requestId: requestIdFor(actor, "prepare_email", payload, str(input.requestId) || null),
+        payload, status: "prepared", expiresAt, planId: str(input.planId) || null, step: Number(input.step) || null,
+      });
+      if (claim.kind === "conflict") return failed("That request id was already used for something different.", "idempotency_conflict");
+      if (claim.kind === "repeat" && claim.status !== "prepared") return failed(`That same email was just tried and is ${claim.status}.`, `action_${claim.status}`);
+      const names = chosen.map((c) => c.name);
+      return {
+        status: "needs_approval",
+        message: `Ready to email this video to ${names.join(", ")} through BoldTrail. Subject: "${subject}". Nothing has gone out yet. Send ${names.length === 1 ? "this email" : `these ${names.length} emails`}? This expires in ${PUBLISH_CONFIRM_MINUTES} minutes.`,
+        actionId: claim.actionId,
+        // Exactly what will go out. Show these words; don't substitute others.
+        data: { actionId: claim.actionId, to: names, subject, note, video: { id: videoId, url: video.video_url }, expiresAt },
+      };
+    },
+  },
+  {
+    name: "confirm_email",
+    scope: "contacts:email",
+    description: "Step 2: sends a prepared email (actionId) to the chosen contacts, only after the user said send to that exact list, subject and note. Works once; expires 30 minutes after it was prepared.",
+    input: { type: "object", properties: { actionId: { type: "string" } }, required: ["actionId"] },
+    async run(actor, ctx, input) {
+      const admin = createAdminClient();
+      const { data } = await admin.from("agent_actions").select("id, kind, tool, status, payload, expires_at").eq("id", str(input.actionId)).eq("user_id", actor.userId).maybeSingle();
+      const a = data as { id: string; kind: string; tool: string; status: string; payload: { videoId: string; subject: string; note: string; contacts: { id: string; name: string; email: string }[] }; expires_at: string | null } | null;
+      // An email confirmation can only ever carry out a prepared email.
+      if (!a || a.kind !== "crm_send" || a.tool !== "prepare_email") return failed("That isn't an email waiting for confirmation.", "not_found");
+      if (a.status === "succeeded") return ok("Already sent.", undefined, { actionId: a.id });
+      if (a.status !== "prepared") return failed(`That email is ${a.status}.`, `action_${a.status}`);
+      if (a.expires_at && Date.parse(a.expires_at) < Date.now()) {
+        await admin.from("agent_actions").update({ status: "expired" }).eq("id", a.id).eq("status", "prepared");
+        return failed("That confirmation expired. Prepare the email again.", "action_expired");
+      }
+      if ((await staffLimits(actor.userId))?.emails === false) return failed(STAFF_NO_EMAIL, "staff_access");
+      // prepared → running, once: a second confirm can't send twice.
+      const { data: claimed } = await admin.from("agent_actions")
+        .update({ status: "running", confirmed_via: "confirm_tool", updated_at: new Date().toISOString() })
+        .eq("id", a.id).eq("status", "prepared").select("id").maybeSingle();
+      if (!claimed) return failed("That email is already being sent.", "action_running");
+      const r = await sendVideoEmail(admin, { id: actor.userId, email: await userEmail(actor.userId) }, a.payload);
+      await finishAction(a.id, r.status < 400 ? "succeeded" : "failed", r.body);
+      const results = (r.body.results ?? []) as { name: string; sent: boolean; via?: string }[];
+      const sent = results.filter((x) => x.sent).map((x) => x.name);
+      const missed = results.filter((x) => !x.sent).map((x) => x.name);
+      const viaBt = results.every((x) => x.via === "boldtrail");
+      return {
+        ...(r.status < 400
+          ? ok(`Sent ${sent.length} ${sent.length === 1 ? "email" : "emails"}${viaBt ? " through BoldTrail" : ""}${missed.length ? `. Not sent: ${missed.join(", ")}` : ""}.${viaBt ? " Each is logged on the contact." : ""}`, { sent, notSent: missed }, { actionId: a.id })
+          : failed(String(r.body.error ?? "Nothing could be sent."), "send_failed")),
+        audit: { videoId: a.payload.videoId, approvalState: "confirmed" },
       };
     },
   },

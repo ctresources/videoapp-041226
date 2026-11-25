@@ -270,10 +270,48 @@ describe("plan_spark builds only what the account can run", () => {
     expect(needsPlace(ctx({ allowance: { isRealAdmin: true } as never }))).toBe(false);
     expect(needsPlace(ctx({ allowance: { sparkreelsMode: true } as never }))).toBe(false);
   });
-  it("a named time becomes a schedule step; CRM follow-up is coming soon (V1.1)", async () => {
+  it("a named time becomes a schedule step", async () => {
     const { buildPlan } = await import("@/lib/agent/planner");
-    const p = buildPlan({ ...intent, when: "2030-01-04T09:00", crmFollowUp: true }, ctx());
+    const p = buildPlan({ ...intent, when: "2030-01-04T09:00" }, ctx());
     expect(p.steps.some((s) => s.tool === "schedule_video" && s.needsConfirm)).toBe(true);
-    expect(p.steps.find((s) => s.tool === "send_followup")?.comingSoon).toBe(true);
+  });
+  it("CRM follow-up with BoldTrail connected: an email step that needs its own confirmation (2026-11-25)", async () => {
+    const { buildPlan, summarize } = await import("@/lib/agent/planner");
+    const p = buildPlan({ ...intent, crmFollowUp: true, crmStatus: 2, crmType: null }, ctx({ boldtrail: true }));
+    const step = p.steps.find((s) => s.tool === "email_contacts");
+    expect(step?.title).toBe("Email it to your Closed contacts in BoldTrail (you pick who and confirm)");
+    expect(step?.needsConfirm).toBe(true);
+    expect(step?.comingSoon).toBeFalsy();
+    expect(step?.input).toMatchObject({ status: 2 });
+    expect(summarize(p.steps, p.totals, [], [])).toContain("emailing contacts always need their own confirmation");
+  });
+  it("CRM follow-up without BoldTrail: no step, a note to connect it", async () => {
+    const { buildPlan } = await import("@/lib/agent/planner");
+    const p = buildPlan({ ...intent, crmFollowUp: true }, ctx({ boldtrail: false }));
+    expect(p.steps.some((s) => s.tool === "email_contacts")).toBe(false);
+    expect(p.notes.join(" ")).toContain("connect BoldTrail");
+  });
+  it("approving a plan never authorizes the email step", async () => {
+    const { planAuthorizes } = await import("@/lib/agent/approvals");
+    const step: PlanStep = { n: 3, tool: "email_contacts", title: "", input: {}, usesVideo: false, needsConfirm: true };
+    const plan = { status: "approved", steps: [step], approval_expires_at: null } as unknown as PlanRow;
+    expect(planAuthorizes(plan, 3, "email_contacts").ok).toBe(false);
+  });
+  it("status and type words from the goal become the BoldTrail filter", async () => {
+    const { crmWanted, contactsPhrase } = await import("@/lib/agent/planner");
+    expect(crmWanted("closed", "seller")).toEqual({ crmStatus: 2, crmType: "seller" });
+    expect(crmWanted("Under contract", null)).toEqual({ crmStatus: 5, crmType: null });
+    expect(crmWanted("vip", "landlord")).toEqual({ crmStatus: null, crmType: null });
+    expect(contactsPhrase(2, "seller")).toBe("your Closed seller contacts");
+    expect(contactsPhrase(null, null)).toBe("your contacts");
+  });
+});
+
+describe("guard: emailing contacts", () => {
+  it("an older connection without the new permission is told how to add it", async () => {
+    const { guard } = await import("@/lib/agent/guard");
+    const r = guard(actor(), ctx(), "confirm_email", "contacts:email");
+    expect(r?.code).toBe("scope_missing");
+    expect(r?.message).toContain("Disconnect");
   });
 });

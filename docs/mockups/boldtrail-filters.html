@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BoldTrail Filters</title>
+<style>
+  :root { --ink:#1f1a14; --muted:#6b6257; --faint:#9a9083; --rule:#e8dfd2; --paper:#f7f3ec; --field:#fdfbf7; --amber:#A3660F; --amber-btn:#e8a33d; --tint:#fbf1e1; --chip:#fdba74; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; padding:28px 16px 60px; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 22px; font-size: 15px; }
+  .label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--amber); margin: 26px 0 8px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .card { background:#fff; border:1px solid var(--rule); border-radius: 16px; padding: 18px; height: 100%; }
+  .card h2 { font-size: 17px; margin: 0 0 12px; }
+  .step { font-size: 13px; font-weight: 700; color: var(--ink); margin: 0 0 8px; }
+  .filters { display:flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  select, .input { border:1px solid var(--rule); background: var(--field); border-radius: 10px; padding: 7px 10px; font-size: 14px; color: var(--ink); }
+  select { min-width: 150px; }
+  select.on { border-color: var(--amber); background: var(--tint); font-weight: 600; }
+  .input { width: 100%; padding-left: 30px; position: relative; }
+  .search { position: relative; }
+  .search svg { position:absolute; left: 10px; top: 50%; transform: translateY(-50%); }
+  .list { border:1px solid var(--rule); border-radius: 12px; margin-top: 6px; overflow: hidden; }
+  .row { display:flex; align-items:center; gap: 10px; padding: 8px 12px; font-size: 14px; border-top: 1px solid var(--rule); }
+  .row:first-child { border-top: 0; }
+  .row:hover { background: #fff7ed; }
+  .row .n { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .e { color: var(--muted); font-size: 12.5px; }
+  .tag { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; background: #f1ece4; color: var(--muted); white-space: nowrap; }
+  .tag.closed { background: #eaf3ea; color: #2f6b34; }
+  .row input { accent-color: #ea580c; width: 15px; height: 15px; }
+  .more { padding: 8px 12px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--rule); background: var(--field); }
+  .chips { display:flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+  .chip { border:1px solid var(--chip); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; background:#fff; }
+  .count { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  .note { font-size: 13px; color: var(--muted); margin-top: 12px; }
+  .chat { display:flex; flex-direction: column; gap: 10px; font-size: 14.5px; }
+  .me, .ai { border-radius: 14px; padding: 10px 13px; max-width: 92%; }
+  .me { align-self: flex-end; background: #1f1a14; color: #fff; }
+  .ai { align-self: flex-start; background: #f4efe7; }
+  .ai ol { margin: 6px 0 0; padding-left: 20px; }
+  .ai .box { background:#fff; border:1px solid var(--rule); border-radius: 10px; padding: 8px 10px; margin-top: 8px; font-size: 13.5px; }
+  .allow { border:1px solid var(--rule); border-radius: 12px; overflow: hidden; }
+  .allow div { padding: 9px 12px; font-size: 14.5px; border-top: 1px solid var(--rule); }
+  .allow div:first-child { border-top: 0; }
+  .allow .new { background: var(--tint); font-weight: 600; }
+  .ok { color: #047857; font-weight: 700; margin-right: 6px; }
+  .newpill { font-size: 10.5px; font-weight: 700; background: var(--amber-btn); color:#fff; border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BoldTrail filters and AI follow-up</h1>
+  <p class="sub">Mockup only. Left: the people box with filters, used in Email it, the Share Kit blog email and the newsletter. Right: how a follow-up looks in an AI app.</p>
+
+  <div class="label">1 · People box with filters</div>
+  <div class="grid">
+    <div class="card">
+      <h2>Before you type</h2>
+      <p class="step">3 · People from BoldTrail · up to 10</p>
+      <div class="filters">
+        <select class="on" aria-label="Status"><option>Status: Closed</option></select>
+        <select aria-label="Type"><option>Type: Any</option></select>
+      </div>
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9a9083" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" placeholder="Type a name or email" aria-label="Search">
+      </div>
+      <div class="list">
+        <label class="row"><input type="checkbox" checked><span class="n">Maria Alvarez</span><span class="e">maria.a@gmail.com</span><span class="tag closed">Closed · Seller</span></label>
+        <label class="row"><input type="checkbox" checked><span class="n">Tom &amp; Jen Becker</span><span class="e">tbecker@comcast.net</span><span class="tag closed">Closed · Buyer</span></label>
+        <label class="row"><input type="checkbox"><span class="n">Dana Cho</span><span class="e">dana.cho@outlook.com</span><span class="tag closed">Closed · Buyer</span></label>
+        <label class="row"><input type="checkbox"><span class="n">Ray Donnelly</span><span class="e">ray.d@yahoo.com</span><span class="tag closed">Closed · Seller</span></label>
+        <label class="row"><input type="checkbox"><span class="n">Priya Evans</span><span class="e">priya.evans@gmail.com</span><span class="tag closed">Closed · Buyer</span></label>
+        <div class="more">Showing 25 of 61 · type to narrow</div>
+      </div>
+      <div class="chips"><span class="chip">Maria Alvarez ✕</span><span class="chip">Tom &amp; Jen Becker ✕</span></div>
+      <p class="count">2 of 10 picked</p>
+    </div>
+
+    <div class="card">
+      <h2>Typing with a filter on</h2>
+      <p class="step">3 · People from BoldTrail · up to 10</p>
+      <div class="filters">
+        <select class="on" aria-label="Status"><option>Status: Closed</option></select>
+        <select class="on" aria-label="Type"><option>Type: Seller</option></select>
+      </div>
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9a9083" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" value="ra" aria-label="Search">
+      </div>
+      <div class="list">
+        <label class="row"><input type="checkbox"><span class="n">Ray Donnelly</span><span class="e">ray.d@yahoo.com</span><span class="tag closed">Closed · Seller</span></label>
+        <label class="row"><input type="checkbox"><span class="n">Rachel Grant</span><span class="e">rgrant@gmail.com</span><span class="tag closed">Closed · Seller</span></label>
+        <div class="more">2 found</div>
+      </div>
+      <p class="note"><b>Status:</b> Any, New, Client, Closed, Sphere, Active, Under contract, Prospect.<br><b>Type:</b> Any, Buyer, Seller, Renter, Agent, Vendor.<br>With both on Any, it works as today: type to search.</p>
+    </div>
+  </div>
+
+  <div class="label">2 · Follow-up from an AI app (ChatGPT, Claude, Grok…)</div>
+  <div class="grid">
+    <div class="card">
+      <h2>In the chat</h2>
+      <div class="chat">
+        <div class="me">Make a holiday video and email it to my closed BoldTrail contacts.</div>
+        <div class="ai">Here's the plan:
+          <ol><li>Write the script</li><li>Make the video (uses 1 video)</li><li>Email it to your Closed contacts in BoldTrail (you pick who and confirm)</li></ol>
+        </div>
+        <div class="me">Approve.</div>
+        <div class="ai">Your video is ready. You have 61 Closed contacts. Who should get it? Up to 10.
+          <div class="box">Maria Alvarez · Tom &amp; Jen Becker · Dana Cho · Ray Donnelly · Priya Evans … (25 shown)</div>
+        </div>
+        <div class="me">Maria, the Beckers and Dana.</div>
+        <div class="ai">Ready to send. Nothing has gone out yet.
+          <div class="box"><b>To:</b> Maria Alvarez, Tom &amp; Jen Becker, Dana Cho<br><b>Subject:</b> Happy holidays from my family to yours<br><b>Note:</b> Hi {first name}, I made this little video for you…</div>
+          Send these 3 emails?
+        </div>
+        <div class="me">Send.</div>
+        <div class="ai">Sent 3 emails through your BoldTrail. Each is logged on the contact.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Allow page: one new permission</h2>
+      <div class="allow">
+        <div><span class="ok">✓</span>See your plan, videos left and connected accounts</div>
+        <div><span class="ok">✓</span>Plan Sparks (creates nothing)</div>
+        <div><span class="ok">✓</span>Write scripts, blogs and social copy</div>
+        <div><span class="ok">✓</span>Make videos (uses your plan's videos)</div>
+        <div><span class="ok">✓</span>Check videos and drafts</div>
+        <div><span class="ok">✓</span>Ask to publish or schedule (you confirm each one)</div>
+        <div class="new"><span class="ok">✓</span>Ask to email your BoldTrail contacts (you confirm each send)<span class="newpill">NEW</span></div>
+      </div>
+      <p class="note">AI apps already connected ask for this once. Approving the plan never sends an email. Only "Send" on the exact list does, up to 10 people, once.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

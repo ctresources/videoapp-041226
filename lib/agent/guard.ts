@@ -36,6 +36,14 @@ export function guard(actor: AgentActor, ctx: AgentContext, tool: string, scope:
     return denied("That isn't available from this connection. Open SparkReels to do it.", "not_in_profile");
   }
   if (!actor.scopes.includes(scope)) {
+    // Added after the first connections (2026-11-25). An approved app skips
+    // the Allow page on a plain reconnect, so the way to add it is Disconnect.
+    if (scope === "contacts:email") {
+      return denied(
+        "Emailing contacts needs one more permission. In SparkReels, open Settings → AI connections, press Disconnect on this app, then connect it again and press Allow.",
+        "scope_missing",
+      );
+    }
     return denied(`This connection wasn't given permission for that. Reconnect and allow "${scope}".`, "scope_missing");
   }
   return null;

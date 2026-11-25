@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decryptToken } from "@/lib/crypto/tokens";
+import { hasFilter, matchesFilter, statusLabel, typeLabel, type BtFilter, type FoundContact } from "@/lib/boldtrail/filters";
+
+export { cleanFilter, type BtFilter, type FoundContact } from "@/lib/boldtrail/filters";
 
 /**
  * BoldTrail (kvCORE) Public API v2, with the agent's own API token
@@ -83,45 +86,78 @@ export async function findContactByEmail(token: string, email: string): Promise<
 }
 
 /**
- * Contacts whose first name, last name or email starts with what the agent
- * typed (2026-10-24, the search box in the send box). BoldTrail's contacts
- * list takes filter[first_name], filter[last_name] and filter[email], each an
- * exact match or a prefix (read off apidocs.kvcore.com). "Dan Ok" searches
- * first name Dan and last name Ok together. Only contacts with an email, up
- * to 8.
+ * Contacts by name or email, by Status and Type, or both (2026-10-24 search,
+ * 2026-11-25 filters). BoldTrail's contacts list takes filter[first_name],
+ * filter[last_name] and filter[email], each an exact match or a prefix, plus
+ * filter[status][] and filter[leadtype][]. "Dan Ok" searches first name Dan
+ * and last name Ok together. Only contacts with an email: up to 8 for a plain
+ * search, up to 25 with a filter. `total` is BoldTrail's count when it gives
+ * one (a filter with no typing).
  */
-export async function searchContacts(token: string, q: string): Promise<{ id: string; name: string; email: string }[]> {
+export async function findContacts(
+  token: string,
+  q: string,
+  filter: BtFilter = {},
+): Promise<{ contacts: FoundContact[]; total: number | null }> {
   const term = q.trim().replace(/\s+/g, " ").slice(0, 60);
-  if (term.length < 2) return [];
+  const filtered = hasFilter(filter);
+  if (term.length < 2 && !filtered) return { contacts: [], total: null };
+  const cap = filtered ? 25 : 8;
   const enc = encodeURIComponent;
+  const f = [
+    ...(filter.status !== null && filter.status !== undefined ? [`filter[status][]=${filter.status}`] : []),
+    ...(filter.type ? [`filter[leadtype][]=${enc(filter.type)}`] : []),
+  ].join("&");
+  const tail = `${f ? `&${f}` : ""}&limit=${filtered ? 50 : 10}`;
   const parts = term.split(" ");
-  const paths = term.includes("@")
-    ? [`/contacts?filter[email]=${enc(term)}&limit=10`]
-    : parts.length >= 2
-      ? [
-          `/contacts?filter[first_name]=${enc(parts[0])}&filter[last_name]=${enc(parts.slice(1).join(" "))}&limit=10`,
-          `/contacts?filter[last_name]=${enc(term)}&limit=10`,
-        ]
-      : [
-          `/contacts?filter[first_name]=${enc(term)}&limit=10`,
-          `/contacts?filter[last_name]=${enc(term)}&limit=10`,
-          `/contacts?filter[email]=${enc(term)}&limit=10`,
-        ];
+  const paths = term.length < 2
+    ? [`/contacts?${f}&limit=50`]
+    : term.includes("@")
+      ? [`/contacts?filter[email]=${enc(term)}${tail}`]
+      : parts.length >= 2
+        ? [
+            `/contacts?filter[first_name]=${enc(parts[0])}&filter[last_name]=${enc(parts.slice(1).join(" "))}${tail}`,
+            `/contacts?filter[last_name]=${enc(term)}${tail}`,
+          ]
+        : [
+            `/contacts?filter[first_name]=${enc(term)}${tail}`,
+            `/contacts?filter[last_name]=${enc(term)}${tail}`,
+            `/contacts?filter[email]=${enc(term)}${tail}`,
+          ];
   const results = await Promise.all(paths.map((p) => call(token, "GET", p).catch(() => null)));
   const seen = new Set<string>();
-  const out: { id: string; name: string; email: string }[] = [];
+  const out: FoundContact[] = [];
+  let total: number | null = null;
   for (const r of results) {
     if (!r?.ok) continue;
+    if (term.length < 2) {
+      const j = r.json as { total?: unknown; meta?: { total?: unknown } } | null;
+      const t = Number(j?.total ?? j?.meta?.total);
+      if (Number.isFinite(t)) total = t;
+    }
     for (const c of contactsIn(r.json)) {
+      const row = c as Contact & Record<string, unknown>;
       const id = String(c.id);
       const email = (c.email ?? "").trim();
-      if (!email || seen.has(id)) continue;
+      if (!email || seen.has(id) || !matchesFilter(row, filter)) continue;
       seen.add(id);
-      out.push({ id, email, name: (c.name || [c.first_name, c.last_name].filter(Boolean).join(" ") || email).trim() });
-      if (out.length >= 8) return out;
+      const status = statusLabel(row.status);
+      const type = typeLabel(row.deal_type ?? row.leadtype ?? row.lead_type);
+      out.push({
+        id, email,
+        name: (c.name || [c.first_name, c.last_name].filter(Boolean).join(" ") || email).trim(),
+        ...(status && { status }),
+        ...(type && { type }),
+      });
+      if (out.length >= cap) return { contacts: out, total };
     }
   }
-  return out;
+  return { contacts: out, total };
+}
+
+/** The plain name-or-email search (2026-10-24), as before: up to 8. */
+export async function searchContacts(token: string, q: string): Promise<FoundContact[]> {
+  return (await findContacts(token, q)).contacts;
 }
 
 /**

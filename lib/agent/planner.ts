@@ -8,6 +8,7 @@ import { planHash, type PlanStep } from "@/lib/agent/approvals";
 import { canUseDigitalTwin, canUseTwinInFullVideo } from "@/lib/utils/plan-features";
 import type { AgentActor } from "@/lib/agent/types";
 import type { PlanVisuals } from "@/lib/agent/plan-visuals";
+import { BT_STATUSES, cleanFilter, statusLabel } from "@/lib/boldtrail/filters";
 
 /**
  * plan_spark: the brain (plan revision 5). A goal ("Market my listing",
@@ -53,13 +54,16 @@ export interface Intent {
   /** Local wall time, "YYYY-MM-DDTHH:mm", when the goal names one. */
   when: string | null;
   crmFollowUp: boolean;
+  /** Which BoldTrail contacts the goal names (2026-11-25): a status word and a type. */
+  crmStatus?: number | null;
+  crmType?: string | null;
   clarify: string | null;
   /** What to show on screen, and the agent's own images (copies in their storage). */
   visuals?: PlanVisuals;
 }
 
 const INTENT_SYSTEM = `You read a real estate agent's goal and return what content they want. You do not write the content.
-Return ONLY JSON: {"topic": "...", "city": "town named in the goal" | null, "state": "2-letter state" | null, "kind": "video" | "blog_only", "wantsBlog": bool, "wantsSocialCopy": bool, "isListing": bool, "platforms": ["youtube","instagram","facebook","linkedin","tiktok","x","threads","google_business"], "when": "YYYY-MM-DDTHH:mm" | null, "crmFollowUp": bool, "clarify": "one short question" | null}
+Return ONLY JSON: {"topic": "...", "city": "town named in the goal" | null, "state": "2-letter state" | null, "kind": "video" | "blog_only", "wantsBlog": bool, "wantsSocialCopy": bool, "isListing": bool, "platforms": ["youtube","instagram","facebook","linkedin","tiktok","x","threads","google_business"], "when": "YYYY-MM-DDTHH:mm" | null, "crmFollowUp": bool, "crmStatus": "new" | "client" | "closed" | "sphere" | "active" | "under contract" | "prospect" | null, "crmType": "buyer" | "seller" | "renter" | "agent" | "vendor" | null, "clarify": "one short question" | null}
 - topic: ONLY the subject of the video in plain words, including the town if given. For "market my listing", the listing's address or description if given. Leave out instructions about planning, approval, format, length, tone or who is on screen.
 - city, state: only a place named in the goal itself, never the agent's market. Give the state only if the goal says it or the town is unmistakable; otherwise null.
 - Default kind "video".
@@ -68,6 +72,7 @@ Return ONLY JSON: {"topic": "...", "city": "town named in the goal" | null, "sta
 - platforms: only ones they named; [] means "where they're connected".
 - when: only if they named a day or time. Today is {today} in {tz}.
 - crmFollowUp: true if they mention their database, past clients, contacts, BoldTrail, GHL or follow-up.
+- crmStatus, crmType: only when they name which contacts ("closed contacts" → "closed", "my sphere" → "sphere", "past sellers" → crmStatus "closed", crmType "seller"). Otherwise null.
 - clarify: only if the goal is too vague to pick a topic.
 ${FAIR_HOUSING_SHORT}`;
 
@@ -245,11 +250,26 @@ export async function readIntent(goal: string, ctx: AgentContext): Promise<Inten
     platforms: Array.isArray(o.platforms) ? (o.platforms as unknown[]).map(String) : [],
     when: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(str(o.when)) ? str(o.when) : null,
     crmFollowUp: o.crmFollowUp === true,
+    ...crmWanted(o.crmStatus, o.crmType),
     clarify: str(o.clarify) || null,
   };
 }
 
 const label = (p: string) => (p === "youtube" ? "YouTube" : partnerPlatform(p)?.label ?? p);
+
+/** The intent's status and type words as the BoldTrail filter (only known values). */
+export function crmWanted(status: unknown, type: unknown): { crmStatus: number | null; crmType: string | null } {
+  const word = String(status ?? "").trim().toLowerCase();
+  const code = BT_STATUSES.find((s) => s.label.toLowerCase() === word)?.code ?? null;
+  const f = cleanFilter({ status: code, type });
+  return { crmStatus: f.status ?? null, crmType: f.type ?? null };
+}
+
+/** "your Closed seller contacts", "your Sphere contacts", "your contacts". */
+export function contactsPhrase(status: number | null | undefined, type: string | null | undefined): string {
+  const s = status !== null && status !== undefined ? statusLabel(status) : null;
+  return ["your", s, type, "contacts"].filter(Boolean).join(" ");
+}
 
 /**
  * The place a Spark is about: the town in the goal, else the saved market
@@ -370,8 +390,25 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
     });
     if (intent.when && !tz) notes.push("Your time zone isn't set, so you'll be asked for it before scheduling.");
   }
+  /**
+   * Email it to BoldTrail contacts (2026-11-25, the owner's approved plan,
+   * V1.1). Approval never sends: once the video is ready, find_contacts lists
+   * them, the person picks up to 10, prepare_email shows the exact email and
+   * confirm_email sends it, once. Email it's own sending code does the work.
+   */
   if (intent.crmFollowUp) {
-    steps.push({ n: n++, tool: "send_followup", title: "Follow up with your contacts (coming soon)", usesVideo: false, needsConfirm: true, comingSoon: true, input: {} });
+    if (!ctx.boldtrail) {
+      notes.push("To email your contacts, connect BoldTrail in SparkReels Settings first.");
+    } else if (!makeVideo) {
+      notes.push("Emailing your contacts works with a finished video from SparkReels.");
+    } else {
+      steps.push({
+        n: n++, tool: "email_contacts",
+        title: `Email it to ${contactsPhrase(intent.crmStatus, intent.crmType)} in BoldTrail (you pick who and confirm)`,
+        usesVideo: false, needsConfirm: true,
+        input: { videoFromStep: 2, ...(intent.crmStatus !== null && intent.crmStatus !== undefined && { status: intent.crmStatus }), ...(intent.crmType && { type: intent.crmType }) },
+      });
+    }
   }
 
   const videosNeeded = steps.filter((s) => s.usesVideo).length;
@@ -394,7 +431,9 @@ export function summarize(steps: PlanStep[], totals: { videosNeeded: number; vid
   lines.push(totals.videosNeeded
     ? `Uses ${totals.videosNeeded} of your ${totals.videosLeft === "unlimited" ? "unlimited" : totals.videosLeft} videos left.`
     : "Uses none of your videos.");
-  lines.push("No script, video or post is created until you approve. Posting always needs its own confirmation.");
+  lines.push(steps.some((s) => s.tool === "email_contacts")
+    ? "No script, video or post is created until you approve. Posting and emailing contacts always need their own confirmation."
+    : "No script, video or post is created until you approve. Posting always needs its own confirmation.");
   if (notes.length) lines.push(...notes);
   if (upgrade.length) lines.push(`Upgrade opportunity: ${upgrade.join(" ")}`);
   lines.push("Approve Plan · Edit Plan · Cancel");

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { Loader2, Search, Send, UserPlus, X } from "lucide-react";
+import { BT_STATUSES, BT_TYPES, contactTag, typeLabel } from "@/lib/boldtrail/filters";
 
 /**
  * Send through BoldTrail, for a blog post's email and a newsletter
@@ -20,7 +21,7 @@ import { Loader2, Search, Send, UserPlus, X } from "lucide-react";
  * used on its own by Email it (/video-email).
  */
 
-export type BtContact = { id: string; name: string; email: string };
+export type BtContact = { id: string; name: string; email: string; status?: string; type?: string };
 type Result = { name: string; sent: boolean };
 export const BT_MAX = 10;
 const MAX = BT_MAX;
@@ -59,6 +60,12 @@ export function BoldTrailPeople({
   const [newEmail, setNewEmail] = useState("");
   const [adding, setAdding] = useState(false);
   const [saveToBt, setSaveToBt] = useState(false);
+  // Status and Type (2026-11-25, the owner's approved mockup): with either
+  // set, matching contacts show at once with tick boxes; typing narrows them.
+  const [statusF, setStatusF] = useState("");
+  const [typeF, setTypeF] = useState("");
+  const [total, setTotal] = useState<number | null>(null);
+  const filtered = statusF !== "" || typeF !== "";
   const seq = useRef(0);
   // The latest list, so an add after an await never works from a stale copy.
   const toRef = useRef(to);
@@ -67,24 +74,34 @@ export function BoldTrailPeople({
   // Search BoldTrail as they type: a short pause, and only the latest answer counts.
   useEffect(() => {
     const term = query.trim();
-    if (term.length < 2) { setFound([]); setSearching(false); return; }
+    if (term.length < 2 && !filtered) { setFound([]); setTotal(null); setSearching(false); return; }
     const mine = ++seq.current;
     setSearching(true);
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/boldtrail/search?q=${encodeURIComponent(term)}`);
+        const qs = new URLSearchParams({ q: term, ...(statusF !== "" && { status: statusF }), ...(typeF && { type: typeF }) });
+        const res = await fetch(`/api/boldtrail/search?${qs}`);
         const d = await res.json().catch(() => ({}));
         if (mine !== seq.current) return;
         if (!res.ok) throw new Error(d?.error || "Couldn't search BoldTrail.");
         setFound((d.contacts ?? []) as BtContact[]);
+        setTotal(typeof d.total === "number" ? d.total : null);
       } catch (err) {
-        if (mine === seq.current) { setFound([]); toast.error(err instanceof Error ? err.message : "Couldn't search BoldTrail."); }
+        if (mine === seq.current) { setFound([]); setTotal(null); toast.error(err instanceof Error ? err.message : "Couldn't search BoldTrail."); }
       } finally {
         if (mine === seq.current) setSearching(false);
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, statusF, typeF, filtered]);
+
+  /** A tick box in the filtered list: on adds, off removes. */
+  function toggle(c: BtContact) {
+    const now = toRef.current;
+    if (now.some((x) => x.id === c.id)) { onChange(now.filter((x) => x.id !== c.id)); return; }
+    if (now.length + extra >= MAX) { toast.error(`Up to ${MAX} people at a time.`); return; }
+    onChange([...now, c]);
+  }
 
   function add(c: BtContact) {
     const now = toRef.current;
@@ -138,8 +155,21 @@ export function BoldTrailPeople({
   const free = picks.filter((p) => !to.some((t) => t.id === p.id));
   const shown = found.filter((c) => !to.some((t) => t.id === c.id));
   const term = query.trim();
+  const select = "rounded-[10px] border px-2.5 py-1.5 text-[16px] text-spark-ink outline-none sm:text-[13.5px]";
   return (
     <>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <select aria-label="Status" value={statusF} onChange={(e) => setStatusF(e.target.value)}
+          className={`${select} ${statusF !== "" ? "border-[#A3660F] bg-spark-amber-tint font-semibold" : "border-spark-rule bg-[#fdfbf7]"}`}>
+          <option value="">Status: Any</option>
+          {BT_STATUSES.map((s) => <option key={s.code} value={String(s.code)}>Status: {s.label}</option>)}
+        </select>
+        <select aria-label="Type" value={typeF} onChange={(e) => setTypeF(e.target.value)}
+          className={`${select} ${typeF ? "border-[#A3660F] bg-spark-amber-tint font-semibold" : "border-spark-rule bg-[#fdfbf7]"}`}>
+          <option value="">Type: Any</option>
+          {BT_TYPES.map((t) => <option key={t} value={t}>Type: {typeLabel(t)}</option>)}
+        </select>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         {to.map((c) => (
           <span key={c.id} className="flex items-center gap-1.5 rounded-full border border-orange-300 bg-white px-2.5 py-1 text-[12.5px] text-spark-ink">
@@ -161,13 +191,13 @@ export function BoldTrailPeople({
               onFocus={() => setOpen(true)}
               onBlur={() => setTimeout(() => setOpen(false), 150)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") { e.preventDefault(); if (shown[0]) add(shown[0]); }
+                if (e.key === "Enter") { e.preventDefault(); if (shown[0]) { if (filtered) toggle(shown[0]); else add(shown[0]); } }
                 if (e.key === "Escape") setOpen(false);
               }}
               placeholder="Type a name or email"
               className={`${input} pl-8`}
             />
-            {open && term.length >= 2 && (
+            {open && !filtered && term.length >= 2 && (
               <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-72 overflow-y-auto rounded-xl border border-spark-rule bg-white shadow-lg">
                 {searching && shown.length === 0 && (
                   <p className="flex items-center gap-1.5 px-3 py-2 text-[13px] text-spark-ink-muted"><Loader2 size={13} className="animate-spin" /> Searching BoldTrail…</p>
@@ -180,6 +210,7 @@ export function BoldTrailPeople({
                     className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13.5px] hover:bg-orange-50">
                     <span className="min-w-0 truncate font-semibold text-spark-ink">{c.name}</span>
                     <span className="shrink-0 text-[12px] text-spark-ink-muted">{c.email}</span>
+                    {contactTag(c) && <span className="shrink-0 rounded-full bg-[#f1ece4] px-2 py-0.5 text-[11px] font-semibold text-spark-ink-muted">{contactTag(c)}</span>}
                   </button>
                 ))}
                 {!searching && (
@@ -198,6 +229,38 @@ export function BoldTrailPeople({
           </button>
         )}
       </div>
+      {filtered && (
+        <div className="mt-2 overflow-hidden rounded-xl border border-spark-rule bg-white">
+          {searching && found.length === 0 && (
+            <p className="flex items-center gap-1.5 px-3 py-2 text-[13px] text-spark-ink-muted"><Loader2 size={13} className="animate-spin" /> Searching BoldTrail…</p>
+          )}
+          {!searching && found.length === 0 && (
+            <p className="px-3 py-2 text-[13px] text-spark-ink-muted">No BoldTrail contacts match.</p>
+          )}
+          <div className="max-h-72 overflow-y-auto">
+            {found.map((c) => {
+              const on = to.some((t) => t.id === c.id);
+              return (
+                <label key={c.id} className="flex cursor-pointer items-center gap-2.5 border-t border-spark-rule px-3 py-2 text-[13.5px] first:border-t-0 hover:bg-orange-50">
+                  <input type="checkbox" checked={on} onChange={() => toggle(c)} className="h-3.5 w-3.5 shrink-0 accent-orange-600" />
+                  <span className="min-w-0 flex-1 truncate font-semibold text-spark-ink">{c.name}</span>
+                  <span className="hidden shrink-0 text-[12px] text-spark-ink-muted sm:inline">{c.email}</span>
+                  {contactTag(c) && <span className="shrink-0 rounded-full bg-[#eaf3ea] px-2 py-0.5 text-[11px] font-semibold text-[#2f6b34]">{contactTag(c)}</span>}
+                </label>
+              );
+            })}
+          </div>
+          {found.length > 0 && (
+            <p className="border-t border-spark-rule bg-[#fdfbf7] px-3 py-1.5 text-[12.5px] text-spark-ink-muted">
+              {term.length >= 2
+                ? `${found.length} found`
+                : total !== null && total > found.length
+                  ? `Showing ${found.length} of ${total} · type to narrow`
+                  : `Showing ${found.length}${found.length >= 25 ? " · type to narrow" : ""}`}
+            </p>
+          )}
+        </div>
+      )}
       {newOpen && (
         <div className="mt-2 flex flex-wrap items-center gap-2 rounded-[10px] border border-orange-200 bg-white p-2">
           <input type="text" name="boldtrail-new-name" autoComplete="off" data-1p-ignore data-lpignore="true" value={newName}
