@@ -354,7 +354,11 @@ export default function ProjectEditorPage() {
     const slot = takeTwinConsentDone(1) ? 1 : takeTwinConsentDone(2) ? 2 : 0;
     if (!slot) return;
     void fetch(`/api/avatar/digital-twin${slot === 2 ? "?slot=2" : ""}`, { method: "PATCH" })
-      .then(() => toast.success("Digital Twin approved. Press Spark It to make your video."))
+      // HeyGen is asked first (2026-11-25): leaving their page early isn't an approval.
+      .then(async (r) => {
+        if (r.ok) { toast.success("Digital Twin approved. Press Spark It to make your video."); return; }
+        toast.error((await r.json().catch(() => ({})))?.error || "Not approved yet. Finish the approval, then try again.");
+      })
       .catch(() => {});
   }, []);
   useEffect(() => {
@@ -1961,6 +1965,24 @@ export default function ProjectEditorPage() {
     }
   }
 
+  /** The twin still needs its approval: say so, with Approve now one press away. */
+  function askTwinApproval(slot: unknown) {
+    twinConsentSlot.current = slot === 2 ? 2 : 1;
+    setEditorStep(3);
+    toast((t) => (
+      <span className="flex flex-col gap-2 text-sm">
+        <span>Your Digital Twin needs your one-time approval. Approve it, then press Spark It again. Nothing was charged.</span>
+        <button
+          type="button"
+          className="self-start rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white"
+          onClick={() => { toast.dismiss(t.id); void openTwinApproval(); }}
+        >
+          Approve now
+        </button>
+      </span>
+    ), { duration: 20000 });
+  }
+
   async function handleGenerateVideo(opts?: { remake?: boolean }) {
     if (readyBlockers > 0) {
       toast.error("One thing above still needs you before this video can be made.");
@@ -2039,11 +2061,15 @@ export default function ProjectEditorPage() {
             ...(selectedLookId && baseTwinIds.includes(selectedLookId) && { lookId: selectedLookId }),
           }),
         });
-        const data = (await built.json().catch(() => ({}))) as { videoId?: string; renderJobId?: string; error?: string; code?: string; tier?: string };
+        const data = (await built.json().catch(() => ({}))) as { videoId?: string; renderJobId?: string; error?: string; code?: string; tier?: string; slot?: number };
         if (!built.ok) {
           if (built.status === 402 && data.code === "out_of_videos") {
             setOutOfVideos({ kind: "short", tier: data.tier ?? "free" });
             setEditorStep(3);
+            return;
+          }
+          if (built.status === 409 && data.code === "twin_consent_required") {
+            askTwinApproval(data.slot);
             return;
           }
           throw new Error(data.error || `Video generation failed (${built.status})`);
@@ -2201,20 +2227,7 @@ export default function ProjectEditorPage() {
         // The Digital Twin's one-time approval at HeyGen (2026-10-23): say so,
         // with the approval page one press away, instead of "couldn't render".
         if (res.status === 409 && err?.code === "twin_consent_required") {
-          twinConsentSlot.current = err?.slot === 2 ? 2 : 1;
-          setEditorStep(3);
-          toast((t) => (
-            <span className="flex flex-col gap-2 text-sm">
-              <span>Your Digital Twin needs your one-time approval. Approve it, then press Spark It again. Nothing was charged.</span>
-              <button
-                type="button"
-                className="self-start rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white"
-                onClick={() => { toast.dismiss(t.id); void openTwinApproval(); }}
-              >
-                Approve now
-              </button>
-            </span>
-          ), { duration: 20000 });
+          askTwinApproval(err?.slot);
           return;
         }
         throw new Error((err?.error as string) || `Video generation failed (${res.status})`);

@@ -639,8 +639,13 @@ function DigitalTwinCreator({
   // nobody has to remember to press "I've approved it".
   useEffect(() => {
     if (!takeTwinConsentDone(slot)) return;
+    // HeyGen is asked first (2026-11-25): leaving their page early isn't an approval.
     void fetch(`/api/avatar/digital-twin${q}`, { method: "PATCH" })
-      .then(() => { toast.success("Digital Twin approved. It's ready for your videos."); void checkStatus(); })
+      .then(async (r) => {
+        if (r.ok) toast.success("Digital Twin approved. It's ready for your videos.");
+        else toast.error((await r.json().catch(() => ({})))?.error || "Not approved yet. Finish the approval, then try again.");
+        void checkStatus();
+      })
       .catch(() => {});
   }, [checkStatus, q, slot]);
 
@@ -836,7 +841,8 @@ function DigitalTwinCreator({
             (2026-10-23), and a render refused again brings it back. */}
         <button
           onClick={async () => {
-            await fetch(`/api/avatar/digital-twin${q}`, { method: "PATCH" }).catch(() => {});
+            const r = await fetch(`/api/avatar/digital-twin${q}`, { method: "PATCH" }).catch(() => null);
+            if (r && !r.ok) toast.error((await r.json().catch(() => ({})))?.error || "Not approved yet. Finish the approval, then try again.");
             void checkStatus();
           }}
           className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 self-start"

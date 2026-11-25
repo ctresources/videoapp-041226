@@ -1142,6 +1142,35 @@ export async function getAvatarConsentUrl(
   return url;
 }
 
+/**
+ * The avatar group's approval at HeyGen: "accepted" once the person finished
+ * the approval page, otherwise "pending" or another word (2026-11-25, after
+ * Abby Vellucci's twin was marked approved in the app but was still pending
+ * at HeyGen, and Cinematic AI Avatar refused every scene). Null when HeyGen
+ * couldn't be asked or doesn't say, so callers never block on a lookup.
+ */
+export async function getAvatarGroupConsent(groupId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${HEYGEN_API}/v3/avatars/${encodeURIComponent(groupId)}`, {
+      headers: { "x-api-key": getApiKey() },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const status = (data?.data ?? data)?.consent_status;
+    return typeof status === "string" ? status : null;
+  } catch {
+    return null;
+  }
+}
+
+/** False only when HeyGen says the approval isn't finished; null when unknown. */
+export async function twinApprovedAtHeyGen(groupId: string | null | undefined): Promise<boolean | null> {
+  if (!groupId) return null;
+  const status = await getAvatarGroupConsent(groupId);
+  return status === null ? null : status === "accepted";
+}
+
 export interface BackgroundMusicTrack {
   id: string;
   name: string;

@@ -33,6 +33,7 @@ import { standardMaxWords } from "@/lib/utils/video-length";
 import { joinClipAudio, renderPhotoSlideshow, type VideoType } from "@/lib/api/ffmpeg-render";
 import { transcribeToWords } from "@/lib/utils/srt";
 import { lineIsWaiting } from "@/lib/video/render-queue";
+import { twinApprovedAtHeyGen } from "@/lib/api/heygen";
 import { announceVideoReady } from "@/lib/video/ready-notice";
 import {
   CINEMATIC_MAX_SCENES, MAX_LINE_WORDS, cleanPlace, makeCinematicShots, speechEnd,
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select(`id, role, subscription_tier, logo_url, location_city, heygen_digital_twin_look_id, heygen_twin2_look_id, twin_consent_needed, twin2_consent_needed, ${ALLOWANCE_SELECT}`)
+    .select(`id, role, subscription_tier, logo_url, location_city, heygen_digital_twin_look_id, heygen_twin2_look_id, heygen_digital_twin_group_id, heygen_twin2_group_id, twin_consent_needed, twin2_consent_needed, ${ALLOWANCE_SELECT}`)
     .eq("id", user.id)
     .single();
   const p = (profile ?? {}) as Record<string, unknown>;
@@ -78,15 +79,31 @@ export async function POST(req: NextRequest) {
 
   // Digital Twin only, approved: only a twin speaks in the agent's own voice.
   const twins = [
-    { id: p.heygen_digital_twin_look_id as string | null, ok: !p.twin_consent_needed },
-    { id: p.heygen_twin2_look_id as string | null, ok: !p.twin2_consent_needed },
-  ].filter((t): t is { id: string; ok: boolean } => !!t.id);
+    { id: p.heygen_digital_twin_look_id as string | null, ok: !p.twin_consent_needed, slot: 1 as const, group: p.heygen_digital_twin_group_id as string | null },
+    { id: p.heygen_twin2_look_id as string | null, ok: !p.twin2_consent_needed, slot: 2 as const, group: p.heygen_twin2_group_id as string | null },
+  ].filter((t): t is { id: string; ok: boolean; slot: 1 | 2; group: string | null } => !!t.id);
   if (twins.length === 0) {
     return NextResponse.json({ error: "Cinematic AI Avatar needs your Digital Twin. Make one in Settings.", code: "no_twin" }, { status: 400 });
   }
   const twin = twins.find((t) => t.id === body.lookId) ?? twins.find((t) => t.ok) ?? twins[0];
-  if (!twin.ok) {
-    return NextResponse.json({ error: "Approve your Digital Twin first.", code: "twin_consent" }, { status: 400 });
+  /**
+   * Approved in the app AND at HeyGen (2026-11-25): HeyGen refuses every
+   * cinematic shot of a twin whose approval it still has pending, which Abby
+   * Vellucci's was. Asked before anything is built; the editor offers
+   * Approve now, as for the other videos.
+   */
+  const consentNeeded = () => NextResponse.json(
+    {
+      error: "Your Digital Twin needs your one-time approval. Approve it, then press Spark It again. Nothing was charged.",
+      code: "twin_consent_required",
+      slot: twin.slot,
+    },
+    { status: 409 },
+  );
+  if (!twin.ok) return consentNeeded();
+  if ((await twinApprovedAtHeyGen(twin.group)) === false) {
+    await admin.from("profiles").update({ [twin.slot === 2 ? "twin2_consent_needed" : "twin_consent_needed"]: true }).eq("id", user.id);
+    return consentNeeded();
   }
 
   const videoType: VideoType | null = body.format === "youtube_16x9" ? "youtube_16x9" : body.format === "reel_9x16" ? "reel_9x16" : null;

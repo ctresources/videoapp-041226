@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createDigitalTwin, deleteAvatarLook, getAvatarLooks } from "@/lib/api/heygen";
+import { createDigitalTwin, deleteAvatarLook, getAvatarLooks, twinApprovedAtHeyGen } from "@/lib/api/heygen";
 import { notifyTwinRefused } from "@/lib/email";
 import { toTwinVideo, videoIsUpright } from "@/lib/utils/twin-video";
 import { canUseDigitalTwin, DIGITAL_TWIN_UPGRADE_MESSAGE } from "@/lib/utils/plan-features";
@@ -165,7 +165,18 @@ export async function GET(req: NextRequest) {
     // HeyGen refused); the look itself reads "completed" either way.
     const lookStatus = look?.status ?? "processing";
     const trained = lookStatus === "completed" || lookStatus === "active" || lookStatus === "pending_consent";
-    const status = trained && profile[c.consent] ? "pending_consent" : lookStatus;
+    // HeyGen's own word on the approval once trained (2026-11-25): the card
+    // clears by itself when the approval lands, and comes back for a twin
+    // marked approved that HeyGen still has pending. Unknown keeps the flag.
+    let needsApproval = !!profile[c.consent];
+    if (trained) {
+      const approved = await twinApprovedAtHeyGen(groupId);
+      if (approved !== null && approved === needsApproval) {
+        needsApproval = !approved;
+        await admin.from("profiles").update({ [c.consent]: needsApproval }).eq("id", user.id);
+      }
+    }
+    const status = trained && needsApproval ? "pending_consent" : lookStatus;
 
     // Keep stored look_id up to date
     if (look?.id && look.id !== storedLook) {
@@ -240,14 +251,23 @@ export async function DELETE(req: NextRequest) {
 
 /**
  * PATCH /api/avatar/digital-twin[?slot=2] — "I've approved it" in Settings
- * (2026-10-23). Clears that twin's approval flag; a render refused for
- * approval sets it again.
+ * (2026-10-23), and the return from HeyGen's approval page. Clears that
+ * twin's approval flag only when HeyGen agrees (2026-11-25): Abby Vellucci's
+ * twin was cleared here while HeyGen still had it pending. If HeyGen can't
+ * be asked, it clears as before; a refused render sets it again.
  */
 export async function PATCH(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const c = COLS[slotOf(req)];
-  await createAdminClient().from("profiles").update({ [c.consent]: false }).eq("id", user.id);
+  const admin = createAdminClient();
+  const { data } = await admin.from("profiles").select(c.group).eq("id", user.id).single();
+  const groupId = ((data ?? {}) as Record<string, unknown>)[c.group] as string | null;
+  if ((await twinApprovedAtHeyGen(groupId)) === false) {
+    await admin.from("profiles").update({ [c.consent]: true }).eq("id", user.id);
+    return NextResponse.json({ error: "Not approved yet. Finish the approval, then try again.", code: "not_approved" }, { status: 409 });
+  }
+  await admin.from("profiles").update({ [c.consent]: false }).eq("id", user.id);
   return NextResponse.json({ ok: true });
 }
