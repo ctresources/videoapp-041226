@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cinematic AI Avatar Mockup</title>
+<style>
+  :root { --ink:#2C2C2A; --muted:#6F6D64; --faint:#9B978A; --rule:#E3E0D7; --rule-dim:#D5D1C5; --paper:#F1EFE8; --amber:#BA7517; --amber-dark:#A3660F; --amber-tint:#FDF7EE; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: Inter, system-ui, sans-serif; background: var(--paper); color: var(--ink); padding: 24px 16px 60px; }
+  .card { max-width: 860px; margin: 0 auto; background:#fff; border:1px solid var(--rule); border-radius:18px; padding: 24px; }
+  h3 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
+  .sub { font-size: 14px; color: var(--faint); margin: 3px 0 20px; }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .12em; color: var(--amber-dark); margin: 0 0 9px; }
+  .tiles { display:grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .tile { border:1px solid var(--rule); background:#fff; border-radius: 10px; padding: 13px 12px; font-size: 14.5px; font-weight: 500; text-align:left; color: var(--ink); }
+  .tile.on { border: 1.5px solid var(--amber); background: var(--amber-tint); }
+  .new { display:inline-block; margin-left: 6px; font-size: 10.5px; font-weight: 700; color:#fff; background: var(--amber); border-radius: 999px; padding: 1px 7px; vertical-align: 2px; }
+  .hint { font-size: 13px; color: var(--faint); margin: 9px 0 0; }
+
+  .scenes { margin-top: 24px; border:1px solid var(--rule); border-radius: 14px; }
+  .scenes-head { display:flex; justify-content:space-between; align-items:center; padding: 14px 16px; border-bottom:1px solid var(--rule); gap: 12px; }
+  .scenes-head b { font-size: 16px; }
+  .scenes-head span { color: var(--faint); font-size: 14px; margin-left: 8px; }
+  .ghost { border:1px solid var(--rule); background:#fff; border-radius: 10px; padding: 8px 13px; font-size: 14px; font-weight: 600; color: var(--muted); cursor:pointer; white-space: nowrap; }
+  .scene { display:grid; grid-template-columns: 34px 1fr 240px; gap: 14px; align-items:center; padding: 13px 16px; border-top:1px solid var(--rule); }
+  .scene:first-of-type { border-top:0; }
+  .num { width: 30px; height: 30px; border-radius: 999px; background: var(--amber-tint); color: var(--amber-dark); font-weight: 700; font-size: 14px; display:grid; place-items:center; }
+  .line { font-size: 15px; line-height: 1.45; }
+  .place { display:flex; align-items:center; gap: 8px; border:1px solid var(--rule); border-radius: 10px; padding: 9px 11px; font-size: 14px; color: var(--ink); background:#fff; }
+  .place svg { flex-shrink: 0; color: var(--amber-dark); }
+  .more { display:block; width:100%; padding: 12px; border:0; border-top:1px solid var(--rule); background:#fff; color: var(--amber-dark); font-weight: 600; font-size: 14.5px; border-radius: 0 0 14px 14px; cursor:pointer; }
+
+  .foot { display:flex; justify-content:flex-end; margin-top: 22px; }
+  .cta { background: var(--amber); color:#fff; border:0; border-radius: 12px; padding: 13px 26px; font-size: 16px; font-weight: 700; }
+
+  @media (max-width: 760px) {
+    .tiles { grid-template-columns: 1fr 1fr; }
+    .scene { grid-template-columns: 34px 1fr; }
+    .scene .place { grid-column: 2; }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h3>Video setup</h3>
+  <p class="sub">A few choices, then generate</p>
+
+  <p class="eyebrow">WHO&rsquo;S ON SCREEN</p>
+  <div class="tiles">
+    <button class="tile">Full AI Avatar</button>
+    <button class="tile on">Cinematic AI Avatar<span class="new">NEW</span></button>
+    <button class="tile">AI Avatar in Circle</button>
+    <button class="tile">Voice over only</button>
+    <button class="tile">You on camera</button>
+  </div>
+
+  <div class="scenes">
+    <div class="scenes-head">
+      <div><b>Your scenes</b><span>12 scenes · about 2 min</span></div>
+      <button class="ghost">↻ Plan again</button>
+    </div>
+
+    <div class="scene">
+      <div class="num">1</div>
+      <div class="line">Thinking about buying a home this spring? Let&rsquo;s talk about it over coffee.</div>
+      <div class="place"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>Café by the window</div>
+    </div>
+    <div class="scene">
+      <div class="num">2</div>
+      <div class="line">The first thing I tell every buyer: walk the neighborhood before you fall for the house.</div>
+      <div class="place"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>Tree-lined street</div>
+    </div>
+    <div class="scene">
+      <div class="num">3</div>
+      <div class="line">And when you find the one, I&rsquo;ll be right there to help you make it yours.</div>
+      <div class="place"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>Bright kitchen</div>
+    </div>
+    <div class="scene">
+      <div class="num">4</div>
+      <div class="line">Before you tour a single home, get pre-approved so you know your number.</div>
+      <div class="place"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>Home office desk</div>
+    </div>
+
+    <button class="more">Show all 12</button>
+  </div>
+
+  <div class="foot"><button class="cta">✦ Spark It</button></div>
+</div>
+
+</body>
+</html>

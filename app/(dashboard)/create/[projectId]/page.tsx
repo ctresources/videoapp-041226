@@ -409,6 +409,16 @@ export default function ProjectEditorPage() {
   const [renderComplete, setRenderComplete] = useState(false);
   /** The build under way is a Voice only video made as scenes (see voiceOnlyAsScenes), for the progress card to say so. */
   const [scenesBuild, setScenesBuild] = useState(false);
+  /**
+   * Cinematic AI Avatar (2026-11-24, the owner's approved mockup): the Digital
+   * Twin says each line in a different place. Its scenes are planned here
+   * from the spoken script, and re-planned when the script changes.
+   */
+  const [cinematic, setCinematic] = useState(false);
+  const [cineScenes, setCineScenes] = useState<{ line: string; place: string }[]>([]);
+  const [cinePlannedFor, setCinePlannedFor] = useState("");
+  const [cinePlanning, setCinePlanning] = useState(false);
+  const [cineShowAll, setCineShowAll] = useState(false);
   const [selectedVideoType, setSelectedVideoType] = useState<VideoChoice>("youtube_16x9");
   const [burnCaptions, setBurnCaptions] = useState(true);
   // The chosen format's row, read in the two places that describe it — the
@@ -477,7 +487,7 @@ export default function ProjectEditorPage() {
   const [avatarStyle, setAvatarStyle] = useState<"full" | "circle">("full");
   // Producer's free AI Avatar in Circle video for today (2026-11-22): it needs
   // no video left, and doesn't use one.
-  const circleFreeNow = !!allowance?.circleFreeToday && avatarStyle === "circle" && selectedKind === "short";
+  const circleFreeNow = !!allowance?.circleFreeToday && avatarStyle === "circle" && selectedKind === "short" && !cinematic;
   /** Both halves of the avatar setup are done, so the Settings nudge is noise. */
   const [avatarVoiceReady, setAvatarVoiceReady] = useState(false);
   /** For the ready check above Spark Video (2026-10-26). */
@@ -1761,6 +1771,45 @@ export default function ProjectEditorPage() {
     && scenesSpokenWords >= 8
     && scenesSpokenWords <= SCENES_VOICE_MAX_WORDS;
 
+  /**
+   * Too long for a 2-minute video, or Longform: Full AI Avatar and Cinematic
+   * AI Avatar can't be had (see fullTooLong further down).
+   */
+  const tooLongForShort = selectedVideoType === "youtube_long"
+    || [editedScript, activeCta].join(" ").trim().split(/\s+/).filter(Boolean).length > standardMaxWords();
+  /** Cinematic AI Avatar: paid plans, a Digital Twin, and 2 minutes at most. */
+  const cineBlocked = !twinFullOk || baseTwinIds.length === 0 || tooLongForShort;
+  const cinematicOn = cinematic && !selfRecord && !cineBlocked;
+  const cineReady = cineScenes.length > 0 && cinePlannedFor === scenesSpoken && !cinePlanning;
+
+  /** Plans the Cinematic AI Avatar scenes for this spoken script. */
+  const planCinematic = useCallback(async (text: string) => {
+    setCinePlanning(true);
+    try {
+      const r = await fetch("/api/video/cinematic-avatar/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ script: text, town: project?.location_city ?? undefined }),
+      });
+      const d = (await r.json().catch(() => ({}))) as { scenes?: { line: string; place: string }[]; error?: string };
+      if (!r.ok || !Array.isArray(d.scenes)) throw new Error(d.error || "Couldn't plan your scenes.");
+      setCineScenes(d.scenes);
+      setCineShowAll(false);
+    } catch (err) {
+      setCineScenes([]);
+      toast.error(err instanceof Error ? err.message : "Couldn't plan your scenes.");
+    } finally {
+      // Set either way, so a failure waits for Plan again rather than retrying.
+      setCinePlannedFor(text);
+      setCinePlanning(false);
+    }
+  }, [project?.location_city]);
+  useEffect(() => {
+    if (!cinematic || cinePlanning || !scenesSpoken.trim() || cinePlannedFor === scenesSpoken) return;
+    const t = setTimeout(() => { void planCinematic(scenesSpoken); }, 800);
+    return () => clearTimeout(t);
+  }, [cinematic, cinePlanning, scenesSpoken, cinePlannedFor, planCinematic]);
+
   // The line started it: from here it is the same as a render that began at once.
   const startedFromLine = useCallback((videoId: string, jobId: string | null) => {
     setQueued(null);
@@ -1824,7 +1873,23 @@ export default function ProjectEditorPage() {
       ok: hasVoice, okText: "Ready", badText: "Stock voice for now", blocks: false,
       fix: { label: "Add my voice", href: "/settings" },
     });
-    if (renderMode === "avatar_voice") {
+    if (cinematicOn) {
+      items.push({
+        label: "Your scenes",
+        ok: cineReady,
+        okText: `${cineScenes.length} planned`,
+        badText: cinePlanning ? "Planning…" : "Not planned yet",
+        blocks: true,
+        fix: cinePlanning ? undefined : { label: "Plan again", onClick: () => { void planCinematic(scenesSpoken); } },
+      });
+      if (twinConsentNeeded) {
+        items.push({
+          label: "Digital Twin approval", ok: false, okText: "", badText: "Needs your OK", blocks: true,
+          fix: { label: "Approve now", onClick: () => { void openTwinApproval(); } },
+        });
+      }
+    }
+    if (renderMode === "avatar_voice" && !cinematicOn) {
       const look = looks.find((l) => l.id === selectedLookId);
       const lookReady = !!look && (!look.status || look.status === "completed" || look.status === "active");
       const isTwin = !!look && isTwinId(look.id);
@@ -1900,8 +1965,12 @@ export default function ProjectEditorPage() {
       if (!window.confirm("You already have a video from this draft. Make a new one? It uses one more video. Your first one stays in My Sparks.")) return;
       remake = true;
     }
+    if (cinematicOn && !cineReady) {
+      toast.error("Your scenes are still being planned.");
+      return;
+    }
     setVideoGenerating(true);
-    setScenesBuild(voiceOnlyAsScenes);
+    setScenesBuild(voiceOnlyAsScenes || cinematicOn);
     setRenderComplete(false);
     // Move to the generating step immediately. The render outlives this page,
     // so the step reflects that the work has started, not that it finished.
@@ -1942,6 +2011,36 @@ export default function ProjectEditorPage() {
       // still has it, and those projects should not have to be regenerated to
       // stop the video saying its first sentence twice.
       const fullScript = joinHookAndScript(hook, bodyScript);
+
+      if (cinematicOn) {
+        // Built after the reply, like a Scenes Reel; the progress card follows its job.
+        const built = await fetch("/api/video/cinematic-avatar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId: project.id,
+            scenes: cineScenes,
+            format: selectedVideoType,
+            captions: burnCaptions,
+            ...(musicUrl && { musicUrl }),
+            ...(selectedLookId && baseTwinIds.includes(selectedLookId) && { lookId: selectedLookId }),
+          }),
+        });
+        const data = (await built.json().catch(() => ({}))) as { videoId?: string; renderJobId?: string; error?: string; code?: string; tier?: string };
+        if (!built.ok) {
+          if (built.status === 402 && data.code === "out_of_videos") {
+            setOutOfVideos({ kind: "short", tier: data.tier ?? "free" });
+            setEditorStep(3);
+            return;
+          }
+          throw new Error(data.error || `Video generation failed (${built.status})`);
+        }
+        if (!data.videoId) throw new Error("Invalid response from the video builder");
+        setRenderJobId(data.renderJobId ?? null);
+        setRenderedVideoId(data.videoId);
+        toast.success("Your video is building. You'll see it in My Sparks shortly.", { duration: 5000 });
+        return;
+      }
 
       if (voiceOnlyAsScenes) {
         // Built in this one request, and attached to this Spark. There is no
@@ -2184,6 +2283,67 @@ export default function ProjectEditorPage() {
     );
   }
 
+  /** Your scenes, under the tiles when Cinematic AI Avatar is chosen (the approved mockup). */
+  function renderCinematicScenes() {
+    const shown = cineShowAll ? cineScenes : cineScenes.slice(0, 4);
+    const words = cineScenes.reduce((n, s) => n + s.line.split(/\s+/).filter(Boolean).length, 0);
+    const minutes = words / 145;
+    const length = minutes < 1 ? `about ${Math.max(10, Math.round((minutes * 60) / 5) * 5)} sec` : `about ${Math.round(minutes * 2) / 2} min`;
+    return (
+      <div className="mt-3 rounded-xl border border-spark-rule bg-white">
+        <div className="flex items-center justify-between gap-3 border-b border-spark-rule px-3 py-2.5">
+          <p className="text-[13px] font-semibold text-spark-ink">
+            Your scenes
+            {cineScenes.length > 0 && !cinePlanning && (
+              <span className="ml-2 text-[12px] font-normal text-spark-ink-faint">{cineScenes.length} scenes · {length}</span>
+            )}
+          </p>
+          <button
+            type="button"
+            disabled={cinePlanning}
+            onClick={() => { void planCinematic(scenesSpoken); }}
+            className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-spark-rule bg-white px-2.5 py-1.5 text-[12px] font-semibold text-spark-ink-muted hover:border-spark-rule-dim disabled:opacity-60"
+          >
+            {cinePlanning ? <Loader2 size={12} className="animate-spin" /> : "↻"} Plan again
+          </button>
+        </div>
+        {cinePlanning && cineScenes.length === 0 && (
+          <p className="flex items-center gap-2 px-3 py-3 text-[12.5px] text-spark-ink-muted">
+            <Loader2 size={13} className="animate-spin" /> Planning your scenes…
+          </p>
+        )}
+        {shown.map((s, i) => (
+          <div key={i} className="grid grid-cols-[26px_1fr] items-center gap-x-3 gap-y-2 border-t border-spark-rule px-3 py-2.5 first-of-type:border-t-0 sm:grid-cols-[26px_1fr_200px]">
+            <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-spark-amber-tint text-[12px] font-bold text-[#A3660F]">{i + 1}</span>
+            <p className="text-[12.5px] leading-[1.45] text-spark-ink">{s.line}</p>
+            <label className="col-start-2 flex items-center gap-1.5 rounded-lg border border-spark-rule bg-white px-2 py-1.5 sm:col-start-3">
+              <MapPin size={13} className="shrink-0 text-[#A3660F]" aria-hidden="true" />
+              <input
+                value={s.place}
+                maxLength={60}
+                aria-label={`Place for scene ${i + 1}`}
+                onChange={(e) => {
+                  const place = e.target.value;
+                  setCineScenes((all) => all.map((x, k) => (k === i ? { ...x, place } : x)));
+                }}
+                className="w-full bg-transparent text-[12.5px] text-spark-ink outline-none"
+              />
+            </label>
+          </div>
+        ))}
+        {cineScenes.length > 4 && (
+          <button
+            type="button"
+            onClick={() => setCineShowAll((v) => !v)}
+            className="block w-full rounded-b-xl border-t border-spark-rule bg-white py-2.5 text-[12.5px] font-semibold text-[#A3660F]"
+          >
+            {cineShowAll ? "Show fewer" : `Show all ${cineScenes.length}`}
+          </button>
+        )}
+      </div>
+    );
+  }
+
   function renderModeSelector() {
     return (
       <div className="flex flex-col gap-[7px]">
@@ -2195,9 +2355,9 @@ export default function ProjectEditorPage() {
             the same question. It is the one that makes everything under this
             heading — which look, which photos, which format — stop mattering,
             so it belongs in the choice itself. */}
-        <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-5">
           {[
-            // The same four for every script, pasted or written for them, in
+            // The same five for every script, pasted or written for them, in
             // the names the page before this one uses.
             {
               key: "full",
@@ -2206,6 +2366,15 @@ export default function ProjectEditorPage() {
               label: "Full AI Avatar",
               desc: twinFullLocked ? "Paid plans" : fullBlocked ? "Up to 2 minutes" : "B-roll and graphics made for you",
               blocked: fullBlocked,
+            },
+            {
+              // 2026-11-24: the Digital Twin in a new place for each line.
+              key: "cinematic",
+              mode: "avatar_voice" as const,
+              style: null,
+              label: "Cinematic AI Avatar",
+              desc: !twinFullOk ? "Paid plans" : baseTwinIds.length === 0 ? "Needs your Digital Twin" : tooLongForShort ? "Up to 2 minutes" : "Your Digital Twin in a new place for each line",
+              blocked: cineBlocked,
             },
             {
               key: "circle",
@@ -2235,9 +2404,11 @@ export default function ProjectEditorPage() {
               blocked: false,
             },
           ].map(({ key, mode, style, label, desc, blocked }) => {
-            const on = mode === "self"
-              ? selfRecord
-              : !selfRecord && renderMode === mode && (style === null || (style === "circle") === circleStyle);
+            const on = key === "cinematic"
+              ? cinematicOn
+              : mode === "self"
+                ? selfRecord
+                : !selfRecord && !cinematicOn && renderMode === mode && (style === null || (style === "circle") === circleStyle);
             return (
             <button
               key={key}
@@ -2247,6 +2418,15 @@ export default function ProjectEditorPage() {
               // It only decides what this page shows, and the footer turns into
               // Open Camera. The two real modes still set renderMode.
               onClick={() => {
+                if (key === "cinematic") {
+                  // Not saved to the project: it is chosen on this screen, for this video.
+                  setSelfRecord(false);
+                  setCinematic(true);
+                  setRenderMode("avatar_voice");
+                  setAvatarStyle("full");
+                  return;
+                }
+                setCinematic(false);
                 if (mode === "self") { setSelfRecord(true); return; }
                 setSelfRecord(false);
                 setRenderMode(mode);
@@ -2283,7 +2463,12 @@ export default function ProjectEditorPage() {
               {/* The name only. The line under each was struck by the owner.
                   It is kept as the hover text, because for a tile that is
                   switched off it was the only thing saying why. */}
-              <span className="text-[11.5px] font-medium text-spark-ink" title={desc}>{label}</span>
+              <span className="text-[11.5px] font-medium text-spark-ink" title={desc}>
+                {label}
+                {key === "cinematic" && (
+                  <span className="ml-1 inline-block rounded-full bg-spark-amber px-1.5 py-px align-[1px] text-[8.5px] font-bold tracking-wide text-white">NEW</span>
+                )}
+              </span>
             </button>
             );
           })}
@@ -2291,8 +2476,8 @@ export default function ProjectEditorPage() {
         {/* Under the Avatar video tile when a free plan's twin is chosen:
             the owner's wording, 2026-10-20. Same columns as the tiles so it
             sits beneath the one it explains. */}
-        {twinFullLocked && !selfRecord && (
-          <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-4">
+        {twinFullLocked && !selfRecord && !cinematicOn && (
+          <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-5">
             <p className="text-[11px] text-spark-ink-faint">
               Paid plans ·{" "}
               <Link href="/settings/billing" className="font-semibold text-spark-ink underline underline-offset-2">See plans</Link>
@@ -2313,7 +2498,7 @@ export default function ProjectEditorPage() {
             a twin on a horizontal video is made as AI Avatar in Circle (see
             start-render), a vertical one stays a Full AI Avatar video. */}
         {isTwinId(selectedLookId) && renderMode === "avatar_voice" && !circleStyle
-          && !selfRecord && !twinFullLocked && (
+          && !selfRecord && !twinFullLocked && !cinematicOn && (
           <p className="flex items-start gap-2 rounded-lg border border-[#f1d29a] bg-spark-amber-tint px-3 py-2 text-[12px] leading-[1.45] text-spark-ink">
             <Info size={14} className="mt-[1px] shrink-0 text-[#A3660F]" aria-hidden="true" />
             {/* Avatar video is always the Video Agent, either shape (2026-10-24). */}
@@ -2348,7 +2533,7 @@ export default function ProjectEditorPage() {
         <p className="text-[10.5px] leading-[1.45] text-spark-ink-faint">
           {selfRecord
             ? "You'll finish in the camera, not on this screen. Your script and photos come with you, and nothing here is spent."
-            : "The first three use one video from your plan. You on camera is free and finishes in the camera."}
+            : "The first four use one video from your plan. You on camera is free and finishes in the camera."}
         </p>
         {/* Why Avatar video is greyed out, and the two ways back to it
             (2026-10-16, the owner's words). It used to switch to the circle
@@ -3323,8 +3508,7 @@ export default function ProjectEditorPage() {
    * not: it is not made for a Longform video, and it cuts a script past the
    * standard cap. Where it cannot be had, the circle is what renders.
    */
-  const fullTooLong = selectedVideoType === "youtube_long"
-    || [editedScript, activeCta].join(" ").trim().split(/\s+/).filter(Boolean).length > standardMaxWords();
+  const fullTooLong = tooLongForShort;
   /**
    * The Digital Twin in Avatar video is for paid plans (2026-10-20, the
    * owner's call); on the free plan the twin renders in the circle. The
@@ -3344,13 +3528,13 @@ export default function ProjectEditorPage() {
   // video to the twin full size. Not on tall videos (it can't be cut out
   // there) or outfits (only the twin itself can), nor when full size is
   // locked (plan or length).
-  const twinBgOffered = renderMode === "avatar_voice" && !selfRecord
+  const twinBgOffered = renderMode === "avatar_voice" && !selfRecord && !cinematicOn
     && !!selectedLookId && baseTwinIds.includes(selectedLookId)
     && (selectedVideoType === "youtube_long" || (selectedVideoType === "youtube_16x9" && !fullBlocked));
   /** On a background right now: a wide Avatar video in the circle can't be. */
   const twinOnBgNow = twinOnBg && (selectedVideoType === "youtube_long" || !circleStyle);
   // The opener is offered on a listing video in the circle (2026-10-24).
-  const openerOffered = circleStyle && renderMode === "avatar_voice" && !selfRecord
+  const openerOffered = circleStyle && renderMode === "avatar_voice" && !selfRecord && !cinematicOn
     && selectedVideoType !== "youtube_long" && selectedVideoType !== "short_1x1"
     && (project?.project_type === "listing_video"
       || ((project as unknown as { listing_data?: { photoUrls?: unknown[] } } | null)?.listing_data?.photoUrls?.length ?? 0) > 0);
@@ -3365,7 +3549,10 @@ export default function ProjectEditorPage() {
    * the owner's screenshot). Voice over only is never a straight read, the
    * same rule create-blog applies (`&& !voiceOnly`).
    */
-  const eta = voiceOnlyAsScenes
+  // Cinematic AI Avatar: about a minute a scene, a few at a time, then the join.
+  const eta = cinematicOn
+    ? { range: "5–15 minutes", why: "" }
+    : voiceOnlyAsScenes
     ? { range: "2–10 minutes", why: "" }
     : renderEta({
         pastedScript: circleStyle && renderMode !== "voice_only",
@@ -3817,6 +4004,7 @@ export default function ProjectEditorPage() {
                     onPicks={(p) => {
                       if (typeof p.look === "string") setSelectedLookId(p.look);
                       const on = p.onscreen;
+                      if (on) setCinematic(false);
                       if (on === "self") { setSelfRecord(true); return; }
                       if (on === "full" || on === "circle" || on === "voice") {
                         const mode = on === "voice" ? "voice_only" as const : "avatar_voice" as const;
@@ -3863,6 +4051,7 @@ export default function ProjectEditorPage() {
                   offered, on the tab most likely to hold a script someone
                   wrote to read aloud. */}
               {renderModeSelector()}
+              {cinematicOn && renderCinematicScenes()}
               {isPaste && !selfRecord && !fullTooLong && (
                 <p className="mt-1.5 text-[10.5px] leading-[1.45] text-spark-ink-faint">
                   Either way your script is read word for word, so nothing gets shortened or rewritten.
@@ -3890,7 +4079,7 @@ export default function ProjectEditorPage() {
                 Want to appear in this one? Pick an Avatar choice above.
               </p>
             )}
-            {(looksLoading || looks.length > 0) && renderMode !== "voice_only" && (
+            {(looksLoading || looks.length > 0) && renderMode !== "voice_only" && !cinematicOn && (
               <>
                 <p className="text-xs font-medium text-slate-500 mb-1">Avatar Look</p>
                 {/* The look that fits, picked for you; the grid after Change look
@@ -4065,6 +4254,8 @@ export default function ProjectEditorPage() {
                 the wrapper above already describes. */}
             {renderFormatSelector()}
 
+            {/* Not for Cinematic AI Avatar, whose scenes are made, not given. */}
+            {!cinematicOn && (<>
             {/* Photo Upload */}
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-medium text-slate-500">Add Photos <span className="font-normal text-slate-400">(optional · up to {UPLOAD_PHOTO_LIMIT})</span></p>
@@ -4178,6 +4369,7 @@ export default function ProjectEditorPage() {
                 <p className="text-[11px] text-slate-400 self-center ml-1">Click + to add photos. They&apos;ll be used as primary b-roll.</p>
               )}
             </div>
+            </>)}
 
             {/* Captions — a switch rather than a checkbox, per 2a. It is on by
                 default and rarely changed, so it reads better as a setting than
@@ -4427,7 +4619,8 @@ export default function ProjectEditorPage() {
                   happen. */}
               {selfRecord
                 ? "you on camera"
-                : renderMode === "avatar_voice" ? "avatar on screen" : "voice over only"}
+                : cinematicOn ? "Cinematic AI Avatar"
+                  : renderMode === "avatar_voice" ? "avatar on screen" : "voice over only"}
               {" · "}
               {selectedMusicId === "none"
                 ? "no music"

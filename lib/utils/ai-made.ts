@@ -17,7 +17,9 @@ export function isAiMadeVideo(video: {
   if (!video) return false;
   if (video.render_provider?.startsWith("heygen")) return true;
   // "scenes": a reel whose every picture was generated from the script.
-  return video.metadata?.motion === "cinematic" || video.metadata?.motion === "scenes";
+  // "cinematic-avatar": the agent's Digital Twin in generated scenes (2026-11-24).
+  const motion = video.metadata?.motion;
+  return motion === "cinematic" || motion === "scenes" || motion === "cinematic-avatar";
 }
 
 /** Goes at the end of a Cinematic reel's description. The owner chose the description, not the picture, as where this is said. */

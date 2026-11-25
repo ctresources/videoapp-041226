@@ -95,6 +95,38 @@ export async function makeAgentOpener(opts: {
   // A spoken line needs time to land: about 2.6 words a second, plus a beat.
   const words = (opts.line ?? "").split(/\s+/).filter(Boolean).length;
   const seconds = words ? Math.max(opts.seconds ?? 6, Math.ceil(words / 2.6) + 2) : (opts.seconds ?? 6);
+  const shot = await makeCinematicAvatarClip({
+    lookId: opts.lookId,
+    prompt: promptFor(opts.style, opts.line, opts.place),
+    photoUrl: opts.place !== "office" ? opts.photoUrl : null,
+    aspect: opts.aspect,
+    seconds,
+    timeoutMs: opts.timeoutMs ?? 180_000,
+    title: "SparkReels opener",
+    label: `opener ${opts.style}`,
+  });
+  return shot && "url" in shot ? { url: shot.url, seconds: shot.seconds, talks: !!opts.line } : null;
+}
+
+/**
+ * One shot of the agent's look, made by HeyGen's cinematic_avatar mode: the
+ * opener above, and each scene of a Cinematic AI Avatar video (2026-11-24,
+ * lib/video/cinematic-avatar.ts). The prompt is the caller's.
+ *
+ * `{ busy }` when HeyGen's jobs are all taken (a place in a queue, with the
+ * wait it asked for), null for any other failure. Never throws.
+ */
+export async function makeCinematicAvatarClip(opts: {
+  lookId: string;
+  prompt: string;
+  /** A reference photo (the home, the street); none for an invented place. */
+  photoUrl?: string | null;
+  aspect: "16:9" | "9:16";
+  seconds: number;
+  timeoutMs: number;
+  title: string;
+  label: string;
+}): Promise<{ url: string; seconds: number } | { busy: number } | null> {
   const key = process.env.HEYGEN_API_KEY;
   if (!key) return null;
   const headers = { "x-api-key": key, "Content-Type": "application/json" };
@@ -107,40 +139,41 @@ export async function makeAgentOpener(opts: {
         type: "cinematic_avatar",
         model: "heygen_video_1",
         avatar_id: [opts.lookId],
-        ...(opts.photoUrl && opts.place !== "office" && { references: [{ type: "url", url: opts.photoUrl }] }),
-        prompt: promptFor(opts.style, opts.line, opts.place),
+        ...(opts.photoUrl && { references: [{ type: "url", url: opts.photoUrl }] }),
+        prompt: opts.prompt,
         aspect_ratio: opts.aspect,
         resolution: "720p",
-        duration: Math.min(15, Math.max(5, Math.round(seconds))),
-        title: "SparkReels opener",
+        duration: Math.min(15, Math.max(5, Math.round(opts.seconds))),
+        title: opts.title,
       }),
       signal: AbortSignal.timeout(30_000),
     });
+    if (res.status === 429) return { busy: Number(res.headers.get("retry-after")) || 15 };
     const created = await res.json().catch(() => null);
     const id = created?.data?.video_id as string | undefined;
     if (!res.ok || !id) {
-      console.warn(`[opener] not accepted (HTTP ${res.status}): ${JSON.stringify(created ?? {}).slice(0, 300)}`);
+      console.warn(`[${opts.label}] not accepted (HTTP ${res.status}): ${JSON.stringify(created ?? {}).slice(0, 300)}`);
       return null;
     }
-    const deadline = started + (opts.timeoutMs ?? 180_000);
+    const deadline = started + opts.timeoutMs;
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 5_000));
       const r = await fetch(`${API}/v3/videos/${id}`, { headers, signal: AbortSignal.timeout(15_000) }).catch(() => null);
       const d = r ? (await r.json().catch(() => null))?.data : null;
       if (!d) continue;
       if (d.status === "completed" && d.video_url) {
-        console.log(`[opener] ${opts.style} shot ready in ${Math.round((Date.now() - started) / 1000)}s`);
-        return { url: d.video_url as string, seconds: Number(d.duration) || seconds, talks: !!opts.line };
+        console.log(`[${opts.label}] shot ready in ${Math.round((Date.now() - started) / 1000)}s`);
+        return { url: d.video_url as string, seconds: Number(d.duration) || opts.seconds };
       }
       if (d.status === "failed") {
-        console.warn(`[opener] failed: ${JSON.stringify(d.error ?? d.failure_message ?? d).slice(0, 300)}`);
+        console.warn(`[${opts.label}] failed: ${JSON.stringify(d.error ?? d.failure_message ?? d).slice(0, 300)}`);
         return null;
       }
     }
-    console.warn("[opener] timed out");
+    console.warn(`[${opts.label}] timed out`);
     return null;
   } catch (err) {
-    console.warn("[opener] error:", err instanceof Error ? err.message : err);
+    console.warn(`[${opts.label}] error:`, err instanceof Error ? err.message : err);
     return null;
   }
 }

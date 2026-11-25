@@ -820,7 +820,7 @@ function FullGuide() {
               teleprompter; it doesn&apos;t use a video from your plan).
               {/* The same four for every script now, pasted or written. */}
               <span className="block mt-1.5">
-                Then <strong>who&apos;s on screen</strong>, four choices that are the same for every
+                Then <strong>who&apos;s on screen</strong>, choices that are the same for every
                 script, whether AI wrote it or you pasted your own:
               </span>
               <span className="block mt-1.5">
@@ -831,6 +831,17 @@ function FullGuide() {
                 <strong>Shorten to fit</strong> and the script is cut to fit, or{" "}
                 <strong>Shorten closing line</strong> to trim your closing line yourself. With your
                 Digital Twin it is a Full AI Avatar video too, vertical or horizontal.
+              </span>
+              {/* Paid plans, Digital Twin only (2026-11-24, the owner's ask). data-paid-only
+                  keeps it out of a free account's Sparklee. */}
+              <span className="block mt-1.5 scroll-mt-20" id="cinematic-ai-avatar" data-paid-only="true">
+                <strong>Cinematic AI Avatar</strong> (paid plans, <strong>Digital Twin only</strong>) — your
+                Digital Twin says each line of your script in a different place, like a café, a tree-lined
+                street or a bright kitchen, in your own voice. It works only with your Digital Twin, not a
+                photo avatar, so make your twin in Settings first. Pick it and <strong>Your scenes</strong>{" "}
+                lists each line with its place: tap a place to change it, or press <strong>Plan again</strong>{" "}
+                for new places. Vertical or horizontal, up to 2 minutes (290 words), and it uses one video
+                from your plan, like Full AI Avatar. It&apos;s usually ready in <strong>5 to 15 minutes</strong>.
               </span>
               <span className="block mt-1.5">
                 <strong>AI Avatar in Circle</strong> — you in a circle, speaking the script
@@ -854,7 +865,7 @@ function FullGuide() {
                 script and photos to the camera instead of making a video.
               </span>
               <span className="block mt-1.5">
-                The first three use one video from your plan. Attach photos or documents as b-roll,
+                Every choice except You on camera uses one video from your plan. Attach photos or documents as b-roll,
                 and hit <strong>Spark Video</strong>. How long it takes follows the length of the{" "}
                 <em>script</em>, not the format: Voice over only is usually ready in{" "}
                 <strong>2 to 10 minutes</strong>, AI Avatar in Circle in <strong>5 to 15</strong>, and Full AI

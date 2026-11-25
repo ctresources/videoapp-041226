@@ -38,6 +38,7 @@ const BASICS = [
 
 // Every paid feature, by name only (2026-11-24, the owner's approved list).
 const LOCKED = [
+  "Cinematic AI Avatar",
   "Make Videos From Claude & ChatGPT",
   "AutoSparks",
   "Website / Halo Content Workflow",

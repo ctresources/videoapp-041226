@@ -19,6 +19,7 @@ export const FREE_PLAN_INCLUDES: string[] = [
 
 export const PAID_PLANS_ONLY: string[] = [
   "Full AI Avatar video with your Digital Twin",
+  "Cinematic AI Avatar (your Digital Twin in a different place for each line)",
   "A second photo and a second Digital Twin, so there's one of each shape (vertical for Reels and Shorts, horizontal for YouTube)",
   "Outfits for your Digital Twin",
   "Record My Screen",

@@ -743,6 +743,12 @@ export interface SlideshowParams {
    */
   reverseAlternate?: boolean;
   /**
+   * True to play every clip at its own speed, cut to its segment. A clip of
+   * someone talking (a Cinematic AI Avatar scene, 2026-11-24) is lip-synced to
+   * the soundtrack, so it is never slowed down or sped up to fill its time.
+   */
+  clipsAtOwnSpeed?: boolean;
+  /**
    * When each segment comes on, in seconds, one per segment and rising; the
    * first is 0.
    *
@@ -1132,7 +1138,7 @@ async function buildSlideshowAndRun(
        * is held near normal and the move is cut short instead. Past the top
        * of the range the last frame simply holds.
        */
-      const factor = Math.min(1.6, Math.max(0.8, segLen(i) / Math.max(0.5, clip.seconds)));
+      const factor = params.clipsAtOwnSpeed ? 1 : Math.min(1.6, Math.max(0.8, segLen(i) / Math.max(0.5, clip.seconds)));
       const timing = `setpts=${factor.toFixed(4)}*(PTS-STARTPTS),fps=30`;
       const tail = `setsar=1,trim=duration=${segLen(i).toFixed(3)},setpts=PTS-STARTPTS[photo${i}]`;
 
@@ -1685,6 +1691,50 @@ export async function generateSilentAudio(seconds: number): Promise<Buffer> {
         .outputOptions([`-t ${seconds.toFixed(3)}`, "-c:a libmp3lame", "-b:a 64k", "-y"])
         .output(out)
         .on("error", (err) => reject(new Error(`Silent track failed: ${err.message}`)))
+        .on("end", () => resolve())
+        .run();
+    });
+    return await fs.readFile(out);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/**
+ * The sound of several clips, each cut to its first `keep` seconds, one after
+ * another, as one MP3 (2026-11-24, for a Cinematic AI Avatar video: each scene
+ * speaks its own line, and the soundtrack is those lines in order).
+ *
+ * Each part is exactly `keep` long, padded with silence if its sound ends
+ * sooner, so the scenes laid over it at the running total stay lip-synced.
+ */
+export async function joinClipAudio(parts: { url: string; keep: number }[]): Promise<Buffer> {
+  if (parts.length === 0) throw new Error("No clips to join");
+  const dir = join(tmpdir(), `clip-audio-${randomUUID()}`);
+  await fs.mkdir(dir, { recursive: true });
+  const out = join(dir, "joined.mp3");
+  try {
+    const paths: string[] = [];
+    for (let i = 0; i < parts.length; i++) {
+      const p = join(dir, `part${i}.mp4`);
+      if (!(await downloadFile(parts[i].url, p))) throw new Error(`Scene ${i + 1} could not be downloaded`);
+      paths.push(p);
+    }
+    const RATE = 44100;
+    const filters = parts.map((part, i) => {
+      const samples = Math.max(1, Math.round(part.keep * RATE));
+      return `[${i}:a]aresample=${RATE},aformat=sample_fmts=fltp:channel_layouts=stereo,` +
+        `apad=whole_len=${samples},atrim=end_sample=${samples},asetpts=PTS-STARTPTS[a${i}]`;
+    });
+    filters.push(`${parts.map((_, i) => `[a${i}]`).join("")}concat=n=${parts.length}:v=0:a=1[out]`);
+    await new Promise<void>((resolve, reject) => {
+      const cmd = ffmpeg();
+      paths.forEach((p) => cmd.input(p));
+      cmd
+        .complexFilter(filters)
+        .outputOptions(["-map [out]", "-c:a libmp3lame", "-b:a 160k", "-y"])
+        .output(out)
+        .on("error", (err) => reject(new Error(`Joining the scenes' sound failed: ${err.message}`)))
         .on("end", () => resolve())
         .run();
     });

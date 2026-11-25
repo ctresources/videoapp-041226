@@ -31,6 +31,16 @@ export type WhatsNewItem = {
 
 const ITEMS: WhatsNewItem[] = [
   {
+    id: "cinematic-ai-avatar",
+    title: "Cinematic AI Avatar",
+    description:
+      "Digital Twin only: your Digital Twin says each line of your script in a different place, like a café, a tree-lined street or a bright kitchen, in your own voice. Uses one video from your plan.",
+    releaseDate: "2026-11-24",
+    howItWorksAnchor: "cinematic-ai-avatar",
+    badge: "NEW",
+    paidOnlyDetails: true,
+  },
+  {
     id: "ai-connections",
     title: "Make Videos From Claude or ChatGPT",
     description:
