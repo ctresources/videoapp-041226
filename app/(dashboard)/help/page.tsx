@@ -865,7 +865,8 @@ function FullGuide() {
                 script and photos to the camera instead of making a video.
               </span>
               <span className="block mt-1.5">
-                Every choice except You on camera uses one video from your plan. Attach photos or documents as b-roll,
+                Every choice except You on camera uses one video from your plan. Changed your mind? One redo of the
+                same project within 48 hours is free. Attach photos or documents as b-roll,
                 and hit <strong>Spark Video</strong>. How long it takes follows the length of the{" "}
                 <em>script</em>, not the format: Voice over only is usually ready in{" "}
                 <strong>2 to 10 minutes</strong>, AI Avatar in Circle in <strong>5 to 15</strong>, and Full AI

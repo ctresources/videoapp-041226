@@ -25,6 +25,7 @@ import { renderPhotoSlideshow, generateSilentAudio, audioBufferSeconds, type Vid
 import { makeCinematicClips, type CinematicClip } from "@/lib/api/cinematic-clips";
 import { makeAgentOpener, parseOpenerStyle } from "@/lib/api/agent-opener";
 import { ALLOWANCE_SELECT, chargeFor, chargeOneVideo, type AllowanceColumns } from "@/lib/utils/video-allowance";
+import { freeRedoFor, REDO_CREDIT_SOURCE } from "@/lib/utils/free-redo";
 import { CINEMATIC_DISCLOSURE, SCENES_DISCLOSURE } from "@/lib/utils/ai-made";
 import { formatPhone } from "@/lib/utils/format-phone";
 import { makeSceneClips, planScenes, planScenesForBeats, SCENES_MAX, SCENES_MAX_SECONDS, SCENES_MIN, type SceneAspect } from "@/lib/api/scene-clips";
@@ -195,7 +196,12 @@ export async function POST(req: NextRequest) {
     const capMsg = await staffCapMessage(admin, user.id, p.role);
     if (capMsg) return NextResponse.json({ error: capMsg, code: "staff_cap" }, { status: 402 });
   }
-  if ((cinematic || scenes) && !isAdmin && !chargeFor((profile ?? {}) as Partial<AllowanceColumns>, "short")) {
+  // One free redo per project within 48 hours (lib/utils/free-redo.ts), for
+  // the reels a plan pays for, made again on the same Spark.
+  const redoFree = (cinematic || scenes) && !isAdmin
+    && await freeRedoFor(admin, user.id, ownProject?.id, p.subscription_tier as string | null);
+  const redoCredit = { credit_cost: 0, credit_kind: "short", credit_source: REDO_CREDIT_SOURCE };
+  if ((cinematic || scenes) && !isAdmin && !redoFree && !chargeFor((profile ?? {}) as Partial<AllowanceColumns>, "short")) {
     return NextResponse.json(
       {
         code: "out_of_videos",
@@ -580,7 +586,7 @@ export async function POST(req: NextRequest) {
      * over would waste what it cost to make.
      */
     let charged: Awaited<ReturnType<typeof chargeOneVideo>> = null;
-    if (earnedItsCharge && !isAdmin) {
+    if (earnedItsCharge && !isAdmin && !redoFree) {
       charged = await chargeOneVideo(admin, user.id, "short");
       if (!charged) console.warn("[photo-reel] cinematic reel made but nothing was left to charge");
       // The free video starts the 30-day clock, whichever kind of video it was.
@@ -682,6 +688,7 @@ export async function POST(req: NextRequest) {
             cinematic_seconds: Math.round(clips.reduce((sum, c) => sum + (c?.seconds ?? 0), 0)),
           }),
           ...(charged && { credit_cost: 1, credit_kind: "short", credit_source: charged.source }),
+          ...(earnedItsCharge && redoFree && redoCredit),
           // Kept here now that a background build has no page to tell.
           ...(voiceUsed && { voice: voiceUsed }),
         },
@@ -722,8 +729,8 @@ export async function POST(req: NextRequest) {
       ...(voiceUsed && { voice: voiceUsed }),
       // For the form to say what actually happened: how many photos moved,
       // and whether a video was taken from the plan for it.
-      ...(cinematic && { cinematic: { moving, photos: photoUrls.length, charged: !!charged || (isAdmin && earnedItsCharge) } }),
-      ...(scenes && { scenes: { made: moving, asked: scenesAsked, charged: !!charged || isAdmin } }),
+      ...(cinematic && { cinematic: { moving, photos: photoUrls.length, charged: !!charged || ((isAdmin || redoFree) && earnedItsCharge) } }),
+      ...(scenes && { scenes: { made: moving, asked: scenesAsked, charged: !!charged || isAdmin || redoFree } }),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Could not build that reel";
@@ -785,7 +792,8 @@ export async function POST(req: NextRequest) {
       render_provider: "ffmpeg",
       render_status: "rendering",
       render_job_id: jobId,
-      metadata: { source: "scenes-reel", building: true },
+      // A free redo is written at once, so a second press while this builds is charged.
+      metadata: { source: "scenes-reel", building: true, ...(redoFree && redoCredit) },
     })
     .select("id")
     .single();

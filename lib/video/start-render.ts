@@ -24,6 +24,7 @@ import { stockBrollFor, countWords } from "@/lib/utils/stock-broll";
 import { footageTerms } from "@/lib/utils/script-keywords";
 import { MUSIC_PROMPT_INSTRUCTION } from "@/lib/utils/music-presets";
 import { chargeFor, chargeOneVideo, type VideoKind } from "@/lib/utils/video-allowance";
+import { freeRedoFor, REDO_CREDIT_SOURCE } from "@/lib/utils/free-redo";
 import { canUseDigitalTwin, canUseTwinInFullVideo, TWIN_FULL_VIDEO_MESSAGE } from "@/lib/utils/plan-features";
 import { CIRCLE_CREDIT_SOURCE, hasUnlimitedCircle } from "@/lib/plan-limits";
 import { circleFreeToday } from "@/lib/usage/circle";
@@ -1052,6 +1053,15 @@ export async function startRender(
   const circleVideo = useDirectVideo && !wantsFull && !isAgentIntro && !isLongForm && !voiceOnly;
   const circleOnPlan = circleVideo && !isAdmin && !remakeFree && hasUnlimitedCircle(tier);
   const circleFree = circleOnPlan && await circleFreeToday(admin, user.id, tier, profile.time_zone);
+  /**
+   * One free redo per project within 48 hours (2026-11-25, the owner's
+   * approved plan; lib/utils/free-redo.ts). Asked last, so a video that's
+   * free for another reason never spends the redo.
+   */
+  const redoFree = !isAdmin && !introFree && !remakeFree && !circleFree
+    && await freeRedoFor(admin, user.id, projectId, tier);
+  /** Free by any rule: nothing is taken from the plan. */
+  const freeByRule = introFree || remakeFree || circleFree || redoFree;
 
   /** Marks the flagged video's free remake as used, once the new render has started. */
   const useFreeRemake = async () => {
@@ -1074,7 +1084,7 @@ export async function startRender(
   const capMsg = await staffCapMessage(admin, user.id, profile.role);
   if (capMsg) return NextResponse.json({ error: capMsg, code: "staff_cap" }, { status: 402 });
 
-  if (!isAdmin && !charge && !introFree && !remakeFree && !circleFree) {
+  if (!isAdmin && !charge && !freeByRule) {
     // `code` and `kind` let the client open the plan picker instead of
     // string-matching the message. Someone who just watched their free video
     // render is the most likely person to buy — a dead-end toast wastes that.
@@ -1720,9 +1730,9 @@ export async function startRender(
           render_job_id: directVideoId,
           metadata: {
             ...(videoRow.metadata ?? {}),
-            credit_cost: introFree || remakeFree || circleFree ? 0 : creditCost,
+            credit_cost: freeByRule ? 0 : creditCost,
             credit_kind: videoKind,
-            credit_source: introFree ? "intro_free" : remakeFree ? "remake_free" : circleFree ? CIRCLE_CREDIT_SOURCE : (charge?.source ?? "plan"),
+            credit_source: introFree ? "intro_free" : remakeFree ? "remake_free" : circleFree ? CIRCLE_CREDIT_SOURCE : redoFree ? REDO_CREDIT_SOURCE : (charge?.source ?? "plan"),
             // What it was actually rendered with. Both are needed to price it:
             // the engine and the avatar type each move the rate, by up to four
             // times between them. Recorded here because this is the only place
@@ -1773,14 +1783,14 @@ export async function startRender(
       // Conditional write — see chargeOneVideo. The absolute value computed
       // above was a lost update: two tabs both read the same balance and both
       // wrote the same lower number, so one video was free.
-      if (charge && !isAdmin && !introFree && !remakeFree && !circleFree) await chargeOneVideo(admin, user.id, videoKind);
+      if (charge && !isAdmin && !freeByRule) await chargeOneVideo(admin, user.id, videoKind);
       if (remakeFree) await useFreeRemake();
       await startFreeTrialClockIfNeeded();
       await admin.from("api_usage_log").insert({
         user_id: user.id,
         api_provider: "heygen",
         endpoint: "video-v3-direct",
-        credits_used: circleFree ? 0 : creditCost,
+        credits_used: circleFree || redoFree ? 0 : creditCost,
         response_status: 202,
       });
 
@@ -1963,7 +1973,7 @@ export async function startRender(
     await admin
       .from("generated_videos")
       // credit_cost enables an automatic refund if the render later fails
-      .update({ render_job_id: sessionId, metadata: { ...(videoRow?.metadata ?? {}), credit_cost: remakeFree ? 0 : creditCost, credit_kind: videoKind, credit_source: remakeFree ? "remake_free" : (charge?.source ?? "plan") } })
+      .update({ render_job_id: sessionId, metadata: { ...(videoRow?.metadata ?? {}), credit_cost: remakeFree || redoFree ? 0 : creditCost, credit_kind: videoKind, credit_source: remakeFree ? "remake_free" : redoFree ? REDO_CREDIT_SOURCE : (charge?.source ?? "plan") } })
       .eq("id", videoRow?.id);
 
     // Admins are never charged. Previously only the REFUSAL was skipped for
@@ -1972,14 +1982,14 @@ export async function startRender(
       // Conditional write — see chargeOneVideo. The absolute value computed
       // above was a lost update: two tabs both read the same balance and both
       // wrote the same lower number, so one video was free.
-      if (charge && !isAdmin && !introFree && !remakeFree) await chargeOneVideo(admin, user.id, videoKind);
+      if (charge && !isAdmin && !introFree && !remakeFree && !redoFree) await chargeOneVideo(admin, user.id, videoKind);
       if (remakeFree) await useFreeRemake();
       await startFreeTrialClockIfNeeded();
     await admin.from("api_usage_log").insert({
       user_id: user.id,
       api_provider: "heygen",
       endpoint: "video-agent-v3",
-      credits_used: creditCost,
+      credits_used: redoFree ? 0 : creditCost,
       response_status: 202,
     });
 

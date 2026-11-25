@@ -28,6 +28,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { hasAdminPerks, staffCapMessage } from "@/lib/utils/roles";
 import { canUseTwinInFullVideo } from "@/lib/utils/plan-features";
 import { ALLOWANCE_SELECT, chargeFor, chargeOneVideo, type AllowanceColumns } from "@/lib/utils/video-allowance";
+import { freeRedoFor, REDO_CREDIT_SOURCE } from "@/lib/utils/free-redo";
 import { standardMaxWords } from "@/lib/utils/video-length";
 import { joinClipAudio, renderPhotoSlideshow, type VideoType } from "@/lib/api/ffmpeg-render";
 import { transcribeToWords } from "@/lib/utils/srt";
@@ -125,12 +126,16 @@ export async function POST(req: NextRequest) {
   // Checked now, taken at the end (see the top of this file).
   const capMsg = await staffCapMessage(admin, user.id, role);
   if (capMsg) return NextResponse.json({ error: capMsg, code: "staff_cap" }, { status: 402 });
-  if (!isAdmin && !chargeFor(p as Partial<AllowanceColumns>, "short")) {
+  // One free redo per project within 48 hours (lib/utils/free-redo.ts).
+  // Written on the row at once, so a second press while this builds is charged.
+  const redoFree = !isAdmin && await freeRedoFor(admin, user.id, projectId, tier);
+  if (!isAdmin && !redoFree && !chargeFor(p as Partial<AllowanceColumns>, "short")) {
     return NextResponse.json(
       { code: "out_of_videos", kind: "short", tier, error: "Cinematic AI Avatar uses one video and you have none left. Add more in Billing." },
       { status: 402 },
     );
   }
+  const redoCredit = { credit_cost: 0, credit_kind: "short", credit_source: REDO_CREDIT_SOURCE };
 
   const jobId = `reel-${randomUUID()}`;
   const { data: row, error: rowErr } = await admin
@@ -142,7 +147,7 @@ export async function POST(req: NextRequest) {
       render_provider: "ffmpeg",
       render_status: "rendering",
       render_job_id: jobId,
-      metadata: { source: "cinematic-avatar", building: true, scenes: scenes.length },
+      metadata: { source: "cinematic-avatar", building: true, scenes: scenes.length, ...(redoFree && redoCredit) },
     })
     .select("id")
     .single();
@@ -223,8 +228,8 @@ export async function POST(req: NextRequest) {
     const { data: { publicUrl } } = admin.storage.from("assets").getPublicUrl(storagePath);
 
     // Taken now that it exists (admins are not charged, as everywhere).
-    const charged = isAdmin ? null : await chargeOneVideo(admin, user.id, "short");
-    if (!isAdmin && !charged) console.warn(`[cinematic] ${videoId} made but nothing was left to charge`);
+    const charged = isAdmin || redoFree ? null : await chargeOneVideo(admin, user.id, "short");
+    if (!isAdmin && !redoFree && !charged) console.warn(`[cinematic] ${videoId} made but nothing was left to charge`);
 
     await admin.from("projects").update({ status: "ready" }).eq("id", projectId).eq("user_id", user.id);
     const { error: vidErr } = await admin
@@ -240,6 +245,7 @@ export async function POST(req: NextRequest) {
           scenes: made.length,
           cinematic_seconds: Math.round(total),
           ...(charged && { credit_cost: 1, credit_kind: "short", credit_source: charged.source }),
+          ...(redoFree && redoCredit),
         },
       })
       .eq("id", videoId)

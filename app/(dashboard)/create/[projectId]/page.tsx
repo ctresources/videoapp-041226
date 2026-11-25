@@ -777,6 +777,17 @@ export default function ProjectEditorPage() {
       .catch(() => {});
   }, []);
 
+  // The free redo (2026-11-25, lib/utils/free-redo.ts): asked each time the
+  // setup step opens, since a finished video is what makes it free.
+  const [freeRedo, setFreeRedo] = useState(false);
+  useEffect(() => {
+    if (editorStep !== 3 || !projectId) return;
+    fetch(`/api/video/free-redo?projectId=${encodeURIComponent(projectId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setFreeRedo(d?.free === true))
+      .catch(() => setFreeRedo(false));
+  }, [editorStep, projectId]);
+
   // ?record=1 — arriving from "Record again" on a finished camera video. Lands
   // on the setup step with the script loaded, rather than opening the camera
   // straight away: re-recording usually means changing something first, and a
@@ -1920,10 +1931,10 @@ export default function ProjectEditorPage() {
       const left = videosLeft ?? 0;
       items.push({
         label: "Videos left",
-        ok: allowance.isAdmin || left > 0 || (circleFreeNow && renderMode !== "voice_only"),
-        okText: allowance.isAdmin ? "No limit" : circleFreeNow && renderMode !== "voice_only" ? "Free today" : `${left} left`,
+        ok: allowance.isAdmin || left > 0 || freeRedo || (circleFreeNow && renderMode !== "voice_only"),
+        okText: allowance.isAdmin ? "No limit" : circleFreeNow && renderMode !== "voice_only" ? "Free today" : freeRedo ? "Free redo" : `${left} left`,
         badText: "None left",
-        blocks: !allowance.isAdmin && left <= 0 && !(circleFreeNow && renderMode !== "voice_only"),
+        blocks: !allowance.isAdmin && left <= 0 && !freeRedo && !(circleFreeNow && renderMode !== "voice_only"),
         fix: { label: allowance.tier === "free" || allowance.tier === "beta" ? "Choose a plan" : "Get more", href: "/billing" },
       });
     }
@@ -1962,7 +1973,9 @@ export default function ProjectEditorPage() {
      */
     let remake = opts?.remake === true;
     if (!remake && draftVideo?.ready) {
-      if (!window.confirm("You already have a video from this draft. Make a new one? It uses one more video. Your first one stays in My Sparks.")) return;
+      if (!window.confirm(freeRedo
+        ? "You already have a video from this draft. Make a new one? Your first redo is free. Your first one stays in My Sparks."
+        : "You already have a video from this draft. Make a new one? It uses one more video. Your first one stays in My Sparks.")) return;
       remake = true;
     }
     if (cinematicOn && !cineReady) {
@@ -2163,7 +2176,7 @@ export default function ProjectEditorPage() {
                     onClick={() => { toast.dismiss(t.id); void handleGenerateVideo({ remake: true }); }}
                     className="rounded-lg border border-spark-amber px-3 py-1.5 text-xs font-semibold text-spark-amber"
                   >
-                    Make a new one (uses 1 video)
+                    {freeRedo ? "Make a new one (free redo)" : "Make a new one (uses 1 video)"}
                   </button>
                 )}
               </span>
@@ -4580,7 +4593,7 @@ export default function ProjectEditorPage() {
                   `isLongForm` resolves to. Naming the wrong kind here, or a
                   count from the other one, would be worse than naming none. */}
               {circleFreeNow && renderMode !== "voice_only" && ". Today's is free"}
-              {showVideoCost && !(circleFreeNow && renderMode !== "voice_only") && (
+              {showVideoCost && !freeRedo && !(circleFreeNow && renderMode !== "voice_only") && (
                 <>
                   {". This uses "}
                   <span className="text-spark-ink">
@@ -5724,9 +5737,11 @@ export default function ProjectEditorPage() {
                 : editorStep === 3 ? (
                     selfRecord
                       ? "Free. Your photos play as b-roll while you read"
-                      : voiceOnlyAsScenes
-                        ? "Takes 2-10 minutes · your voice over a scene for each sentence"
-                        : `Takes ${eta.range} once it starts`
+                      : freeRedo
+                        ? "Free redo · Doesn't use a video"
+                        : voiceOnlyAsScenes
+                          ? "Takes 2-10 minutes · your voice over a scene for each sentence"
+                          : `Takes ${eta.range} once it starts`
                   )
                   : editorStep === 4 ? (
                       renderFailed ? "Change something and try again"
