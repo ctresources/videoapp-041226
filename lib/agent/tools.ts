@@ -58,6 +58,21 @@ async function userEmail(userId: string): Promise<string | null> {
   return data.user?.email ?? null;
 }
 
+/**
+ * Which SparkReels account this connection is using, by name and email
+ * (2026-11-25, the owner's ask: Cursor made a video on her second account
+ * when she meant her main one). Said at the top of every plan and question,
+ * so a wrong account is caught before anything is made.
+ */
+async function accountOf(actor: AgentActor, ctx: AgentContext): Promise<{ name: string | null; email: string | null; line: string }> {
+  const email = await userEmail(actor.userId).catch(() => null);
+  const who = [ctx.name, email && `(${email})`].filter(Boolean).join(" ") || "this account";
+  return {
+    name: ctx.name, email,
+    line: `SparkReels account: ${who}. If that's not the account the user wants, stop and tell them before making anything.`,
+  };
+}
+
 /** A direct call outside a plan becomes a one-step plan that needs approval first. */
 async function oneStepPlan(actor: AgentActor, ctx: AgentContext, step: Omit<PlanStep, "n">, goal: string): Promise<AgentResult> {
   const steps: PlanStep[] = [{ ...step, n: 1 }];
@@ -247,11 +262,13 @@ export const TOOLS: ToolDef[] = [
   {
     name: "get_account",
     scope: "account:read",
-    description: "The SparkReels account: plan, videos left this month, enabled features, connected platforms, market, time zone, and whether an avatar, Digital Twin and cloned voice are ready.",
+    description: "The SparkReels account this connection uses (name and email), its plan, videos left this month, enabled features, connected platforms, market, time zone, and whether an avatar, Digital Twin and cloned voice are ready. Tell the user the account name and email.",
     input: { type: "object", properties: {}, additionalProperties: false },
-    async run(_a, ctx) {
+    async run(actor, ctx) {
       const al = ctx.allowance;
-      return ok("Here's the account.", {
+      const account = await accountOf(actor, ctx);
+      return ok(account.line, {
+        account: { name: account.name, email: account.email },
         plan: al.tier, level: al.level, videosLeft: videosLeft(ctx), videosPerMonth: al.shortPerMonth,
         features: { videoTemplates: al.videoTemplates, sparkPodcast: al.sparkPodcast, sparkCalendar: al.campaignCalendar },
         connectedPlatforms: ctx.connected.map(label), market: ctx.market, timeZone: ctx.timeZone, ready: ctx.ready,
@@ -314,11 +331,12 @@ export const TOOLS: ToolDef[] = [
       };
       // Asked now, never guessed, and before anything can be approved.
       const { questions, style } = questionsFor(intent, ctx);
+      const account = await accountOf(actor, ctx);
       if (questions.length) {
         return needsInput(
-          `Ask the user: ${questions.map((q) => q.options ? `${q.question} (${q.options.map((o) => o.label).join(" / ")})` : q.question).join(" ")} Wait for their answers; don't answer for them. Then call plan_spark again with the same goal and their answers in the shape, presenter and style fields. If you don't have those fields, end the goal with their answers in exactly this format: Shape: Wide. Presenter: Digital Twin. Style: Full.`,
+          `${account.line} Ask the user: ${questions.map((q) => q.options ? `${q.question} (${q.options.map((o) => o.label).join(" / ")})` : q.question).join(" ")} Wait for their answers; don't answer for them. Then call plan_spark again with the same goal and their answers in the shape, presenter and style fields. If you don't have those fields, end the goal with their answers in exactly this format: Shape: Wide. Presenter: Digital Twin. Style: Full.`,
           "choices_needed",
-          { questions },
+          { questions, account: { name: account.name, email: account.email } },
         );
       }
       intent.style = style;
@@ -336,7 +354,7 @@ export const TOOLS: ToolDef[] = [
       if (badImages.length) {
         notes.push(`Couldn't use ${badImages.length === 1 ? "1 image link" : `${badImages.length} image links`} (up to ${MAX_PLAN_IMAGES} public https JPG, PNG or WebP images): ${badImages.join(", ")}`);
       }
-      const summary = summarize(steps, totals, notes, upgrade);
+      const summary = `${account.line}\n${summarize(steps, totals, notes, upgrade)}`;
       const place = placeFor(intent, ctx);
       const picture = await pictureForPlan(actor.userId, {
         topic: intent.topic, goal, shape: intent.shape ?? "wide", city: place?.city, state: place?.state,
@@ -346,7 +364,7 @@ export const TOOLS: ToolDef[] = [
       const planId = await savePlan(actor, { goal, steps, totals: planTotals, summary, upgrade, version });
       return {
         status: "needs_approval", message: summary, planId,
-        data: { planId, version, steps, totals, upgrade, notes, ...(picture && { picture: { url: picture.url, source: picture.source } }) },
+        data: { account: { name: account.name, email: account.email }, planId, version, steps, totals, upgrade, notes, ...(picture && { picture: { url: picture.url, source: picture.source } }) },
       };
     },
   },
