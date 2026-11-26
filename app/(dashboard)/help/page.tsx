@@ -635,11 +635,12 @@ function FullGuide() {
                   It was a page of its own until 2026-10-13. */}
               <span className="block mt-1.5">
                 <strong>Video / Reel</strong> is three kinds of video, and they sit right under
-                that card for you to pick, so the script is written to suit. Pick one any time; if
-                you press Next first, they light up and ask.
-                <strong> Full AI Avatar</strong> puts you on screen with b-roll
-                and graphics made for you. <strong>AI Avatar in Circle</strong> puts you in a
-                circle over scenes that follow what you&apos;re saying. <strong>Voice over only</strong>{" "}
+                that card for you to pick, so the script is written to suit.{" "}
+                <strong>AI Avatar in Circle</strong> and a <strong>wide</strong> (horizontal) video are
+                chosen to begin with; change either any time.{" "}
+                <strong>AI Avatar in Circle</strong> puts you in a circle over scenes that follow what
+                you&apos;re saying. <strong>Full AI Avatar</strong> puts you on screen with b-roll
+                and graphics made for you. <strong>Voice over only</strong>{" "}
                 has nobody on screen: it is a Scenes Reel (step 17). Each uses one video. If
                 your sentence already said which, such as &ldquo;with my avatar&rdquo; or
                 &ldquo;voice over only&rdquo;, it isn&apos;t asked.
@@ -817,11 +818,25 @@ function FullGuide() {
               Pick a <strong>format</strong>: <strong>Vertical 9:16</strong> for Reels, Shorts and TikTok, or{" "}
               <strong>Horizontal 16:9</strong> for YouTube and websites — both up to 2 minutes — or{" "}
               <strong>Longform 16:9</strong> (up to 8 minutes, read by you on camera with the
-              teleprompter; it doesn&apos;t use a video from your plan).
+              teleprompter; it doesn&apos;t use a video from your plan). <strong>Horizontal</strong> is
+              chosen to begin with.
               {/* The same four for every script now, pasted or written. */}
               <span className="block mt-1.5">
                 Then <strong>who&apos;s on screen</strong>, choices that are the same for every
-                script, whether AI wrote it or you pasted your own:
+                script, whether AI wrote it or you pasted your own. <strong>AI Avatar in Circle</strong> is
+                first and chosen to begin with:
+              </span>
+              <span className="block mt-1.5">
+                <strong>AI Avatar in Circle</strong> — you in a circle, speaking the script
+                exactly as written, over scenes made for each sentence. Attach a few photos and
+                each takes a sentence among the scenes; attach many and the photos are the background.
+                Up to 12 of your photos move gently, a slow drift made from the photo itself and checked
+                to stay true to it; the description then says &ldquo;Photos animated with AI.&rdquo; On a
+                listing video, <strong>Open with me in front of the home</strong> starts it with a 6-second
+                shot of you at the front of the listing, made with AI from your look and its front photo:
+                choose <strong>Full body</strong>, <strong>Chest up</strong> or <strong>Off</strong>. The last 5
+                seconds show your contact card beside your circle: your logo, name, company, phone and website,
+                from your profile.
               </span>
               <span className="block mt-1.5">
                 <strong>Full AI Avatar</strong> — you on screen, with b-roll and graphics made
@@ -842,18 +857,6 @@ function FullGuide() {
                 lists each line with its place: tap a place to change it, or press <strong>Plan again</strong>{" "}
                 for new places. Vertical or horizontal, up to 2 minutes (290 words), and it uses one video
                 from your plan, like Full AI Avatar. It&apos;s usually ready in <strong>5 to 15 minutes</strong>.
-              </span>
-              <span className="block mt-1.5">
-                <strong>AI Avatar in Circle</strong> — you in a circle, speaking the script
-                exactly as written, over scenes made for each sentence. Attach a few photos and
-                each takes a sentence among the scenes; attach many and the photos are the background.
-                Up to 12 of your photos move gently, a slow drift made from the photo itself and checked
-                to stay true to it; the description then says &ldquo;Photos animated with AI.&rdquo; On a
-                listing video, <strong>Open with me in front of the home</strong> starts it with a 6-second
-                shot of you at the front of the listing, made with AI from your look and its front photo:
-                choose <strong>Full body</strong>, <strong>Chest up</strong> or <strong>Off</strong>. The last 5
-                seconds show your contact card beside your circle: your logo, name, company, phone and website,
-                from your profile.
               </span>
               <span className="block mt-1.5">
                 <strong>Voice over only</strong> — nobody on screen. Your voice over AI scenes made
