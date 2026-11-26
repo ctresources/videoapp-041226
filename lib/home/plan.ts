@@ -17,17 +17,25 @@ type Admin = ReturnType<typeof createAdminClient>;
  * AutoSparks draft does.
  */
 
-export const PLAN_TOOLS: Record<string, { label: string; href: string }> = {
-  seller_update: { label: "Seller update", href: "/tools?tab=seller" },
-  review_request: { label: "Google review request", href: "/tools?tab=review" },
+/**
+ * paid: a paid plan's workflow (lib/access.ts). A free account's plan never
+ * offers one (2026-11-26, the owner's ask): it only led to a locked page.
+ * The rest are free within the free plan's limits.
+ */
+export const PLAN_TOOLS: Record<string, { label: string; href: string; paid?: boolean }> = {
+  seller_update: { label: "Seller update", href: "/tools?tab=seller", paid: true },
+  review_request: { label: "Google review request", href: "/tools?tab=review", paid: true },
   listing_video: { label: "Listing video", href: "/create?tab=listing" },
   camera: { label: "Record yourself", href: "/create?tab=camera" },
   answer_blocks: { label: "AI answer blocks", href: "/tools?tab=answers" },
-  newsletter: { label: "Newsletter", href: "/videos" },
-  email_followup: { label: "Email follow-up", href: "/video-email" },
+  newsletter: { label: "Newsletter", href: "/videos", paid: true },
+  email_followup: { label: "Email follow-up", href: "/video-email", paid: true },
   open_house: { label: "Open-house graphic", href: "/tools?tab=image" },
   blog: { label: "Blog post", href: "/create" },
 };
+
+/** The tool ids this account's plan may offer. */
+export const planToolIds = (paid: boolean) => Object.keys(PLAN_TOOLS).filter((id) => paid || !PLAN_TOOLS[id].paid);
 
 export interface PlanItem {
   type: "video" | "tool";
@@ -68,7 +76,7 @@ The agent tells you a goal in their own words. Propose a short, practical plan u
 
 What SparkReels can make for you to plan:
 - "video": a short video draft. Writing it also writes a matching blog article, title, caption and thumbnail. Once the agent makes and approves it, it posts by itself on its day to the accounts you list. One video can go to several accounts (that covers "Facebook + Instagram post", "YouTube", "LinkedIn"); do not list the same video twice for different accounts.
-- "tool": a step the agent finishes in a SparkReels tool. Allowed tool ids: ${Object.keys(PLAN_TOOLS).join(", ")}.
+- "tool": a step the agent finishes in a SparkReels tool. Allowed tool ids: ${planToolIds(h.paid).join(", ")}.${h.paid ? "" : " This is a free account: plan only these tools, and leave out any step that needs a paid plan."}
 
 This agent, right now (real data, do not invent anything beyond it):
 - Plan: ${h.paid ? h.tier : "free"}. Videos left this month: ${h.usage.unlimited ? "no limit" : h.usage.shortLeft}.
@@ -146,7 +154,7 @@ export async function planFor(admin: Admin, userId: string, words: string, histo
     if (!title) continue;
     if (r.type === "tool") {
       const tool = PLAN_TOOLS[String(r.tool)];
-      if (!tool) continue;
+      if (!tool || (tool.paid && !h.paid)) continue;
       items.push({ type: "tool", tool: String(r.tool), title, note: String(r.note ?? "").slice(0, 140), href: tool.href });
       continue;
     }
