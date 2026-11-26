@@ -28,7 +28,8 @@ interface Plan {
   usageLine: string; overBudget: boolean; missing: { label: string; href: string }[]; paid: boolean;
   connected?: string[];
 }
-const LOOKS = { full: "Full AI Avatar", circle: "AI Avatar in Circle", none: "No avatar" } as const;
+// AI Avatar in Circle first (2026-11-25, the owner's ask); the order is the menu's.
+const LOOKS = { circle: "AI Avatar in Circle", full: "Full AI Avatar", none: "No avatar" } as const;
 
 /** Four examples, kept on one line (the owner's ask, 2026-10-31). */
 export const TRY_SAYING = ["Plan my week", "Market my listing", "Create a market update", "What should I post this week?"];

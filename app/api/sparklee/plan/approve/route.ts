@@ -53,7 +53,8 @@ export async function POST(req: NextRequest) {
     if (!topic) continue;
     const r = await startSparkleeDraft(s.admin, s.user, s.profile, {
       words: String(i.day || "tomorrow"), topic, city, state,
-      size: i.size === "horizontal" ? "horizontal" : "vertical",
+      // Wide unless the plan says vertical (2026-11-25, the owner's default).
+      size: i.size === "vertical" ? "vertical" : "horizontal",
       // Edit plan's avatar choice; unset keeps their usual look.
       ...(i.look === "full" || i.look === "circle" ? { look: i.look } : {}),
       ...(i.look === "none" && { voiceOnly: true }),

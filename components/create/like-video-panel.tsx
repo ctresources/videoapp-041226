@@ -24,8 +24,9 @@ const MAX_SECONDS = 180;
 const MAX_BYTES = 200 * 1024 * 1024;
 
 const ON_SCREEN: { key: OnScreen; label: string }[] = [
-  { key: "full", label: "Full AI Avatar" },
+  // AI Avatar in Circle first (2026-11-25, the owner's ask).
   { key: "circle", label: "AI Avatar in Circle" },
+  { key: "full", label: "Full AI Avatar" },
   { key: "voice", label: "Voice over only" },
   { key: "self", label: "You on camera" },
 ];

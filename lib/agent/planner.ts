@@ -167,13 +167,14 @@ export function presenterOptions(ctx: AgentContext): Presenter[] {
 
 /** Style only applies to an avatar on screen. */
 export function styleOptions(ctx: AgentContext, presenter: Presenter): VideoStyle[] {
-  if (presenter === "headshot") return ["full", "circle"];
+  // AI Avatar in Circle first (2026-11-25, the owner's ask).
+  if (presenter === "headshot") return ["circle", "full"];
   if (presenter !== "twin") return [];
   const rules = twinRules(ctx);
   // Cinematic AI Avatar: paid plans with a Digital Twin, the editor's rule.
   return [
-    ...(rules.full ? ["full" as const] : []),
     ...(rules.circle ? ["circle" as const] : []),
+    ...(rules.full ? ["full" as const] : []),
     ...(rules.full ? ["cinematic" as const] : []),
   ];
 }

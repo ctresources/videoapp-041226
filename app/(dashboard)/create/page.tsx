@@ -568,7 +568,8 @@ function CreatePageInner() {
    * when one is already chosen. With none chosen, `videoChooser` holds the
    * brief that is waiting and the three are brought into view to be picked.
    */
-  const [videoKind, setVideoKind] = useState<"avatar" | "circle" | "scenes" | null>(null);
+  // AI Avatar in Circle chosen to begin with (2026-11-25, the owner's default).
+  const [videoKind, setVideoKind] = useState<"avatar" | "circle" | "scenes" | null>("circle");
   /**
    * Whether the three kinds are showing. Folded away until the Video / Reel
    * card is pressed, at the owner's direction: that card is lit when the page
@@ -3618,8 +3619,9 @@ function CreatePageInner() {
               // The owner's names for the three (2026-10-10).
               // Names only. "Avatar full video" lost its "full", and each lost
               // the line under it, at the owner's direction (2026-10-13).
-              { kind: "avatar" as const, Icon: SquareUser, label: "Full AI Avatar" },
+              // AI Avatar in Circle first (2026-11-25, the owner's ask).
               { kind: "circle" as const, Icon: CircleUser, label: "AI Avatar in Circle" },
+              { kind: "avatar" as const, Icon: SquareUser, label: "Full AI Avatar" },
               { kind: "scenes" as const, Icon: Clapperboard, label: "Voice over only" },
             ]).map(({ kind, Icon, label }) => {
               const on = scenesRoute ? kind === "scenes" : videoKind === kind;

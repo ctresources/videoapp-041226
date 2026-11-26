@@ -488,7 +488,8 @@ export default function ProjectEditorPage() {
    * exactly. Any script can be either now. A pasted script opens on the
    * circle, as it always rendered; one the AI wrote opens on full.
    */
-  const [avatarStyle, setAvatarStyle] = useState<"full" | "circle">("full");
+  // AI Avatar in Circle by default (2026-11-25, the owner's ask).
+  const [avatarStyle, setAvatarStyle] = useState<"full" | "circle">("circle");
   // Producer's free AI Avatar in Circle video for today (2026-11-22): it needs
   // no video left, and doesn't use one.
   const circleFreeNow = !!allowance?.circleFreeToday && avatarStyle === "circle" && selectedKind === "short" && !cinematic;
@@ -1175,8 +1176,8 @@ export default function ProjectEditorPage() {
       }
       {
         const saved = (aiS as { avatar_style?: string }).avatar_style;
-        const pasted = (aiS as { verbatim?: boolean }).verbatim === true || source === "paste";
-        setAvatarStyle(saved === "full" || saved === "circle" ? saved : pasted ? "circle" : "full");
+        // A saved choice stands; otherwise AI Avatar in Circle (2026-11-25, the owner's default).
+        setAvatarStyle(saved === "full" || saved === "circle" ? saved : "circle");
       }
       // The rest of the setup screen, restored from a saved draft. Everything
       // above this was already round-tripping; these six were React state only,
@@ -2384,7 +2385,16 @@ export default function ProjectEditorPage() {
         <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-5">
           {[
             // The same five for every script, pasted or written for them, in
-            // the names the page before this one uses.
+            // the names the page before this one uses. AI Avatar in Circle
+            // first (2026-11-25, the owner's ask: first in every video setup).
+            {
+              key: "circle",
+              mode: "avatar_voice" as const,
+              style: "circle" as const,
+              label: "AI Avatar in Circle",
+              desc: "You in a circle, over scenes or your photos",
+              blocked: false,
+            },
             {
               key: "full",
               mode: "avatar_voice" as const,
@@ -2401,14 +2411,6 @@ export default function ProjectEditorPage() {
               label: "Cinematic AI Avatar",
               desc: !twinFullOk ? "Paid plans" : baseTwinIds.length === 0 ? "Needs your Digital Twin" : tooLongForShort ? "Up to 2 minutes" : "Your Digital Twin in a new place for each line",
               blocked: cineBlocked,
-            },
-            {
-              key: "circle",
-              mode: "avatar_voice" as const,
-              style: "circle" as const,
-              label: "AI Avatar in Circle",
-              desc: "You in a circle, over scenes or your photos",
-              blocked: false,
             },
             {
               key: "voice",
@@ -4015,8 +4017,8 @@ export default function ProjectEditorPage() {
                     // look, by the name under its picture.
                     fields={[
                       { key: "onscreen", label: "Who is on screen", type: "choice", options: [
-                        ...(fullBlocked ? [] : [{ value: "full", label: "Full AI Avatar" }]),
                         { value: "circle", label: "AI Avatar in Circle" },
+                        ...(fullBlocked ? [] : [{ value: "full", label: "Full AI Avatar" }]),
                         { value: "voice", label: "Voice over only" },
                         { value: "self", label: "You on camera" },
                       ] },

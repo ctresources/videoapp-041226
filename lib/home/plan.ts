@@ -156,7 +156,8 @@ export async function planFor(admin: Admin, userId: string, words: string, histo
       type: "video", title,
       topic: String(r.topic ?? title).slice(0, 300),
       day: String(r.day ?? "").slice(0, 30) || "tomorrow",
-      size: r.size === "horizontal" ? "horizontal" : "vertical",
+      // Wide unless asked for vertical (2026-11-25, the owner's default).
+      size: r.size === "vertical" ? "vertical" : "horizontal",
       look: usualLook,
       platforms: asked.filter((p) => connected.has(p)),
       note: String(r.note ?? "").slice(0, 140),
