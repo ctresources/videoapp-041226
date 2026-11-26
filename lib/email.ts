@@ -396,6 +396,7 @@ export async function notifyAffiliateApproved({
  */
 export type BillingEventKind =
   | "subscribed"
+  | "renewed"
   | "cancel_scheduled"
   | "canceled"
   | "payment_failed";
@@ -406,14 +407,21 @@ const BILLING_COPY: Record<BillingEventKind, { subject: string; line: string; ur
     line: "A subscription just started.",
     urgent: false,
   },
+  // The owner's ask, 2026-11-26: told when someone renews, and when someone
+  // doesn't once their paid time runs out (canceled, below).
+  renewed: {
+    subject: "Renewed",
+    line: "A subscription renewed and the payment went through.",
+    urgent: false,
+  },
   cancel_scheduled: {
     subject: "Cancellation scheduled",
     line: "Someone has scheduled a cancellation. They keep access until the period ends, so there is still time to reach them.",
     urgent: true,
   },
   canceled: {
-    subject: "Subscription canceled",
-    line: "A subscription has ended. Plan allowances are now zero; any purchased add-on videos they bought separately are still on the account.",
+    subject: "Did not renew",
+    line: "A subscription ended without renewing. The account is on the free plan now; plan videos are zero, and any videos they bought separately are still on the account.",
     urgent: true,
   },
   payment_failed: {
@@ -589,6 +597,7 @@ export async function notifyBillingEvent({
   tier,
   amount,
   periodEnd,
+  rows: moreRows = [],
 }: {
   kind: BillingEventKind;
   name?: string | null;
@@ -599,6 +608,8 @@ export async function notifyBillingEvent({
   amount?: string | null;
   /** When their access actually ends, for a scheduled cancellation. */
   periodEnd?: string | null;
+  /** Anything else worth a line: "Next renewal", "Why", "Ended". */
+  rows?: [string, string][];
 }) {
   if (!RESEND_API_KEY) {
     console.error(`[billing-alert] ${kind} not sent: RESEND_API_KEY is not set`);
@@ -614,6 +625,7 @@ export async function notifyBillingEvent({
     tier ? ["Plan", tier] : null,
     amount ? ["Amount", amount] : null,
     periodEnd ? ["Access until", periodEnd] : null,
+    ...moreRows,
   ].filter(Boolean) as [string, string][];
 
   const res = await resendPost({
@@ -629,7 +641,7 @@ export async function notifyBillingEvent({
       html: `
         <p>${copy.line}</p>
         <table>
-          ${rows.map(([k, v]) => `<tr><td><strong>${k}</strong></td><td>${v}</td></tr>`).join("")}
+          ${rows.map(([k, v]) => `<tr><td><strong>${escHtml(k)}</strong></td><td>${escHtml(v)}</td></tr>`).join("")}
         </table>
       `,
     }),

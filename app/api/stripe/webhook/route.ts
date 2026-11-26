@@ -83,7 +83,7 @@ async function notifyBilling(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
   kind: BillingEventKind,
-  extra: { tier?: string | null; amount?: string | null; periodEnd?: string | null } = {},
+  extra: { tier?: string | null; amount?: string | null; periodEnd?: string | null; rows?: [string, string][] } = {},
 ) {
   const { data } = await admin
     .from("profiles")
@@ -106,8 +106,12 @@ async function notifyBilling(
     tier: extra.tier ?? p?.subscription_tier ?? null,
     amount: extra.amount ?? null,
     periodEnd: extra.periodEnd ?? null,
+    rows: extra.rows ?? [],
   });
 }
+
+/** "Thu Dec 25 2026" from Stripe's seconds. */
+const day = (secs: number | null | undefined) => (secs ? new Date(secs * 1000).toDateString() : null);
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -301,8 +305,14 @@ export async function POST(req: NextRequest) {
       // connected accounts go with it; coming back means connecting again.
       await releaseSocialSlot(admin, userId, "subscription canceled");
 
+      // Why it didn't renew, as Stripe records it (2026-11-26, the owner's ask).
+      const why = sub.cancellation_details?.reason;
       await notifyBilling(admin, userId, "canceled", {
         tier: tierFromPriceId(sub.items.data[0]?.price.id ?? "")?.tier ?? null,
+        rows: [
+          ["Why", why === "cancellation_requested" ? "They canceled" : why === "payment_failed" ? "Payment failed" : why === "payment_disputed" ? "Payment disputed" : "Not given"],
+          ...(day(sub.ended_at) ? [["Ended", day(sub.ended_at)!] as [string, string]] : []),
+        ],
       });
       break;
     }
@@ -356,6 +366,11 @@ export async function POST(req: NextRequest) {
           subscription_status: "active",
         });
       }
+      // The owner hears about every renewal (2026-11-26).
+      await notifyBilling(admin, profile.id, "renewed", {
+        amount: typeof invoice.amount_paid === "number" ? `$${(invoice.amount_paid / 100).toFixed(2)}` : null,
+        rows: day(invoice.lines?.data?.[0]?.period?.end) ? [["Next renewal", day(invoice.lines.data[0].period.end)!]] : [],
+      });
       break;
     }
 
