@@ -3,7 +3,7 @@ import { createSparkScript, type CreateSparkBody } from "@/lib/scripts/create-sp
 import { topicChat } from "@/lib/scripts/topic-chat";
 import { writeBlog } from "@/lib/content/blog";
 import { writeShareKit } from "@/lib/content/share-kit";
-import { renderSparkVideo } from "@/lib/halo/make";
+import { renderSparkCinematic, renderSparkVideo } from "@/lib/halo/make";
 import { getRenderStatus } from "@/lib/video/status";
 import { publishToTargets } from "@/lib/social/publish";
 import { partnerAccountId, partnerPlatform, type PartnerPlatform } from "@/lib/utils/social-platforms";
@@ -13,7 +13,7 @@ import type { HaloSetup } from "@/lib/halo";
 import { type AgentContext, videosLeft } from "@/lib/agent/context";
 import {
   asPresenter, asShape, asStyle, buildPlan, CAMERA_READY_NOTE, contactsPhrase, crmWanted, labeledAnswers, needsPlace, placeFor, presenterOptions, questionsFor,
-  readIntent, recordLink, savePlan, styleOptions, summarize, videoLabel, type Presenter, type Shape, type VideoStyle,
+  readIntent, recordLink, savePlan, styleLabel, styleOptions, summarize, videoLabel, type Presenter, type Shape, type VideoStyle,
 } from "@/lib/agent/planner";
 import { findContacts, loadBoldTrailToken } from "@/lib/api/boldtrail";
 import { cleanFilter, contactTag, type FoundContact } from "@/lib/boldtrail/filters";
@@ -71,6 +71,27 @@ async function accountOf(actor: AgentActor, ctx: AgentContext): Promise<{ name: 
   return {
     name: ctx.name, email,
     line: `SparkReels account: ${who}. If that's not the account the user wants, stop before making anything; if they name one of their linked accounts, call switch_account.`,
+  };
+}
+
+/**
+ * What the account's videos carry (2026-11-25, ChatGPT couldn't check it):
+ * company, website, phone, logo, brand colors, brand kit and the closing
+ * line, word for word, as saved in Settings. Read only.
+ */
+async function brandingOf(userId: string) {
+  const { data } = await createAdminClient().from("profiles")
+    .select("company_name, website, phone, logo_url, brand_colors, heygen_brand_kit_id, default_cta")
+    .eq("id", userId).maybeSingle();
+  const p = (data ?? {}) as { company_name?: string | null; website?: string | null; phone?: string | null; logo_url?: string | null; brand_colors?: string[] | null; heygen_brand_kit_id?: string | null; default_cta?: string | null };
+  return {
+    company: p.company_name || null,
+    website: p.website || null,
+    phone: p.phone || null,
+    logo: !!p.logo_url,
+    brandColors: p.brand_colors ?? [],
+    brandKitConnected: !!p.heygen_brand_kit_id,
+    closingLine: p.default_cta?.trim() || null,
   };
 }
 
@@ -282,6 +303,7 @@ export const TOOLS: ToolDef[] = [
         : account.line, {
         account: { name: account.name, email: account.email },
         otherAccounts: others,
+        branding: await brandingOf(actor.userId),
         plan: al.tier, level: al.level, videosLeft: videosLeft(ctx), videosPerMonth: al.shortPerMonth,
         features: { videoTemplates: al.videoTemplates, sparkPodcast: al.sparkPodcast, sparkCalendar: al.campaignCalendar },
         connectedPlatforms: ctx.connected.map(label), market: ctx.market, timeZone: ctx.timeZone, ready: ctx.ready,
@@ -326,7 +348,7 @@ export const TOOLS: ToolDef[] = [
         goal: { type: "string", description: "What the agent wants, in their words." },
         shape: { type: "string", enum: ["vertical", "wide"], description: "Only if the user chose it." },
         presenter: { type: "string", enum: ["twin", "headshot", "voice_only", "camera"], description: "Who's on screen, only if the user chose it. camera = they record themselves in SparkReels." },
-        style: { type: "string", enum: ["full", "circle"], description: "For an avatar, only if the user chose it." },
+        style: { type: "string", enum: ["full", "circle", "cinematic"], description: "For an avatar, only if the user chose it. cinematic = Cinematic AI Avatar (Digital Twin only): a new place for each line." },
         showOnScreen: { type: "string", maxLength: 280, description: "What the user wants to see in the video, in their words. Visuals only; it never changes the script." },
         images: { type: "array", maxItems: MAX_PLAN_IMAGES, items: { type: "string" }, description: "Public https links to the user's own screenshots or photos, only links they gave you." },
         city: { type: "string", description: "The town, if the user gave it." },
@@ -491,7 +513,8 @@ export const TOOLS: ToolDef[] = [
         planId: { type: "string" }, step: { type: "number" }, sparkId: { type: "string" },
         shape: { type: "string", enum: ["vertical", "wide"] },
         presenter: { type: "string", enum: ["twin", "headshot", "voice_only", "camera"] },
-        style: { type: "string", enum: ["full", "circle"] },
+        style: { type: "string", enum: ["full", "circle", "cinematic"] },
+        music: { type: "string", enum: ["none", "corporate", "inspiring", "jazz", "motivate", "luxury", "bright", "feelgood", "anthem"], description: "Cinematic AI Avatar only: background music. Inspiring when not given." },
       },
     },
     async run(actor, ctx, input) {
@@ -511,9 +534,9 @@ export const TOOLS: ToolDef[] = [
         const styles = styleOptions(ctx, presenter);
         const style = styles.length === 1 ? styles[0] : asStyle(input.style);
         if (styles.length > 1 && (!style || !styles.includes(style))) {
-          return needsInput("Ask the user: Full AI Avatar, or your AI Avatar in Circle?", "choices_needed");
+          return needsInput(`Ask the user which style: ${styles.map(styleLabel).join(", ")}?`, "choices_needed");
         }
-        args = { sparkId: str(input.sparkId), size: shape, voiceOnly: presenter === "voice_only", presenter, style: styles.length ? style : null };
+        args = { sparkId: str(input.sparkId), size: shape, voiceOnly: presenter === "voice_only", presenter, style: styles.length ? style : null, ...(str(input.music) && { music: str(input.music) }) };
         title = `Make the video: ${videoLabel(shape, presenter, styles.length ? style : null)}`;
       }
       return runCreationStep(actor, ctx, "make_video", args, async (step, planId) => {
@@ -524,6 +547,19 @@ export const TOOLS: ToolDef[] = [
         const lookId = await lookFor(ctx, presenter, shape);
         if (presenter && presenter !== "voice_only" && !lookId) {
           return failed(presenter === "twin" ? "Your Digital Twin isn't ready. Check it in Settings." : "Add a headshot in Settings first.", "look_missing");
+        }
+        // Cinematic AI Avatar (2026-11-25): the editor's own build, Digital Twin only.
+        if ((step.input.style as VideoStyle | null) === "cinematic") {
+          if (presenter !== "twin") return failed("Cinematic AI Avatar is made with your Digital Twin.", "twin_required");
+          const r = await renderSparkCinematic(createAdminClient(), { id: actor.userId }, sparkId, {
+            size: shape === "vertical" ? "vertical" : "horizontal", lookId, captions: true,
+            music: str(step.input.music) || str(input.music) || "inspiring",
+          } as unknown as HaloSetup);
+          if (r.status >= 400) return failed(String(r.out.error ?? "Couldn't start the video."), String(r.out.code ?? `http_${r.status}`));
+          return {
+            ...ok(`The Cinematic AI Avatar video is building: ${String(r.out.scenes ?? "")} scenes, a new place for each line. It usually takes 5 to 15 minutes. Check video_status.`, { sparkId, videoId: r.out.videoId }),
+            sparkId,
+          };
         }
         // Only from the approved plan, where each image is already a copy in their storage.
         const images = Array.isArray(step.input.images) ? (step.input.images as unknown[]).filter((u): u is string => typeof u === "string") : [];

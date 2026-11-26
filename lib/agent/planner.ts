@@ -30,7 +30,8 @@ import { BT_STATUSES, cleanFilter, statusLabel } from "@/lib/boldtrail/filters";
 export type Shape = "vertical" | "wide";
 /** "camera" is the agent recording themselves, in SparkReels, on the teleprompter. */
 export type Presenter = "twin" | "headshot" | "voice_only" | "camera";
-export type VideoStyle = "full" | "circle";
+/** "cinematic": Cinematic AI Avatar, Digital Twin only (2026-11-25, AI apps). */
+export type VideoStyle = "full" | "circle" | "cinematic";
 
 export interface Intent {
   topic: string;
@@ -79,7 +80,7 @@ ${FAIR_HOUSING_SHORT}`;
 export const asShape = (v: unknown): Shape | null => (v === "vertical" || v === "wide" ? v : null);
 export const asPresenter = (v: unknown): Presenter | null =>
   (v === "twin" || v === "headshot" || v === "voice_only" || v === "camera" ? v : null);
-export const asStyle = (v: unknown): VideoStyle | null => (v === "full" || v === "circle" ? v : null);
+export const asStyle = (v: unknown): VideoStyle | null => (v === "full" || v === "circle" || v === "cinematic" ? v : null);
 
 /**
  * The backup for AI apps still holding an old copy of the tool list, which
@@ -94,7 +95,7 @@ export function labeledAnswers(text: string): { shape: Shape | null; presenter: 
   };
   const shape = last(/\bshape\s*:\s*(vertical|wide)\b/gi);
   const who = last(/\bpresenter\s*:\s*(digital twin|twin|headshot avatar|headshot|voice only|yourself on camera|on camera|camera)\b/gi);
-  const how = last(/\bstyle\s*:\s*(full ai avatar|full video with b-roll|full video|full|your ai avatar in circle|ai avatar in circle|corner circle over scenes|corner circle|circle)(?![\w-])/gi);
+  const how = last(/\bstyle\s*:\s*(cinematic ai avatar|cinematic|full ai avatar|full video with b-roll|full video|full|your ai avatar in circle|ai avatar in circle|corner circle over scenes|corner circle|circle)(?![\w-])/gi);
   return {
     shape: asShape(shape),
     presenter: !who ? null
@@ -102,7 +103,7 @@ export function labeledAnswers(text: string): { shape: Shape | null; presenter: 
       : who.includes("headshot") ? "headshot"
       : who.includes("voice") ? "voice_only"
       : "camera",
-    style: !how ? null : how.includes("circle") ? "circle" : "full",
+    style: !how ? null : how.includes("cinematic") ? "cinematic" : how.includes("circle") ? "circle" : "full",
   };
 }
 
@@ -151,6 +152,7 @@ const PRESENTER_LABEL: Record<Presenter, string> = {
 const STYLE_LABEL: Record<VideoStyle, string> = {
   full: "Full AI Avatar",
   circle: "Your AI Avatar in Circle",
+  cinematic: "Cinematic AI Avatar",
 };
 
 export function presenterOptions(ctx: AgentContext): Presenter[] {
@@ -168,8 +170,15 @@ export function styleOptions(ctx: AgentContext, presenter: Presenter): VideoStyl
   if (presenter === "headshot") return ["full", "circle"];
   if (presenter !== "twin") return [];
   const rules = twinRules(ctx);
-  return [...(rules.full ? ["full" as const] : []), ...(rules.circle ? ["circle" as const] : [])];
+  // Cinematic AI Avatar: paid plans with a Digital Twin, the editor's rule.
+  return [
+    ...(rules.full ? ["full" as const] : []),
+    ...(rules.circle ? ["circle" as const] : []),
+    ...(rules.full ? ["cinematic" as const] : []),
+  ];
 }
+
+export const styleLabel = (s: VideoStyle) => STYLE_LABEL[s];
 
 export interface PlanQuestion {
   field: "shape" | "presenter" | "style" | "town";
@@ -213,7 +222,7 @@ export function questionsFor(intent: Intent, ctx: AgentContext): { questions: Pl
 /** "Wide, your Digital Twin, full video with b-roll": the real names, in the plan. */
 export function videoLabel(shape: Shape, presenter: Presenter, style: VideoStyle | null): string {
   const who = presenter === "twin" ? "your Digital Twin" : presenter === "headshot" ? "your headshot avatar" : presenter === "voice_only" ? "voice only" : "yourself on camera";
-  const how = style === "circle" ? "AI Avatar in Circle" : style === "full" ? "Full AI Avatar" : null;
+  const how = style === "circle" ? "AI Avatar in Circle" : style === "full" ? "Full AI Avatar" : style === "cinematic" ? "Cinematic AI Avatar" : null;
   return [shape === "vertical" ? "Vertical" : "Wide", who, how].filter(Boolean).join(", ");
 }
 
@@ -317,11 +326,18 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
 
   // Direction goes to the renderer that directs the video. A circle video's
   // scenes are planned from the script, so only its images can be chosen.
-  const direction = makeVideo && intent.style !== "circle" ? intent.visuals?.direction ?? "" : "";
-  const images = makeVideo ? (intent.visuals?.images ?? []).map((i) => i.url) : [];
+  // A Cinematic AI Avatar video's places are planned from each line, so it
+  // takes neither direction nor images (2026-11-25).
+  const cinematic = makeVideo && intent.style === "cinematic";
+  if (cinematic) {
+    notes.push("Cinematic AI Avatar: your Digital Twin in a new place for each line, with captions and music. Up to about 2 minutes. The places are planned when the video is made.");
+    if (intent.visuals?.direction || intent.visuals?.images.length) notes.push("Cinematic AI Avatar picks the places itself, so on-screen direction and images aren't used.");
+  }
+  const direction = makeVideo && intent.style !== "circle" && !cinematic ? intent.visuals?.direction ?? "" : "";
+  const images = makeVideo && !cinematic ? (intent.visuals?.images ?? []).map((i) => i.url) : [];
   if (direction) notes.push(`On screen: ${direction}`);
   if (images.length) notes.push(`Uses your ${images.length === 1 ? "image" : `${images.length} images`} in the video.`);
-  if (intent.visuals?.direction && !direction && makeVideo) {
+  if (intent.visuals?.direction && !direction && makeVideo && !cinematic) {
     notes.push("On-screen direction works with Full AI Avatar. An AI Avatar in Circle video can still use your images.");
   }
   if (direction && !images.length) {

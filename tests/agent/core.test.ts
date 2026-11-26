@@ -307,6 +307,32 @@ describe("plan_spark builds only what the account can run", () => {
   });
 });
 
+describe("Cinematic AI Avatar from AI apps (2026-11-25)", () => {
+  it("is offered with the Digital Twin on a paid plan, never with the headshot", async () => {
+    const { styleOptions } = await import("@/lib/agent/planner");
+    expect(styleOptions(ctx(), "twin")).toContain("cinematic");
+    expect(styleOptions(ctx(), "headshot")).not.toContain("cinematic");
+  });
+  it("can be chosen in the labeled format", async () => {
+    const { labeledAnswers } = await import("@/lib/agent/planner");
+    expect(labeledAnswers("Shape: Wide. Presenter: Digital Twin. Style: Cinematic AI Avatar").style).toBe("cinematic");
+    expect(labeledAnswers("Style: Full AI Avatar").style).toBe("full");
+  });
+  it("plans a video step named for it, without direction or images", async () => {
+    const { buildPlan } = await import("@/lib/agent/planner");
+    const p = buildPlan({
+      topic: "Holiday greeting", city: null, state: null, kind: "video", wantsBlog: false, wantsSocialCopy: false,
+      shape: "wide", presenter: "twin", style: "cinematic", platforms: [], when: null, crmFollowUp: false, clarify: null,
+      visuals: { direction: "show the kitchen", images: [{ url: "https://x/y.png", source: "https://x/y.png" }] },
+    } as never, ctx({ ready: { photoAvatar: true, twin: true, clonedVoice: true }, looks: { twin: "twin-look", wide: null, tall: null, photoGroup: null } }));
+    const step = p.steps.find((s) => s.tool === "make_video");
+    expect(step?.title).toContain("Cinematic AI Avatar");
+    expect(step?.input.visualDirection).toBeUndefined();
+    expect(step?.input.images).toBeUndefined();
+    expect(p.notes.join(" ")).toContain("new place for each line");
+  });
+});
+
 describe("guard: emailing contacts", () => {
   it("an older connection without the new permission is told how to add it", async () => {
     const { guard } = await import("@/lib/agent/guard");

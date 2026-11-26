@@ -15,7 +15,9 @@ import { handleMcpMessage } from "@/lib/agent/mcp";
  * metadata address, which is how MCP clients discover where to sign in.
  */
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+// 800 since 2026-11-25: a Cinematic AI Avatar video builds after the reply
+// (waitUntil) and needs the same time as in the editor.
+export const maxDuration = 800;
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://www.sparkreels.ai";
 

@@ -4,6 +4,7 @@ import { searchBackgroundMusic } from "@/lib/api/heygen";
 import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 import { joinHookAndScript } from "@/lib/utils/script-assembly";
 import type { HaloSetup } from "@/lib/halo";
+import { planCinematicScenes, startCinematicAvatar } from "@/lib/video/cinematic-avatar-start";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -73,6 +74,47 @@ export async function renderSparkVideo(
   const out = await res.json().catch(() => ({})) as Record<string, unknown>;
   if (res.status >= 400) return { status: res.status, out };
   return { status: 200, out: { ok: true, made: true, ready: false, queued: res.status === 202, ...out } };
+}
+
+/**
+ * A Cinematic AI Avatar video for a saved Spark (2026-11-25, AI apps): the
+ * script and closing line cut into scenes with a place for each, then built
+ * by the same code as the editor's tile (lib/video/cinematic-avatar-start).
+ * Music is the chosen preset, Inspiring when none is chosen (the owner's
+ * ask). The caller's function must allow 800 seconds.
+ */
+export async function renderSparkCinematic(
+  admin: Admin,
+  user: { id: string },
+  projectId: string,
+  setup: HaloSetup,
+): Promise<{ status: number; out: Record<string, unknown> }> {
+  const { data: proj } = await admin.from("projects").select("ai_script, location_city").eq("id", projectId).eq("user_id", user.id).single();
+  const row = proj as { ai_script: Record<string, unknown> | null; location_city: string | null } | null;
+  const ai = row?.ai_script ?? {};
+  const spoken = [joinHookAndScript(String(ai.hook ?? ""), String(ai.script ?? "")), String(ai.cta ?? "").trim()].filter(Boolean).join("\n\n");
+  if (!spoken.trim()) return { status: 400, out: { error: "This draft has no script. Open it to write one." } };
+
+  const plan = await planCinematicScenes(user, { script: spoken, town: row?.location_city ?? undefined });
+  if (plan.status >= 400) return { status: plan.status, out: plan.body };
+
+  let musicUrl: string | null = null;
+  const preset = MUSIC_PRESETS.find((m) => m.id === (setup.music || "inspiring"));
+  if (preset?.query) {
+    try { musicUrl = (await searchBackgroundMusic(preset.query, 1))[0]?.audio_url ?? null; }
+    catch (err) { console.warn("[halo/make] cinematic music:", err instanceof Error ? err.message : err); }
+  }
+
+  const r = await startCinematicAvatar(user, {
+    projectId,
+    scenes: plan.body.scenes as { line: string; place: string }[],
+    format: setup.size === "vertical" ? "reel_9x16" : "youtube_16x9",
+    captions: setup.captions !== false,
+    musicUrl,
+    lookId: setup.lookId ?? null,
+  });
+  if (r.status >= 400) return { status: r.status, out: r.body };
+  return { status: 200, out: { ok: true, made: true, ready: false, queued: false, scenes: (plan.body.scenes as unknown[]).length, ...r.body } };
 }
 
 /**
