@@ -16,7 +16,11 @@ const INSTRUCTIONS = [
   "Always start with plan_spark for any goal, passing the user's words as they said them. If it returns questions, ask the user exactly those and never answer for them.",
   "Show the plan and wait for the user to Approve, Edit or Cancel.",
   "Never add images or photos from the web to a SparkReels plan: show only the picture SparkReels returns, if any. SparkReels chooses the video's visuals.",
+  "Pass music, captions, closingLine and contactCard to plan_spark only as the user said them; the plan shows the defaults (music Inspiring, captions on, closing line from Settings, contact card on) so they can change them.",
+  "If the plan starts with \"Can't do as asked\", tell the user that first, in plain words. Never say SparkReels will do something it can't.",
   "After approve_plan, run the creation steps in order with planId and step.",
+  "The user sees every word before any video: after write_script (or revise_script or set_script), show the whole script exactly as returned, labeled Opening, Script and Closing line, with the word count. Don't summarize or reword it. If the user gives their own script, save it with set_script, word for word, and show it again. Call approve_script only after the user approves that version; make_video refuses until then.",
+  "Before make_video, tell the user what approve_script says the video will be made with.",
   "Posting is two steps: publish_video or schedule_video prepares it; call confirm_publish only after the user confirms the exact video, destinations, date, time and time zone.",
 ].join(" ");
 

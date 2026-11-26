@@ -69,11 +69,11 @@ describe("the plan carries what to show", () => {
   });
   it("a circle video keeps the images and says the direction doesn't apply", async () => {
     const { buildPlan } = await import("@/lib/agent/planner");
-    const { steps, notes } = buildPlan({ ...intent, style: "circle", visuals: { direction: "Show my homepage", images: [{ source: "https://e.com/a.png", url: "https://own/a.jpg" }] } }, ctx);
+    const { steps, warnings } = buildPlan({ ...intent, style: "circle", visuals: { direction: "Show my homepage", images: [{ source: "https://e.com/a.png", url: "https://own/a.jpg" }] } }, ctx);
     const video = steps.find((s) => s.tool === "make_video");
     expect(video?.input.visualDirection).toBeUndefined();
     expect(video?.input.images).toEqual(["https://own/a.jpg"]);
-    expect(notes.join(" ")).toContain("works with Full AI Avatar");
+    expect(warnings.join(" ")).toContain("won't be used");
   });
   it("says real screens need an image", async () => {
     const { buildPlan } = await import("@/lib/agent/planner");
@@ -83,7 +83,7 @@ describe("the plan carries what to show", () => {
   it("a plan with no visuals is unchanged", async () => {
     const { buildPlan } = await import("@/lib/agent/planner");
     const { steps, totals } = buildPlan(intent, ctx);
-    expect(steps.find((s) => s.tool === "make_video")?.input).toEqual({ sparkFromStep: 1, size: "wide", voiceOnly: false, presenter: "headshot", style: "full" });
+    expect(steps.find((s) => s.tool === "make_video")?.input).toEqual({ sparkFromStep: 1, size: "wide", voiceOnly: false, presenter: "headshot", style: "full", music: "inspiring", captions: true, contactCard: true });
     expect("visuals" in totals).toBe(false);
   });
 });

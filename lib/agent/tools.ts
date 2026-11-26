@@ -12,9 +12,11 @@ import type { ServiceResult } from "@/lib/content/service-result";
 import type { HaloSetup } from "@/lib/halo";
 import { type AgentContext, videosLeft } from "@/lib/agent/context";
 import {
-  asPresenter, asShape, asStyle, buildPlan, CAMERA_READY_NOTE, contactsPhrase, crmWanted, labeledAnswers, needsPlace, placeFor, presenterOptions, questionsFor,
-  readIntent, recordLink, savePlan, styleLabel, styleOptions, summarize, videoLabel, type Presenter, type Shape, type VideoStyle,
+  asPresenter, asShape, asStyle, buildPlan, CAMERA_READY_NOTE, closingLabel, contactsPhrase, crmWanted, finishLabel, labeledAnswers, MUSIC_CHOICES, musicLabel, needsPlace, placeFor, presenterOptions, questionsFor,
+  readIntent, recordLink, savePlan, styleLabel, styleOptions, summarize, videoLabel, videoOptionsFrom, type ClosingChoice, type Presenter, type Shape, type VideoOptions, type VideoStyle,
 } from "@/lib/agent/planner";
+import { scriptForReview, spokenScriptFor, type SpokenScript } from "@/lib/scripts/spoken-script";
+import { draftScriptPatch } from "@/lib/scripts/draft-script";
 import { findContacts, loadBoldTrailToken } from "@/lib/api/boldtrail";
 import { cleanFilter, contactTag, type FoundContact } from "@/lib/boldtrail/filters";
 import { sendVideoEmail, VIDEO_EMAIL_MAX } from "@/lib/email/video-email-send";
@@ -122,6 +124,75 @@ async function sparkFor(userId: string, planId: string | null, input: Record<str
   const r = (data as { result: { sparkId?: string } | null } | null)?.result;
   return r?.sparkId ?? null;
 }
+
+// ── Seeing and approving the script (2026-11-25, the owner's ask: "I want to
+// see the video script going forward") ──
+// Every word the video will say is shown, and approved, before a video is
+// made. The approval is tied to those exact words (spoken-script's version):
+// any change to the opening, script or closing line needs a new approval.
+
+const REVIEW_ASK = "Show the user every word below, labeled Opening (hook), Script and Closing line, with the word count and about how long it runs. Don't summarize, shorten or reword it. Ask them to approve it, change it (revise_script), or give their own words (set_script saves them word for word). Make no video until they approve; then call approve_script with this sparkId and version.";
+
+const approvalKey = (sparkId: string, version: string) => `script:${sparkId}:${version}`;
+
+async function scriptApproved(userId: string, sparkId: string, version: string): Promise<boolean> {
+  const { data } = await createAdminClient().from("agent_actions").select("id")
+    .eq("user_id", userId).eq("tool", "approve_script").eq("request_id", approvalKey(sparkId, version)).eq("status", "succeeded").maybeSingle();
+  return !!data;
+}
+
+/** A closing-line choice saved onto a Spark, through the editor's own draft save. */
+async function saveClosing(userId: string, sparkId: string, choice: ClosingChoice, text?: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data } = await admin.from("projects").select("ai_script").eq("id", sparkId).eq("user_id", userId).maybeSingle();
+  if (!data) return false;
+  const ai = ((data as { ai_script: Record<string, unknown> | null }).ai_script) ?? {};
+  const patch = choice === "none" ? { ctaOff: true }
+    : choice === "custom" ? { ctaOff: false, cta: (text ?? "").trim(), ctaEdited: true }
+    : { ctaOff: false, ctaEdited: false };
+  const { error } = await admin.from("projects").update({ ai_script: draftScriptPatch(ai, patch) }).eq("id", sparkId).eq("user_id", userId);
+  return !error;
+}
+
+/** The Spark a make_video call would render: given, or made by the plan's script step. */
+async function videoSparkFor(userId: string, input: Record<string, unknown>): Promise<string | null> {
+  if (!str(input.planId)) return str(input.sparkId) || null;
+  const plan = await getPlan(userId, str(input.planId));
+  const step = plan?.steps.find((s) => (input.step ? s.n === Number(input.step) : s.tool === "make_video"));
+  return step ? sparkFor(userId, plan!.id, step.input) : null;
+}
+
+/**
+ * Everything the video will be made with, said before it starts (2026-11-25):
+ * the account, the script version and each setting, from the approved plan.
+ */
+async function videoSettings(actor: AgentActor, ctx: AgentContext, stepInput: Record<string, unknown>, sp: SpokenScript) {
+  const [account, branding] = await Promise.all([accountOf(actor, ctx), brandingOf(actor.userId)]);
+  const shape: Shape = stepInput.size === "vertical" ? "vertical" : "wide";
+  const presenter = asPresenter(stepInput.presenter) ?? (stepInput.voiceOnly === true ? "voice_only" : null);
+  const style = asStyle(stepInput.style);
+  const music = str(stepInput.music) || "inspiring";
+  const card = style !== "cinematic" && stepInput.contactCard !== false;
+  const images = Array.isArray(stepInput.images) ? stepInput.images.length : 0;
+  const circle = style === "circle" && presenter !== "voice_only";
+  return {
+    account: [account.name, account.email && `(${account.email})`].filter(Boolean).join(" "),
+    script: `version ${sp.version}: ${sp.words} words, about ${sp.seconds} seconds`,
+    video: presenter ? videoLabel(shape, presenter, style) : shape === "vertical" ? "Vertical" : "Wide",
+    size: shape === "vertical" ? "Vertical 9:16" : "Wide 16:9",
+    bRoll: style === "cinematic" ? "a new AI-made place for each line"
+      : circle ? "stock footage picked for each sentence"
+      : `made to match the script${str(stepInput.visualDirection) ? ", following your on-screen description" : ""}`,
+    ...(images && { yourImages: images }),
+    music: music === "none" ? "none" : musicLabel(music),
+    captions: stepInput.captions === false ? "off" : "on",
+    logo: card && branding.logo ? "on the contact card" : !circle && style !== "cinematic" && branding.brandKitConnected ? "your brand kit" : "not shown",
+    closingLine: sp.closingLine || "none",
+    contactCard: style === "cinematic" ? "not used in Cinematic AI Avatar" : card ? "on" : "off",
+  };
+}
+
+const settingsLine = (s: Record<string, unknown>) => Object.entries(s).map(([k, v]) => `${k}: ${v}`).join("; ");
 
 /**
  * Runs one creation step of an approved plan, exactly once.
@@ -353,6 +424,11 @@ export const TOOLS: ToolDef[] = [
         images: { type: "array", maxItems: MAX_PLAN_IMAGES, items: { type: "string" }, description: "Public https links to the user's own screenshots or photos, only links they gave you." },
         city: { type: "string", description: "The town, if the user gave it." },
         state: { type: "string", description: "2-letter state, if the user gave it." },
+        music: { type: "string", enum: MUSIC_CHOICES, description: "Background music for the video. Inspiring when not given; none for no music." },
+        captions: { type: "boolean", description: "Captions on the video. On when not given." },
+        closingLine: { type: "string", enum: ["settings", "none", "custom"], description: "The spoken closing line: the one saved in Settings (default), none, or custom with closingText." },
+        closingText: { type: "string", maxLength: 300, description: "Only with closingLine custom: the exact words." },
+        contactCard: { type: "boolean", description: "The contact card (name, phone, website, logo) over the last seconds. On by default, off when closingLine is none, unless given." },
         planId: { type: "string", description: "Only to edit an existing plan." },
         change: { type: "string", description: "Only with planId: what to change." },
       },
@@ -363,10 +439,12 @@ export const TOOLS: ToolDef[] = [
       let prev: { shape?: unknown; presenter?: unknown; style?: unknown } = {};
       let prevPicture: PlanPicture | null = null;
       let prevVisuals: PlanVisuals = { direction: "", images: [] };
+      let prevOptions: VideoOptions | null = null;
       if (str(input.planId)) {
         const old = await getPlan(actor.userId, str(input.planId));
         if (!old) return failed("That plan isn't there. Ask for a new one.", "not_found");
         prev = ((old.totals as { choices?: typeof prev }).choices) ?? {};
+        prevOptions = ((old.totals as { options?: VideoOptions }).options) ?? null;
         prevPicture = ((old.totals as { picture?: PlanPicture }).picture) ?? null;
         prevVisuals = visualsFrom(old.totals);
         const { data } = await createAdminClient().from("agent_plans").select("goal").eq("id", old.id).single();
@@ -413,11 +491,12 @@ export const TOOLS: ToolDef[] = [
         direction: cleanVisualDirection(input.showOnScreen) || visualLabels.direction || prevVisuals.direction,
         images,
       };
-      const { steps, totals, upgrade, notes } = buildPlan({ ...intent, visuals }, ctx);
+      const options = videoOptionsFrom(input, prevOptions);
+      const { steps, totals, upgrade, notes, warnings } = buildPlan({ ...intent, visuals, options }, ctx);
       if (badImages.length) {
-        notes.push(`Couldn't use ${badImages.length === 1 ? "1 image link" : `${badImages.length} image links`} (up to ${MAX_PLAN_IMAGES} public https JPG, PNG or WebP images): ${badImages.join(", ")}`);
+        warnings.push(`Couldn't use ${badImages.length === 1 ? "1 image link" : `${badImages.length} image links`} (up to ${MAX_PLAN_IMAGES} public https JPG, PNG or WebP images): ${badImages.join(", ")}`);
       }
-      const summary = `${account.line}\n${summarize(steps, totals, notes, upgrade)}`;
+      const summary = `${account.line}\n${summarize(steps, totals, notes, upgrade, warnings)}`;
       const place = placeFor(intent, ctx);
       const picture = await pictureForPlan(actor.userId, {
         topic: intent.topic, goal, shape: intent.shape ?? "wide", city: place?.city, state: place?.state,
@@ -427,7 +506,7 @@ export const TOOLS: ToolDef[] = [
       const planId = await savePlan(actor, { goal, steps, totals: planTotals, summary, upgrade, version });
       return {
         status: "needs_approval", message: summary, planId,
-        data: { account: { name: account.name, email: account.email }, planId, version, steps, totals, upgrade, notes, ...(picture && { picture: { url: picture.url, source: picture.source } }) },
+        data: { account: { name: account.name, email: account.email }, planId, version, steps, totals, upgrade, notes, ...(warnings.length && { cantDo: warnings }), ...(picture && { picture: { url: picture.url, source: picture.source } }) },
       };
     },
   },
@@ -445,8 +524,10 @@ export const TOOLS: ToolDef[] = [
       if (!r.ok) return failed(r.message, r.code);
       const runnable = r.plan.steps.filter((s) => !s.comingSoon && !s.manual && !s.needsConfirm).map((s) => `${s.tool} (step ${s.n})`);
       const emailStep = r.plan.steps.find((s) => s.tool === "email_contacts");
+      const scriptStep = r.plan.steps.find((s) => s.tool === "approve_script");
       return ok(r.plan.status === "approved"
         ? `Plan approved. Run these in order, each with planId and step: ${runnable.join(", ")}. Posting will ask for its own confirmation.`
+          + (scriptStep ? ` After write_script, show the user the whole script word for word and wait: make_video runs only after they approve it with approve_script (step ${scriptStep.n}).` : "")
           + (emailStep ? ` When the video is finished, call find_contacts with planId and step ${emailStep.n}, let the user pick who gets it, then prepare_email and, only after they say send, confirm_email.` : "")
         : "Plan cancelled.", { planId: r.plan.id, status: r.plan.status, steps: r.plan.steps }, { planId: r.plan.id });
     },
@@ -454,7 +535,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "write_script",
     scope: "sparks:write",
-    description: "Writes the script for an approved plan step (planId + step) and saves it as a Spark draft in My Voice. Without a planId it returns a one-step plan to approve first.",
+    description: "Writes the script for an approved plan step (planId + step) and saves it as a Spark draft in My Voice. Returns every word the video will say: the opening (hook), the script and the closing line, with a word count and a version. Show all of it to the user, unchanged, and wait for their approval. Without a planId it returns a one-step plan to approve first.",
     input: {
       type: "object",
       properties: {
@@ -462,6 +543,8 @@ export const TOOLS: ToolDef[] = [
         topic: { type: "string", description: "Only without a plan." },
         city: { type: "string", description: "Only without a plan: the town it's about." },
         state: { type: "string", description: "Only without a plan: 2-letter state." },
+        closingLine: { type: "string", enum: ["settings", "none", "custom"], description: "Only without a plan: the closing line." },
+        closingText: { type: "string", maxLength: 300, description: "Only without a plan, with closingLine custom." },
       },
     },
     async run(actor, ctx, input) {
@@ -474,9 +557,18 @@ export const TOOLS: ToolDef[] = [
         const r = await createSparkScript(actor.userId, step.input as unknown as CreateSparkBody, { fromAutopilot: false });
         const project = (r.body as { project?: { id: string; title: string; ai_script: Record<string, unknown> } }).project;
         if (r.status >= 400 || !project) return fromService(r, "");
+        // The closing line the plan says: from Settings, none, or their own words.
+        const closing = (step.input.closing as { line?: string; text?: string } | undefined)
+          ?? (str(step.input.closingLine) ? { line: str(step.input.closingLine), text: str(step.input.closingText) } : undefined);
+        const forVideo = !!closing && step.input.camera !== true;
+        if (closing && (closing.line === "settings" || closing.line === "none" || closing.line === "custom")) {
+          await saveClosing(actor.userId, project.id, closing.line === "custom" && !closing.text ? "settings" : closing.line, closing.text);
+        }
+        const sp = await spokenScriptFor(createAdminClient(), actor.userId, project.id);
         return {
-          ...ok(`Script written: "${project.title}".`, {
-            sparkId: project.id, title: project.title, hook: project.ai_script?.hook, script: project.ai_script?.script,
+          ...ok(`Script written: "${project.title}".${forVideo ? ` ${REVIEW_ASK}` : ""}`, {
+            sparkId: project.id,
+            ...(sp ? scriptForReview(sp) : { title: project.title, hook: project.ai_script?.hook, script: project.ai_script?.script }),
             ...(step.input.camera === true && { openInSparkReels: recordLink(project.id) }),
           }),
           sparkId: project.id,
@@ -500,13 +592,111 @@ export const TOOLS: ToolDef[] = [
     },
     async run(actor, _ctx, input) {
       const r = await topicChat(actor.userId, { projectId: str(input.sparkId), action: str(input.action), which: Number(input.which), message: str(input.message) });
-      return { ...fromService(r, "Script updated."), audit: { sparkId: str(input.sparkId) } };
+      const res = fromService(r, "Script updated.");
+      if (res.status !== "ok") return { ...res, audit: { sparkId: str(input.sparkId) } };
+      // The saved script as it will now be spoken: a change needs a new approval.
+      const sp = await spokenScriptFor(createAdminClient(), actor.userId, str(input.sparkId));
+      return {
+        ...ok(`Script updated. The saved script is under "current". ${REVIEW_ASK}`, { ...(res.data as object), ...(sp && { current: scriptForReview(sp) }) }),
+        audit: { sparkId: str(input.sparkId) },
+      };
+    },
+  },
+  {
+    name: "set_script",
+    scope: "sparks:write",
+    description: "Saves the user's own words to a Spark, word for word: the script (and optionally an opening hook), the closing line (settings, none or custom) and/or the title. Use it when the user gives or edits the script themselves. If their script already ends with their own closing, pass closingLine none. Returns every word the video will say and a new version to approve. Uses no videos.",
+    input: {
+      type: "object",
+      properties: {
+        sparkId: { type: "string" },
+        script: { type: "string", maxLength: 6000, description: "The script exactly as the user gave it. Without hook, it's the whole spoken script before the closing line." },
+        hook: { type: "string", maxLength: 300, description: "An opening line spoken before the script, only if the user gave one." },
+        closingLine: { type: "string", enum: ["settings", "none", "custom"] },
+        closingText: { type: "string", maxLength: 300, description: "With closingLine custom: the exact words." },
+        title: { type: "string", maxLength: 150, description: "The video's title, if the user gave one. Never spoken." },
+      },
+      required: ["sparkId"],
+    },
+    async run(actor, _ctx, input) {
+      const admin = createAdminClient();
+      const sparkId = str(input.sparkId);
+      const { data } = await admin.from("projects").select("ai_script").eq("id", sparkId).eq("user_id", actor.userId).maybeSingle();
+      if (!data) return failed("That Spark isn't in your account.", "not_yours");
+      const script = typeof input.script === "string" ? input.script.trim().slice(0, 6000) : null;
+      const hook = typeof input.hook === "string" ? input.hook.trim().slice(0, 300) : null;
+      const closing = str(input.closingLine) as ClosingChoice | "";
+      const closingText = str(input.closingText).slice(0, 300);
+      const title = str(input.title).slice(0, 150);
+      if (script === "" ) return needsInput("The script can't be empty.", "script_required");
+      if (script === null && hook === null && !closing && !closingText && !title) return needsInput("What should change? Give the script, hook, closing line or title.", "nothing_to_save");
+      if (closing === "custom" && !closingText) return needsInput("What should the closing line say? Give closingText.", "closing_text_required");
+      const ai = ((data as { ai_script: Record<string, unknown> | null }).ai_script) ?? {};
+      const choice: ClosingChoice | null = closing || (closingText ? "custom" : null);
+      const patch = draftScriptPatch(ai, {
+        // Their script replaces the opening too, unless they gave one: nothing they didn't write is spoken first.
+        ...(script !== null && { script, hook: hook ?? "" }),
+        ...(script === null && hook !== null && { hook }),
+        ...(choice === "none" && { ctaOff: true }),
+        ...(choice === "custom" && { ctaOff: false, cta: closingText, ctaEdited: true }),
+        ...(choice === "settings" && { ctaOff: false, ctaEdited: false }),
+      });
+      const { error } = await admin.from("projects").update({ ai_script: { ...patch, ...(title && { title }) }, ...(title && { title }) }).eq("id", sparkId).eq("user_id", actor.userId);
+      if (error) return failed("Couldn't save the script. Try again.", "save_failed");
+      const sp = await spokenScriptFor(admin, actor.userId, sparkId);
+      return { ...ok(`Saved word for word. ${REVIEW_ASK}`, { sparkId, ...(sp && scriptForReview(sp)) }), audit: { sparkId } };
+    },
+  },
+  {
+    name: "show_script",
+    scope: "sparks:write",
+    description: "Every word a Spark's video will say (opening, script, closing line), its word count, version, and whether the user has approved this version. Uses nothing.",
+    input: { type: "object", properties: { sparkId: { type: "string" } }, required: ["sparkId"] },
+    async run(actor, _ctx, input) {
+      const sp = await spokenScriptFor(createAdminClient(), actor.userId, str(input.sparkId));
+      if (!sp) return failed("That Spark isn't in your account.", "not_yours");
+      const approved = await scriptApproved(actor.userId, str(input.sparkId), sp.version);
+      return ok(approved ? "This version is approved." : `Not approved yet. ${REVIEW_ASK}`, { sparkId: str(input.sparkId), ...scriptForReview(sp), approved });
+    },
+  },
+  {
+    name: "approve_script",
+    scope: "sparks:write",
+    description: "Records that the user read and approved this exact script (sparkId + the version you showed them). Call it only after they say they approve it. Any later change to the opening, script or closing line needs a new approval. Returns everything the video will be made with. Uses no videos.",
+    input: {
+      type: "object",
+      properties: {
+        sparkId: { type: "string" },
+        version: { type: "string", description: "The version from the script you showed the user." },
+        planId: { type: "string", description: "The approved plan, so the video's settings can be listed." },
+      },
+      required: ["sparkId", "version"],
+    },
+    async run(actor, ctx, input) {
+      const sparkId = str(input.sparkId);
+      const sp = await spokenScriptFor(createAdminClient(), actor.userId, sparkId);
+      if (!sp) return failed("That Spark isn't in your account.", "not_yours");
+      if (str(input.version) !== sp.version) {
+        return needsInput(`The script isn't the version you showed (it's now ${sp.version}). Nothing was approved. ${REVIEW_ASK}`, "script_changed", { sparkId, ...scriptForReview(sp) });
+      }
+      const claim = await claimAction(actor, { tool: "approve_script", kind: "create", requestId: approvalKey(sparkId, sp.version), payload: { sparkId, version: sp.version } });
+      if (claim.kind === "conflict") return failed("Couldn't record the approval. Try again.", "approval_conflict");
+      if (claim.kind === "new") await finishAction(claim.actionId, "succeeded", { sparkId, version: sp.version, words: sp.words });
+      else if (claim.status !== "succeeded") await finishAction(claim.actionId, "succeeded", { sparkId, version: sp.version, words: sp.words });
+      const plan = str(input.planId) ? await getPlan(actor.userId, str(input.planId)) : null;
+      const videoStep = plan?.steps.find((s) => s.tool === "make_video");
+      if (!videoStep) return ok(`Script approved (version ${sp.version}). The video can be made now.`, { sparkId, version: sp.version, approved: true });
+      const settings = await videoSettings(actor, ctx, videoStep.input, sp);
+      return ok(
+        `Script approved (version ${sp.version}). This is what the video will be made with. Tell the user, then call make_video with planId and step ${videoStep.n}: ${settingsLine(settings)}.`,
+        { sparkId, version: sp.version, approved: true, willMake: settings },
+      );
     },
   },
   {
     name: "make_video",
     scope: "videos:create",
-    description: "Starts the video for an approved plan step (planId + step). Uses one of the plan's videos, through SparkReels' normal render queue. Check progress with video_status. Outside a plan, pass sparkId with the user's shape, presenter and style.",
+    description: "Starts the video for an approved plan step (planId + step), only after the user approved the script with approve_script. Uses one of the plan's videos, through SparkReels' normal render queue, with exactly the plan's settings. Check progress with video_status. Outside a plan, pass sparkId with the user's shape, presenter and style (and music, captions, contactCard if they said).",
     input: {
       type: "object",
       properties: {
@@ -514,7 +704,9 @@ export const TOOLS: ToolDef[] = [
         shape: { type: "string", enum: ["vertical", "wide"] },
         presenter: { type: "string", enum: ["twin", "headshot", "voice_only", "camera"] },
         style: { type: "string", enum: ["full", "circle", "cinematic"] },
-        music: { type: "string", enum: ["none", "corporate", "inspiring", "jazz", "motivate", "luxury", "bright", "feelgood", "anthem"], description: "Cinematic AI Avatar only: background music. Inspiring when not given." },
+        music: { type: "string", enum: MUSIC_CHOICES, description: "Only outside a plan: background music. Inspiring when not given." },
+        captions: { type: "boolean", description: "Only outside a plan. On when not given." },
+        contactCard: { type: "boolean", description: "Only outside a plan. On when not given." },
       },
     },
     async run(actor, ctx, input) {
@@ -536,8 +728,20 @@ export const TOOLS: ToolDef[] = [
         if (styles.length > 1 && (!style || !styles.includes(style))) {
           return needsInput(`Ask the user which style: ${styles.map(styleLabel).join(", ")}?`, "choices_needed");
         }
-        args = { sparkId: str(input.sparkId), size: shape, voiceOnly: presenter === "voice_only", presenter, style: styles.length ? style : null, ...(str(input.music) && { music: str(input.music) }) };
-        title = `Make the video: ${videoLabel(shape, presenter, styles.length ? style : null)}`;
+        const o = videoOptionsFrom(input);
+        args = {
+          sparkId: str(input.sparkId), size: shape, voiceOnly: presenter === "voice_only", presenter, style: styles.length ? style : null,
+          music: o.music, captions: o.captions, contactCard: typeof input.contactCard === "boolean" ? input.contactCard : true,
+        };
+        title = `Make the video: ${videoLabel(shape, presenter, styles.length ? style : null)} (${finishLabel({ ...o, contactCard: args.contactCard as boolean }, styles.length ? style : null)})`;
+      }
+      // No video until the user approved these exact words (2026-11-25).
+      const gateSpark = await videoSparkFor(actor.userId, input);
+      if (gateSpark) {
+        const sp = await spokenScriptFor(createAdminClient(), actor.userId, gateSpark);
+        if (sp && !(await scriptApproved(actor.userId, gateSpark, sp.version))) {
+          return needsInput(`The user hasn't approved this script yet, so no video was started. ${REVIEW_ASK}`, "script_not_approved", { sparkId: gateSpark, ...scriptForReview(sp) });
+        }
       }
       return runCreationStep(actor, ctx, "make_video", args, async (step, planId) => {
         const sparkId = await sparkFor(actor.userId, planId, step.input);
@@ -548,16 +752,21 @@ export const TOOLS: ToolDef[] = [
         if (presenter && presenter !== "voice_only" && !lookId) {
           return failed(presenter === "twin" ? "Your Digital Twin isn't ready. Check it in Settings." : "Add a headshot in Settings first.", "look_missing");
         }
+        // The approved words: the closing line goes to the render as approved.
+        const sp = await spokenScriptFor(createAdminClient(), actor.userId, sparkId);
+        if (!sp) return failed("That Spark isn't in your account.", "not_yours");
+        const settings = await videoSettings(actor, ctx, step.input, sp);
+        const music = str(step.input.music) || "inspiring";
+        const captions = step.input.captions !== false;
         // Cinematic AI Avatar (2026-11-25): the editor's own build, Digital Twin only.
         if ((step.input.style as VideoStyle | null) === "cinematic") {
           if (presenter !== "twin") return failed("Cinematic AI Avatar is made with your Digital Twin.", "twin_required");
           const r = await renderSparkCinematic(createAdminClient(), { id: actor.userId }, sparkId, {
-            size: shape === "vertical" ? "vertical" : "horizontal", lookId, captions: true,
-            music: str(step.input.music) || str(input.music) || "inspiring",
-          } as unknown as HaloSetup);
+            size: shape === "vertical" ? "vertical" : "horizontal", lookId, captions, music,
+          } as unknown as HaloSetup, { cta: sp.closingLine });
           if (r.status >= 400) return failed(String(r.out.error ?? "Couldn't start the video."), String(r.out.code ?? `http_${r.status}`));
           return {
-            ...ok(`The Cinematic AI Avatar video is building: ${String(r.out.scenes ?? "")} scenes, a new place for each line. It usually takes 5 to 15 minutes. Check video_status.`, { sparkId, videoId: r.out.videoId }),
+            ...ok(`The Cinematic AI Avatar video is building: ${String(r.out.scenes ?? "")} scenes, a new place for each line. It usually takes 5 to 15 minutes. Check video_status. Made with: ${settingsLine(settings)}.`, { sparkId, videoId: r.out.videoId, madeWith: settings }),
             sparkId,
           };
         }
@@ -568,14 +777,20 @@ export const TOOLS: ToolDef[] = [
           voiceOnly: step.input.voiceOnly === true,
           look: (step.input.style as VideoStyle | null) === "circle" ? "circle" : "full",
           lookId,
-          captions: true,
+          captions,
+          music,
           ...(images.length && { onScreen: "post", photos: images }),
         } as unknown as HaloSetup;
         const r = await renderSparkVideo(createAdminClient(), { id: actor.userId, email: await userEmail(actor.userId) }, sparkId, setup, {
           visualDirection: cleanVisualDirection(step.input.visualDirection) || undefined,
+          cta: sp.closingLine,
+          ...(step.input.contactCard === false && { contactCard: false }),
         });
         if (r.status >= 400) return failed(String(r.out.error ?? "Couldn't start the video."), String(r.out.code ?? `http_${r.status}`));
-        return { ...ok(r.out.queued ? "The video is in line to render. Check video_status in a few minutes." : "The video is rendering. Check video_status in a few minutes.", { sparkId, queued: r.out.queued === true }), sparkId };
+        return {
+          ...ok(`${r.out.queued ? "The video is in line to render." : "The video is rendering."} Check video_status in a few minutes. Made with: ${settingsLine(settings)}.`, { sparkId, queued: r.out.queued === true, madeWith: settings }),
+          sparkId,
+        };
       }, { title, usesVideo: true });
     },
   },

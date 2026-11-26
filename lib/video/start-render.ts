@@ -214,6 +214,12 @@ const TONE_VISUALS: Record<string, string> = {
   "Modern": "Minimal clean aesthetic, sharp cuts, geometric overlay elements",
 };
 
+/** The last scene when the contact card is off (2026-11-25, AI apps). */
+const NO_CONTACT_FINAL = `FINAL SCENE
+- End on the last spoken words over a closing visual already used in this video. No contact card, no CTA headline, no phone numbers, no website.
+
+`;
+
 export function buildVideoAgentPrompt(params: {
   script: string;
   city: string;
@@ -267,6 +273,8 @@ export function buildVideoAgentPrompt(params: {
   pdfContent?: string;
   /** What the agent asked to see on screen, from an AI assistant's plan (2026-11-23). */
   visualDirection?: string;
+  /** No contact card at the end (2026-11-25, AI apps' "contact card off"). */
+  noContactCard?: boolean;
   /**
    * Whether an avatar is actually being placed on screen.
    *
@@ -530,7 +538,7 @@ ${pipMode
 - MANDATORY OVERLAY: a full-width dark semi-transparent bar in the band from 12% to 25% up from the bottom, containing this EXACT text in large bold white letters: ${params.hookText ? `"${params.hookText}"` : '"Your Local Real Estate Expert"'}. It must stay visible for all of Scene 1. Do not omit it or change the wording. Style it as a bold, scroll-stopping social hook.
 - No other text on this card. Narration begins immediately on the first frame — never hold a silent intro.
 
-FINAL SCENE — CTA CONTACT CARD${params.logoUrl ? `
+${params.noContactCard ? NO_CONTACT_FINAL : `FINAL SCENE — CTA CONTACT CARD${params.logoUrl ? `
 - Display the attached agent/brokerage logo LARGE and prominently (top-left or top-center): at least one fifth of the frame width, about one and a half times a typical logo size, never small or tucked into a corner.` : ""}
 - On-screen only, never narrated: ${contactLine}
 - Show phone numbers exactly as provided — no leading "1", no country code.
@@ -543,7 +551,7 @@ ${pipMode
   ? "- Presenter framed per RULE #2, or beside the card; fill the canvas with a background (blurred footage or b-roll) — never black bars."
   : "- Fill the whole canvas behind the card with imagery already used in this video — never black bars, and still no presenter."}
 
-DURATION (CRITICAL)
+`}DURATION (CRITICAL)
 - Maximum ${params.isLongForm
   ? "40 scenes; vary the visuals every 20–30 seconds to hold attention"
   // A flat 10 was the real photo cap, and a contradiction: the block above
@@ -559,7 +567,7 @@ DURATION (CRITICAL)
 DETAILS
 - Agent: ${params.agentName || "Local Real Estate Agent"}${params.brokerage ? ` · ${params.brokerage}` : ""} · Market: ${locationOr}
 - Audience: ${params.audience || "Mixed"} · Style: ${params.tone || "Modern"}
-- DISPLAY ONLY, never spoken:${params.phone1 ? ` Mobile ${params.phone1}` : ""}${params.phone2 ? ` · Office ${params.phone2}` : ""}${params.website ? ` · Web ${params.website}` : ""}
+${params.noContactCard ? "- Show no phone numbers, website or contact details anywhere in the video." : `- DISPLAY ONLY, never spoken:${params.phone1 ? ` Mobile ${params.phone1}` : ""}${params.phone2 ? ` · Office ${params.phone2}` : ""}${params.website ? ` · Web ${params.website}` : ""}`}
 
 NARRATION SCRIPT — SPEAK THIS EXACTLY, ONCE, IN FULL
 Speak the opening line only once. Never speak headline, title-card or overlay text, phone numbers, emails or URLs (display only), and add no contact details. Read every word as written; never spell out letters. The voiceover starts with the first words below:
@@ -1392,6 +1400,7 @@ export async function startRender(
       isListing: project.project_type === "listing_video" || !!listingData?.address,
       pipLayout: pipLayout === true,
       uprightTwinInset,
+      noContactCard: body.contactCard === false,
     };
 
     const fullPdf = pdfText ? String(pdfText) : undefined;
@@ -1741,8 +1750,9 @@ export async function startRender(
             heygen_avatar_type: look.avatarType,
             is_digital_twin: isDigitalTwin,
             // The contact card drawn over the last seconds (2026-10-24, the
-            // owner's ask): what the Video Agent shows on its own card.
-            contact_card: {
+            // owner's ask): what the Video Agent shows on its own card. Left
+            // off when asked (2026-11-25, AI apps' "contact card off").
+            ...(body.contactCard !== false && { contact_card: {
               // Both numbers, labelled (PA requires the office number in ads).
               lines: [
                 profile.full_name,
@@ -1753,7 +1763,7 @@ export async function startRender(
                 (profile.website ?? "").replace(/^https?:\/\//i, "").replace(/\/$/, ""),
               ].filter((l): l is string => !!l && !!l.trim()).map((l) => l.trim().slice(0, 60)),
               logo_url: profile.logo_url || null,
-            },
+            } }),
             // The agent in front of the home, opening a listing video in the
             // circle (2026-10-24): made and put first when the video is finished.
             // Listing videos only: the front photo is the listing's own.

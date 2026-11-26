@@ -229,7 +229,7 @@ describe("plan_spark builds only what the account can run", () => {
   it("a full plan: script, video, blog, social copy, then a post that needs its own confirmation", async () => {
     const { buildPlan } = await import("@/lib/agent/planner");
     const p = buildPlan(intent, ctx());
-    expect(p.steps.map((s) => s.tool)).toEqual(["write_script", "make_video", "make_blog", "make_social_copy", "publish_video"]);
+    expect(p.steps.map((s) => s.tool)).toEqual(["write_script", "approve_script", "make_video", "make_blog", "make_social_copy", "publish_video"]);
     expect(p.steps.find((s) => s.tool === "publish_video")?.needsConfirm).toBe(true);
     expect(p.totals.videosNeeded).toBe(1);
   });

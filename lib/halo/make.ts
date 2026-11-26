@@ -22,13 +22,23 @@ export async function renderSparkVideo(
   projectId: string,
   setup: HaloSetup,
   /** The Remake button: lets a second video past the one-per-draft rule. */
-  opts: { remake?: boolean; visualDirection?: string } = {},
+  opts: {
+    remake?: boolean;
+    visualDirection?: string;
+    /**
+     * AI apps (2026-11-25): the closing line the user approved ("" for none),
+     * from lib/scripts/spoken-script. Without it, the draft's own.
+     */
+    cta?: string;
+    /** False leaves the contact card off the end. */
+    contactCard?: boolean;
+  } = {},
 ): Promise<{ status: number; out: Record<string, unknown> }> {
   const { data: proj } = await admin.from("projects").select("ai_script").eq("id", projectId).eq("user_id", user.id).single();
   const ai = ((proj as { ai_script: Record<string, unknown> | null } | null)?.ai_script) ?? {};
   const hook = String(ai.hook ?? "");
   const script = joinHookAndScript(hook, String(ai.script ?? ""));
-  const cta = String(ai.cta ?? "");
+  const cta = opts.cta !== undefined ? opts.cta : String(ai.cta ?? "");
   if (!script.trim()) return { status: 400, out: { error: "This draft has no script. Open it to write one." } };
 
   // A draft with no size saved is horizontal (2026-11-12, was vertical).
@@ -69,6 +79,7 @@ export async function renderSparkVideo(
     ...(setup.onScreen === "post" && setup.photos?.length && { extraPhotoUrls: setup.photos }),
     ...(opts.remake && { remake: true }),
     ...(opts.visualDirection && { visualDirection: opts.visualDirection }),
+    ...(opts.contactCard === false && { contactCard: false }),
   });
 
   const out = await res.json().catch(() => ({})) as Record<string, unknown>;
@@ -88,11 +99,13 @@ export async function renderSparkCinematic(
   user: { id: string },
   projectId: string,
   setup: HaloSetup,
+  /** The closing line the user approved ("" for none); without it, the draft's own. */
+  opts: { cta?: string } = {},
 ): Promise<{ status: number; out: Record<string, unknown> }> {
   const { data: proj } = await admin.from("projects").select("ai_script, location_city").eq("id", projectId).eq("user_id", user.id).single();
   const row = proj as { ai_script: Record<string, unknown> | null; location_city: string | null } | null;
   const ai = row?.ai_script ?? {};
-  const spoken = [joinHookAndScript(String(ai.hook ?? ""), String(ai.script ?? "")), String(ai.cta ?? "").trim()].filter(Boolean).join("\n\n");
+  const spoken = [joinHookAndScript(String(ai.hook ?? ""), String(ai.script ?? "")), (opts.cta !== undefined ? opts.cta : String(ai.cta ?? "")).trim()].filter(Boolean).join("\n\n");
   if (!spoken.trim()) return { status: 400, out: { error: "This draft has no script. Open it to write one." } };
 
   const plan = await planCinematicScenes(user, { script: spoken, town: row?.location_city ?? undefined });

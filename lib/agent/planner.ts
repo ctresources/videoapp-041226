@@ -9,6 +9,7 @@ import { canUseDigitalTwin, canUseTwinInFullVideo } from "@/lib/utils/plan-featu
 import type { AgentActor } from "@/lib/agent/types";
 import type { PlanVisuals } from "@/lib/agent/plan-visuals";
 import { BT_STATUSES, cleanFilter, statusLabel } from "@/lib/boldtrail/filters";
+import { MUSIC_PRESETS } from "@/lib/utils/music-presets";
 
 /**
  * plan_spark: the brain (plan revision 5). A goal ("Market my listing",
@@ -32,6 +33,56 @@ export type Shape = "vertical" | "wide";
 export type Presenter = "twin" | "headshot" | "voice_only" | "camera";
 /** "cinematic": Cinematic AI Avatar, Digital Twin only (2026-11-25, AI apps). */
 export type VideoStyle = "full" | "circle" | "cinematic";
+
+/** The editor's music choices an AI app may pick (not the upload). */
+export const MUSIC_CHOICES = MUSIC_PRESETS.filter((m) => m.id !== "custom").map((m) => m.id);
+export type ClosingChoice = "settings" | "none" | "custom";
+
+/**
+ * How the video is finished (2026-11-25, the owner's ask after a ChatGPT
+ * video came back with no music, a closing line and a contact card she
+ * didn't want). Part of the plan, so approving the plan approves them.
+ */
+export interface VideoOptions {
+  /** A music preset id; "none" for no music. Inspiring when not given. */
+  music: string;
+  captions: boolean;
+  /** The contact card over the last seconds. Off by default with no closing line. */
+  contactCard: boolean;
+  closingLine: ClosingChoice;
+  /** Only with closingLine "custom": the words, as given. */
+  closingText?: string;
+}
+
+export const musicLabel = (id: string) => MUSIC_PRESETS.find((m) => m.id === id)?.label ?? id;
+
+/** The options from a tool's fields; the user's own choices win, then an edited plan's. */
+export function videoOptionsFrom(input: Record<string, unknown>, prev?: Partial<VideoOptions> | null): VideoOptions {
+  const music = typeof input.music === "string" && MUSIC_CHOICES.includes(input.music) ? input.music : prev?.music ?? "inspiring";
+  const text = typeof input.closingText === "string" ? input.closingText.trim().slice(0, 300) : "";
+  const asked = input.closingLine === "settings" || input.closingLine === "none" || input.closingLine === "custom" ? input.closingLine : null;
+  const closingLine: ClosingChoice = asked === "custom" && !text && !prev?.closingText
+    ? prev?.closingLine ?? "settings"
+    : asked ?? (text ? "custom" : prev?.closingLine ?? "settings");
+  const closingText = closingLine === "custom" ? text || prev?.closingText : undefined;
+  const contactCard = typeof input.contactCard === "boolean" ? input.contactCard
+    : asked ? closingLine !== "none" : prev?.contactCard ?? closingLine !== "none";
+  const captions = typeof input.captions === "boolean" ? input.captions : prev?.captions ?? true;
+  return { music, captions, contactCard, closingLine, ...(closingText && { closingText }) };
+}
+
+export function closingLabel(o: Pick<VideoOptions, "closingLine" | "closingText">): string {
+  return o.closingLine === "none" ? "no closing line" : o.closingLine === "custom" ? `closing line: "${o.closingText ?? ""}"` : "closing line from Settings";
+}
+
+/** "music Inspiring, captions on, contact card off": shown on the plan's video step. */
+export function finishLabel(o: Pick<VideoOptions, "music" | "captions" | "contactCard">, style: VideoStyle | null): string {
+  return [
+    o.music === "none" ? "no music" : `music ${musicLabel(o.music)}`,
+    `captions ${o.captions ? "on" : "off"}`,
+    ...(style === "cinematic" ? [] : [`contact card ${o.contactCard ? "on" : "off"}`]),
+  ].join(", ");
+}
 
 export interface Intent {
   topic: string;
@@ -61,6 +112,8 @@ export interface Intent {
   clarify: string | null;
   /** What to show on screen, and the agent's own images (copies in their storage). */
   visuals?: PlanVisuals;
+  /** Music, captions, contact card and closing line. */
+  options?: VideoOptions;
 }
 
 const INTENT_SYSTEM = `You read a real estate agent's goal and return what content they want. You do not write the content.
@@ -307,6 +360,9 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
   const steps: PlanStep[] = [];
   const upgrade: string[] = [];
   const notes: string[] = [];
+  /** What was asked for and can't be done: said first, plainly (2026-11-25). */
+  const warnings: string[] = [];
+  const options = intent.options ?? videoOptionsFrom({});
   const left = videosLeft(ctx);
   const shape: Shape = intent.shape ?? "wide";
   const presenter: Presenter = intent.presenter ?? "voice_only";
@@ -332,14 +388,14 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
   const cinematic = makeVideo && intent.style === "cinematic";
   if (cinematic) {
     notes.push("Cinematic AI Avatar: your Digital Twin in a new place for each line, with captions and music. Up to about 2 minutes. The places are planned when the video is made.");
-    if (intent.visuals?.direction || intent.visuals?.images.length) notes.push("Cinematic AI Avatar picks the places itself, so on-screen direction and images aren't used.");
+    if (intent.visuals?.direction || intent.visuals?.images.length) warnings.push("Cinematic AI Avatar picks a place for each line itself, so your on-screen description and images won't be used.");
   }
   const direction = makeVideo && intent.style !== "circle" && !cinematic ? intent.visuals?.direction ?? "" : "";
   const images = makeVideo && !cinematic ? (intent.visuals?.images ?? []).map((i) => i.url) : [];
   if (direction) notes.push(`On screen: ${direction}`);
   if (images.length) notes.push(`Uses your ${images.length === 1 ? "image" : `${images.length} images`} in the video.`);
   if (intent.visuals?.direction && !direction && makeVideo && !cinematic) {
-    notes.push("On-screen direction works with Full AI Avatar. An AI Avatar in Circle video can still use your images.");
+    warnings.push("AI Avatar in Circle picks stock footage for each sentence, so your on-screen description won't be used. It can use your own images, and Full AI Avatar follows a description.");
   }
   if (direction && !images.length) {
     notes.push("Real website or app screens appear only from images you provide. Without one, the video uses a text card instead.");
@@ -357,16 +413,25 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
       videoPlatform: shape === "vertical" ? "reel" : "youtube",
       blogOnly: intent.kind === "blog_only",
       ...(camera && { camera: true }),
+      ...(intent.kind === "video" && { closing: { line: options.closingLine, ...(options.closingText && { text: options.closingText }) } }),
     },
   });
+  // Only on a plan that makes a video does the closing choice show.
+  if (intent.kind === "video") steps[0].title += ` (${closingLabel(options)})`;
   const scriptStep = 1;
   if (makeVideo) {
+    // Every word is seen and approved before a video is made (2026-11-25).
+    steps.push({
+      n: n++, tool: "approve_script", title: "You read the whole script (opening, script and closing line) and approve it before the video is made",
+      usesVideo: false, needsConfirm: false, manual: true, input: { sparkFromStep: scriptStep },
+    });
     steps.push({
       n: n++, tool: "make_video",
-      title: `Make the video: ${videoLabel(shape, presenter, intent.style)}`,
+      title: `Make the video: ${videoLabel(shape, presenter, intent.style)} (${finishLabel(options, intent.style)})`,
       usesVideo: !circleFree, needsConfirm: false,
       input: {
         sparkFromStep: scriptStep, size: shape, voiceOnly: presenter === "voice_only", presenter, style: intent.style,
+        music: options.music, captions: options.captions, contactCard: options.contactCard,
         ...(direction && { visualDirection: direction }),
         ...(images.length && { images }),
       },
@@ -394,6 +459,7 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
   const postable = asked.filter((p) => ctx.connected.includes(p));
   const missing = intent.platforms.filter((p) => !ctx.connected.includes(p));
   if (missing.length) notes.push(`Not connected yet: ${missing.map(label).join(", ")}. Connect them in Settings to post there.`);
+  const videoStep = steps.find((s) => s.tool === "make_video")?.n ?? 2;
   if (makeVideo && postable.length) {
     const tz = ctx.timeZone;
     const whenUtc = intent.when && tz ? zonedToUtc(intent.when.slice(0, 10), intent.when.slice(11), tz).toISOString() : null;
@@ -403,7 +469,7 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
         ? `Schedule to ${postable.map(label).join(", ")}${whenUtc && tz ? `, ${formatWhen(new Date(whenUtc), tz)}` : ""} (you confirm when the video is ready)`
         : `Post to ${postable.map(label).join(", ")} (you confirm when the video is ready)`,
       usesVideo: false, needsConfirm: true,
-      input: { videoFromStep: 2, platforms: postable, ...(intent.when && { when: intent.when }) },
+      input: { videoFromStep: videoStep, platforms: postable, ...(intent.when && { when: intent.when }) },
     });
     if (intent.when && !tz) notes.push("Your time zone isn't set, so you'll be asked for it before scheduling.");
   }
@@ -423,7 +489,7 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
         n: n++, tool: "email_contacts",
         title: `Email it to ${contactsPhrase(intent.crmStatus, intent.crmType)} in BoldTrail (you pick who and confirm)`,
         usesVideo: false, needsConfirm: true,
-        input: { videoFromStep: 2, ...(intent.crmStatus !== null && intent.crmStatus !== undefined && { status: intent.crmStatus }), ...(intent.crmType && { type: intent.crmType }) },
+        input: { videoFromStep: videoStep, ...(intent.crmStatus !== null && intent.crmStatus !== undefined && { status: intent.crmStatus }), ...(intent.crmType && { type: intent.crmType }) },
       });
     }
   }
@@ -437,14 +503,18 @@ export function buildPlan(intent: Intent, ctx: AgentContext) {
     features: Array.from(new Set(steps.filter((s) => !s.comingSoon && !s.manual).map((s) => s.tool))),
     // Kept so editing a plan doesn't ask these again.
     choices: { shape, presenter, style: intent.style },
+    ...(intent.kind === "video" && { options }),
     ...(intent.visuals && (intent.visuals.direction || intent.visuals.images.length) && { visuals: intent.visuals }),
   };
-  return { steps, totals, upgrade, notes };
+  return { steps, totals, upgrade, notes, warnings };
 }
 
 /** Plain-language summary a client can show with Approve / Edit / Cancel. */
-export function summarize(steps: PlanStep[], totals: { videosNeeded: number; videosLeft: number | "unlimited" }, notes: string[], upgrade: string[]): string {
-  const lines = ["Recommended Spark Plan:", ...steps.map((s) => `${s.n}. ${s.title}`)];
+export function summarize(steps: PlanStep[], totals: { videosNeeded: number; videosLeft: number | "unlimited" }, notes: string[], upgrade: string[], warnings: string[] = []): string {
+  const lines = [
+    ...(warnings.length ? [`Can't do as asked (tell the user this first): ${warnings.join(" ")}`] : []),
+    "Recommended Spark Plan:", ...steps.map((s) => `${s.n}. ${s.title}`),
+  ];
   lines.push(totals.videosNeeded
     ? `Uses ${totals.videosNeeded} of your ${totals.videosLeft === "unlimited" ? "unlimited" : totals.videosLeft} videos left.`
     : "Uses none of your videos.");
