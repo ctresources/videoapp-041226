@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
  * account" in Settings opens this page with a one-time code. You prove the
  * other account is yours by signing in to it here, then press Link. After
  * that, AI apps on either account can switch to the other when asked.
+ * Works only in the browser that pressed Link another account (2026-11-26).
  */
 
 type Acct = { id: string; name: string | null; email: string | null };
@@ -17,8 +18,9 @@ function Row({ a, tag }: { a: Acct; tag?: string }) {
   return (
     <div className="mt-2 flex items-center gap-3 rounded-xl border border-spark-rule px-3.5 py-2.5">
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold text-spark-ink">{a.name || a.email}</p>
-        {a.email && a.name && <p className="truncate text-[13px] text-spark-ink-muted">{a.email}</p>}
+        {/* The email first: a name can be anything its owner typed (2026-11-26). */}
+        <p className="truncate text-[15px] font-semibold text-spark-ink">{a.email || a.name}</p>
+        {a.email && a.name && <p className="truncate text-[13px] text-spark-ink-muted">{a.name}</p>}
       </div>
       {tag && <span className="shrink-0 rounded-full bg-spark-amber-tint px-2 py-0.5 text-[11px] font-bold text-[#A3660F]">{tag}</span>}
     </div>
@@ -99,7 +101,9 @@ export default function LinkAccountPage() {
             <h1 className="mt-5 text-[22px] font-semibold text-spark-ink">Link these accounts?</h1>
             <Row a={owner} />
             <Row a={me} tag="Signed in" />
-            <p className="mt-3 text-[14px] text-spark-ink-muted">Your AI apps on either account can switch to the other.</p>
+            <p className="mt-3 text-[14px] text-spark-ink-muted">
+              <strong className="text-spark-ink">{owner.email || owner.name}</strong> will be able to make videos, post and send email as this account. Only link accounts you own.
+            </p>
             <div className="mt-5 flex gap-2.5">
               <a href="/settings#ai-connections" className="rounded-xl border border-spark-rule bg-white px-4 py-3 text-base font-semibold text-spark-ink-muted">Cancel</a>
               <button type="button" disabled={busy} onClick={() => void link()}

@@ -16,6 +16,18 @@ export type LinkedAccount = { id: string; name: string | null; email: string | n
 const pair = (x: string, y: string) => (x < y ? { user_a: x, user_b: y } : { user_a: y, user_b: x });
 const hashCode = (code: string) => createHash("sha256").update(code).digest("hex");
 
+/**
+ * The code only works in the browser that asked for it (2026-11-26, after the
+ * security review). Start sets this as an httpOnly cookie; preview and finish
+ * need it. A code sent to someone else fails in their browser, so nobody can
+ * be talked into linking their account to a stranger's. The real flow stays
+ * in one browser (sign out, sign in to the other account, come back), and
+ * signing out leaves this cookie alone.
+ */
+export const LINK_COOKIE = "sr_link_proof";
+export const browserProof = (code: string) => createHash("sha256").update(`browser:${code}`).digest("hex");
+export const WRONG_BROWSER = "Open this link in the browser where you pressed Link another account.";
+
 async function describe(admin: SupabaseClient, id: string): Promise<LinkedAccount> {
   const [{ data: prof }, { data: u }] = await Promise.all([
     admin.from("profiles").select("full_name").eq("id", id).maybeSingle(),

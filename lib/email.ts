@@ -1011,6 +1011,40 @@ export async function sendVideoReadyEmail({ email, name, title, url }: {
   return !!res?.ok;
 }
 
+/**
+ * "Your accounts were linked" (2026-11-26, after the security review): sent
+ * to both accounts the moment a link is made, so a link nobody meant to make
+ * is seen and undone.
+ */
+export async function sendAccountsLinkedEmail({ email, name, otherEmail }: {
+  email: string;
+  name: string | null;
+  otherEmail: string;
+}): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+  const first = name?.trim().split(/\s+/)[0];
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.sparkreels.ai"}/settings#ai-connections`;
+  const res = await resendPost({
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: email,
+      reply_to: NOTIFY_EMAIL,
+      subject: "Your SparkReels accounts were linked",
+      html: `
+        <p>Hi${first ? ` ${escHtml(first)}` : ""}, your SparkReels account is now linked to <strong>${escHtml(otherEmail)}</strong>.</p>
+        <p>AI apps connected to either account can now make videos, post and send email as the other.</p>
+        <p>If you didn't do this, press Unlink in Settings and reply to this email.</p>
+        <p><a href="${url}" style="display:inline-block;background:#BA7517;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:600">Open Settings</a></p>
+        ${SIGNOFF_HTML}
+      `,
+      text: `Hi${first ? ` ${first}` : ""}, your SparkReels account is now linked to ${otherEmail}.\n\nAI apps connected to either account can now make videos, post and send email as the other.\n\nIf you didn't do this, press Unlink in Settings and reply to this email.\n\nOpen Settings: ${url}\n\n${SIGNOFF_TEXT}`,
+    }),
+  }).catch(() => null);
+  return !!res?.ok;
+}
+
 /** A lead from the home page's "What buyers in your area ask AI" box (2026-10-23). */
 export async function notifySiteLead({ name, email, city, questions, when }: {
   name: string;
