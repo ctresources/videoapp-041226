@@ -490,7 +490,8 @@ export async function startPromo(
   const tomorrow = addDays(dayKey(new Date(), tz), 1);
   const slot = zonedToUtc(tomorrow, s.time, tz);
   const setup: HaloSetup = {
-    look: "full", lookId: s.lookId, size: "vertical",
+    // AI Avatar in Circle, Wide (2026-11-25, the owner's defaults; was Full, Vertical).
+    look: "circle", lookId: s.lookId, size: "horizontal",
     picture: "ai", pictureUrl: null, onScreen: "stock", photos: [],
     platforms: PROMO_PLATFORMS, captions: s.captions, music: s.music,
     promo: { code: null, phone: null, angle },
