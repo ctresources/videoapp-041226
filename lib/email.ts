@@ -895,7 +895,7 @@ export async function notifyGhlWorkflowRequest({ name, email }: { name: string; 
  * (2026-10-19). HeyGen says API twins have no limit; this is the alarm if
  * that turns out wrong. To support; the detail is internal only.
  */
-export async function notifyTwinRefused({ userEmail, detail }: { userEmail: string; detail: string }): Promise<boolean> {
+export async function notifyTwinRefused({ userEmail, slot, detail }: { userEmail: string; slot: number; detail: string }): Promise<boolean> {
   if (!RESEND_API_KEY) return false;
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
   const res = await resendPost({
@@ -904,8 +904,9 @@ export async function notifyTwinRefused({ userEmail, detail }: { userEmail: stri
     body: JSON.stringify({
       from: FROM_EMAIL,
       to: NOTIFY_EMAIL,
-      subject: "Digital Twin creation refused by HeyGen",
-      html: `<p>A customer's Digital Twin was refused with the one-twin limit, which HeyGen said no longer applies to API twins.</p><p><b>Customer:</b> ${esc(userEmail)}</p><p><b>HeyGen said:</b> ${esc(detail.slice(0, 500))}</p><p>Worth asking HeyGen support about, quoting this message.</p>`,
+      // No vendor names in this alert (the owner's ask, 2026-11-27).
+      subject: "Digital Twin creation refused",
+      html: `<p>A customer's Digital Twin was refused with the one-twin limit.</p><p><b>Customer:</b> ${esc(userEmail)}</p><p><b>Twin:</b> ${slot === 2 ? "Second twin" : "First twin"}</p><p><b>Exact reply:</b> ${esc(detail.slice(0, 1000))}</p><p>Worth asking the video provider's support about, quoting the exact reply.</p>`,
     }),
   }).catch(() => null);
   return !!res?.ok;

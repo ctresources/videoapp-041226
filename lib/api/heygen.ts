@@ -1791,9 +1791,14 @@ export async function createDigitalTwin(
     // HeyGen limits verified avatar groups (often 1 on lower plans). There's no
     // API to delete an old twin, so tell the user to remove it in the dashboard.
     if (/resource_limit_reached|verified avatar group/i.test(err)) {
-      throw new Error(
-        "You already have a Digital Twin and your HeyGen plan allows only one. " +
-        "Delete the existing twin at app.heygen.com → Avatars, then create your new one here.",
+      // The exact reply rides along (2026-11-27): the alert used to show only
+      // this rewrite, so nobody knew what the refusal actually said.
+      throw Object.assign(
+        new Error(
+          "You already have a Digital Twin and your HeyGen plan allows only one. " +
+          "Delete the existing twin at app.heygen.com → Avatars, then create your new one here.",
+        ),
+        { providerReply: `${res.status}: ${err.slice(0, 1000)}` },
       );
     }
     throw new Error(`HeyGen Digital Twin creation failed (${res.status}): ${err.slice(0, 300)}`);

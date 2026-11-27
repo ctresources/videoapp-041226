@@ -103,12 +103,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ...result, upright });
   } catch (err) {
-    console.error("[digital-twin] POST error:", err);
+    const providerReply = (err as { providerReply?: string } | null)?.providerReply;
+    console.error(`[digital-twin] slot ${slot} POST error:`, err, providerReply ? `reply: ${providerReply}` : "");
     const raw = err instanceof Error ? err.message : String(err);
     // The July refusal (one twin per account). HeyGen says it no longer
-    // applies to API twins; if it does come back, the owner hears at once.
+    // applies to API twins; if it does come back, the owner hears at once,
+    // with the exact reply.
     if (/plan allows only one|resource_limit_reached|verified avatar group/i.test(raw)) {
-      void notifyTwinRefused({ userEmail: user.email ?? user.id, detail: raw });
+      void notifyTwinRefused({ userEmail: user.email ?? user.id, slot, detail: providerReply ?? raw });
       return NextResponse.json(
         { error: "We couldn't create your Digital Twin just now. Our team has been told and will be in touch. Your photo avatar keeps working in the meantime." },
         { status: 503 },
