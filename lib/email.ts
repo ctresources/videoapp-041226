@@ -891,6 +891,27 @@ export async function notifyGhlWorkflowRequest({ name, email }: { name: string; 
 }
 
 /**
+ * A Digital Twin that failed after it was accepted (2026-11-28, Daniel
+ * Okiro's). Sent once per twin; the customer sees Start over in Settings.
+ * No vendor names in this alert.
+ */
+export async function notifyTwinFailed({ userEmail, slot, detail }: { userEmail: string; slot: number; detail: string }): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+  const res = await resendPost({
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: NOTIFY_EMAIL,
+      subject: "Digital Twin failed",
+      html: `<p>A customer's Digital Twin failed after it was created. They now see Start over in Settings.</p><p><b>Customer:</b> ${esc(userEmail)}</p><p><b>Twin:</b> ${slot === 2 ? "Second twin" : "First twin"}</p><p><b>Exact reply:</b> ${esc(detail.slice(0, 1000))}</p>`,
+    }),
+  }).catch(() => null);
+  return !!res?.ok;
+}
+
+/**
  * A Digital Twin creation refused by HeyGen with the one-twin limit
  * (2026-10-19). HeyGen says API twins have no limit; this is the alarm if
  * that turns out wrong. To support; the detail is internal only.

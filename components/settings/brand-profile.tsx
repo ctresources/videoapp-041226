@@ -879,14 +879,21 @@ function DigitalTwinCreator({
     return (
       <div className="flex flex-col gap-3">
         <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
-          <p className="text-sm font-semibold text-red-800">Training failed</p>
-          <p className="text-xs text-red-600 mt-0.5">Use a clear well-lit video, then try again.</p>
+          <p className="text-sm font-semibold text-red-800">Your Digital Twin didn&apos;t go through</p>
+          <p className="text-xs text-red-600 mt-0.5">Record a new video and start over.</p>
         </div>
+        {/* Removes the failed twin for good (2026-11-28), so it doesn't come
+            back as failed on the next visit. */}
         <button
-          onClick={() => { setDtStatus("none"); setGroupId(null); }}
-          className="text-xs font-medium text-primary-600 hover:text-primary-700 self-start"
+          onClick={async () => {
+            await fetch(`/api/avatar/digital-twin${q}`, { method: "DELETE" }).catch(() => null);
+            setGroupId(null);
+            setUploadedUrl(null);
+            setDtStatus("none");
+          }}
+          className="inline-flex items-center gap-1.5 self-start rounded-lg bg-spark-amber px-3 py-1.5 text-xs font-semibold text-white"
         >
-          Try again
+          Start over
         </button>
       </div>
     );

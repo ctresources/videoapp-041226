@@ -1150,6 +1150,18 @@ export async function getAvatarConsentUrl(
  * couldn't be asked or doesn't say, so callers never block on a lookup.
  */
 export async function getAvatarGroupConsent(groupId: string): Promise<string | null> {
+  return (await getAvatarGroupState(groupId))?.consent ?? null;
+}
+
+/**
+ * The group as HeyGen sees it. A group can fail after it was accepted
+ * (2026-11-28, Daniel Okiro's two twins: status "failed", consent
+ * "rejected", "moderation_failed: This video can't be read from the link it
+ * was submitted with.") while its look still reads "completed".
+ */
+export async function getAvatarGroupState(
+  groupId: string,
+): Promise<{ consent: string | null; status: string | null; failed: boolean; reason: string | null } | null> {
   try {
     const res = await fetch(`${HEYGEN_API}/v3/avatars/${encodeURIComponent(groupId)}`, {
       headers: { "x-api-key": getApiKey() },
@@ -1157,8 +1169,11 @@ export async function getAvatarGroupConsent(groupId: string): Promise<string | n
     });
     if (!res.ok) return null;
     const data = await res.json();
-    const status = (data?.data ?? data)?.consent_status;
-    return typeof status === "string" ? status : null;
+    const g = (data?.data ?? data) as { consent_status?: unknown; status?: unknown; error?: { code?: unknown; message?: unknown } } | null;
+    const consent = typeof g?.consent_status === "string" ? g.consent_status : null;
+    const status = typeof g?.status === "string" ? g.status : null;
+    const reason = g?.error ? [g.error.code, g.error.message].filter((x) => typeof x === "string" && x).join(": ") || null : null;
+    return { consent, status, failed: status === "failed" || consent === "rejected", reason };
   } catch {
     return null;
   }

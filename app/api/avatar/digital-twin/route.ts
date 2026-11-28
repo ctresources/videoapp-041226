@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createDigitalTwin, deleteAvatarLook, getAvatarLooks, twinApprovedAtHeyGen } from "@/lib/api/heygen";
-import { notifyTwinRefused } from "@/lib/email";
+import { createDigitalTwin, deleteAvatarLook, getAvatarGroupState, getAvatarLooks, twinApprovedAtHeyGen } from "@/lib/api/heygen";
+import { notifyTwinFailed, notifyTwinRefused } from "@/lib/email";
 import { toTwinVideo, videoIsUpright } from "@/lib/utils/twin-video";
 import { canUseDigitalTwin, DIGITAL_TWIN_UPGRADE_MESSAGE } from "@/lib/utils/plan-features";
 import { getAccessLevel, isPaidLevel } from "@/lib/access";
@@ -154,6 +154,18 @@ export async function GET(req: NextRequest) {
   if (!groupId) return NextResponse.json({ status: "none" });
 
   try {
+    // Failed at the provider (2026-11-28, Daniel Okiro): shown as failed with
+    // Start over, not as an approval that can never finish. The owner hears
+    // once: the approval flag is cleared here, and a new twin sets it again.
+    const group = await getAvatarGroupState(groupId);
+    if (group?.failed) {
+      if (profile[c.consent]) {
+        await admin.from("profiles").update({ [c.consent]: false }).eq("id", user.id);
+        void notifyTwinFailed({ userEmail: user.email ?? user.id, slot, detail: group.reason ?? `${group.status ?? ""} / ${group.consent ?? ""}` });
+      }
+      return NextResponse.json({ groupId, lookId: storedLook, status: "failed" });
+    }
+
     const looks = await getAvatarLooks(groupId);
     // The twin itself, never one of its AI outfits (2026-10-28): those live in
     // the same group, and taking the first look could have swapped the twin
